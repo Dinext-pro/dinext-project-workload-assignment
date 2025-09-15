@@ -1,7 +1,7 @@
 app_name = "project_workload_assignment"
-app_title = "Project Workload Assignment"
-app_publisher = "Dinord"
-app_description = "Project Workload Assignment"
+app_title = "Dinext Project Workload"
+app_publisher = "Dinext"
+app_description = "Dinext Project Workload"
 app_email = "administrator@dinext.invalid"
 app_license = "mit"
 
@@ -43,10 +43,10 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
-# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
+doctype_js = {"Task" : "public/js/pwa_dialog.js"}
+doctype_list_js = {"Task" : "public/js/pwa_dialog.js"}
+doctype_tree_js = {"Task" : "public/js/pwa_dialog.js"}
+doctype_calendar_js = {"Task" : "public/js/pwa_dialog.js"}
 
 # Svg Icons
 # ------------------
