@@ -26,7 +26,7 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/project_workload_assignment/css/project_workload_assignment.css"
-# app_include_js = "/assets/project_workload_assignment/js/project_workload_assignment.js"
+app_include_js = "/assets/project_workload_assignment/js/pwa_dialog.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/project_workload_assignment/css/project_workload_assignment.css"
@@ -43,18 +43,18 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {
-                "Task":"public/js/pwa_dialog.js"
-                ,"Issue":"public/js/pwa_dialog.js"
-            }
+#doctype_js = {
+#                "Task":"public/js/pwa_dialog.js"
+#                ,"Issue":"public/js/pwa_dialog.js"
+#            }
 
-doctype_list_js = {
-                "Task":"public/js/pwa_dialog.js"
-                ,"Issue":"public/js/pwa_dialog.js"
-            }
+#doctype_list_js = {
+#                "Task":"public/js/pwa_dialog.js"
+#                ,"Issue":"public/js/pwa_dialog.js"
+#            }
 
-doctype_tree_js = {"Task":"public/js/pwa_dialog.js"}
-doctype_calendar_js = {"Task" : "public/js/pwa_dialog.js"}
+#doctype_tree_js = {"Task":"public/js/pwa_dialog.js"}
+#doctype_calendar_js = {"Task" : "public/js/pwa_dialog.js"}
 
 # Svg Icons
 # ------------------
