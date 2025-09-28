@@ -16,13 +16,15 @@ function setuFormPWA(frm) {
     if ( frm.doctype == "Task" ) {
         open_pwa_onclick( frm, frm.doc );
     } else {
-        frappe.db.get_doc('Task', null, { custom_linked_issue: frm.docname })
-            .then( doc => {
-                open_pwa_onclick( frm, doc );
+        frappe.call({
+            method: "frappe.client.get",
+            type: "GET",
+            args: { doctype: 'Task', filters: { custom_linked_issue: frm.docname } },
+            silent: true,            
+            callback: (r) => {
+                open_pwa_onclick( frm, r.message );
             },
-            (error) => {
-                console.error( error );
-            })
+        });
     }
 }
 
