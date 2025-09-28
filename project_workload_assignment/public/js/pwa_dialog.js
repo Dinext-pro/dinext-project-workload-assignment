@@ -13,11 +13,25 @@ frappe.ui.form.on('Issue', {
 function setuFormPWA(frm) {
     if (!frm.doc.project) return;
 
+    if ( frm.doctype == "Task" ) {
+        open_pwa_onclick( frm, frm.doc );
+    } else {
+        frappe.db.get_doc('Task', null, { custom_linked_issue: frm.docname })
+            .then( doc => {
+                open_pwa_onclick( frm, doc );
+            },
+            (error) => {
+                console.error( error );
+            })
+    }
+}
+
+function open_pwa_onclick(frm, task) {
     const $assignContainer = frm.page.wrapper.find('.add-assignment-btn, .assignments .avatar-group');
     $assignContainer.off('click').on('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        open_pwa( frm );
+        open_pwa( frm, task );
     });
 }
 
@@ -26,30 +40,23 @@ function reload( frm ) {
     //frm.assign_to.refresh();
 }
 
-function open_pwa( frm ) {
+function open_pwa( frm, task ) {
     if ( frm.is_dirty() ) {
         frappe.warn(__('Подтвердите'),
             __('Изменения данных будут сохранены. Продолжить?'),
             () => {
-                frm.save( null, ()=> start_pwa( frm ) );
+                frm.save( null, ()=> start_pwa( frm, task ) );
             },
             __('Continue'),
             false // Sets dialog as minimizable
         );
     } else {
-        start_pwa( frm );
+        start_pwa( frm, task );
     }
 }
 
-function start_pwa( frm ) {
-    if ( frm.doctype == "Task" ) {
-        start_pwa_dialog( ()=>reload(frm), frm.doc );
-    } else {
-        frappe.db.get_doc('Task', null, { custom_linked_issue: frm.docname })
-            .then( doc => {
-                start_pwa_dialog( ()=>reload(frm), doc );
-            })
-    }
+function start_pwa( frm, task ) {
+    start_pwa_dialog( ()=>reload( frm ), task );
 }
 
 function start_pwa_dialog(cbfunc, task) {
@@ -158,7 +165,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     let project_users = getProjectTeamUsersSync( task.project );
     
     const d = new frappe.ui.Dialog({
-        title: __('Назначение нагрузки'),
+        title: __('Назначение загрузки'),
         size: 'extra-large',
         fields: [
             {fieldtype: 'Section Break'},
