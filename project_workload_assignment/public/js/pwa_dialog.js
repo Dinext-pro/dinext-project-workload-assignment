@@ -23,7 +23,10 @@ function setuFormPWA(frm) {
             silent: true,            
             callback: (r) => {
                 open_pwa_onclick( frm, r.message );
-            },
+            },            
+            error: (r) => {
+                // on error
+            }
         });
     }
 }
