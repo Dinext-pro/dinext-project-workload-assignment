@@ -1,10 +1,16 @@
 frappe.ui.form.on('Task', {
 	refresh(frm) {
-		setupPWA(frm);
+		setuFormPWA(frm);
 	}
 })
 
-function setupPWA(frm) {
+frappe.ui.form.on('Issue', {
+	refresh(frm) {
+		setuFormPWA(frm);
+	}
+})
+
+function setuFormPWA(frm) {
     if (!frm.doc.project) return;
 
     const $assignContainer = frm.page.wrapper.find('.add-assignment-btn, .assignments .avatar-group');
@@ -15,22 +21,38 @@ function setupPWA(frm) {
     });
 }
 
+function reload( frm ) {
+    frm.reload_doc();
+    //frm.assign_to.refresh();
+}
+
 function open_pwa( frm ) {
     if ( frm.is_dirty() ) {
         frappe.warn(__('Подтвердите'),
             __('Изменения данных будут сохранены. Продолжить?'),
             () => {
-                frm.save(null, ()=> open_pwa_dialog(frm, frm.doc) );
+                frm.save( null, ()=> start_pwa( frm ) );
             },
             __('Continue'),
             false // Sets dialog as minimizable
         );
     } else {
-        open_pwa_dialog(frm, frm.doc);
+        start_pwa( frm );
     }
 }
 
-function open_pwa_dialog(frm, task) {
+function start_pwa( frm ) {
+    if ( frm.doctype == "Task" ) {
+        start_pwa_dialog( ()=>reload(frm), frm.doc );
+    } else {
+        frappe.db.get_doc('Task', null, { custom_linked_issue: frm.docname })
+            .then( doc => {
+                start_pwa_dialog( ()=>reload(frm), doc );
+            })
+    }
+}
+
+function start_pwa_dialog(cbfunc, task) {
     frappe.db.get_list('Project Workload Assignment', {
         fields: ['name', 'task', 'role', 'user', 'user_full_name', 'date_from', 'date_to', 'workload', 'wl_value', 'acc_separately'],
         filters: {
@@ -65,7 +87,7 @@ function open_pwa_dialog(frm, task) {
                 if ( todos ) {
                     add_new_pwa( task, pwas, 
                         todos.filter(todo => !pwas.some( pwa => pwa.user == todo.allocated_to ) ).map( r => r.allocated_to ),
-                        () => make_pwa_dialog( frm, task, pwas, pwes ) );
+                        () => make_pwa_dialog( cbfunc, task, pwas, pwes ) );
                 }
             });
         });
@@ -132,7 +154,7 @@ function add_new_pwa( task, pwas, users, callback=null) {
         });
 }
 
-function make_pwa_dialog(frm, task, pwas, pwes) {
+function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     let project_users = getProjectTeamUsersSync( task.project );
     
     const d = new frappe.ui.Dialog({
@@ -226,8 +248,9 @@ function make_pwa_dialog(frm, task, pwas, pwes) {
         primary_action: async (values) => {
             await submit_pwa_and_todo(pwas || []);
             d.hide();
-            frm.reload_doc();
-            //frm.assign_to.refresh();
+            if ( cbfunc ) {
+                cbfunc();
+            }            
             },
         secondary_action_label: __("Отменить"),
         secondary_action: async (values) => { d.hide(); },
