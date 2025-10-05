@@ -48,12 +48,12 @@ doctype_js = {
                 ,"Issue":"public/js/pwa_dialog.js"
             }
 
-doctype_list_js = {
-                "Task":"public/js/pwa_dialog.js"
+# doctype_list_js = {
+#                "Task":"public/js/pwa_dialog.js"
 #                ,"Issue":"public/js/pwa_dialog.js"
-            }
+#            }
 
-#doctype_tree_js = {"Task":"public/js/pwa_dialog.js"}
+doctype_tree_js = {"Task":"public/js/pwa_dialog.js"}
 #doctype_calendar_js = {"Task" : "public/js/pwa_dialog.js"}
 
 # Svg Icons
