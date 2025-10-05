@@ -3,7 +3,7 @@ let _pwa_starting = false;
 function start_pwa_dialog(cbfunc, task) {
     if ( _pwa_starting ) { return; }
     _pwa_starting = true;
-    
+
     frappe.db.get_list('Project Workload Assignment', {
         fields: ['name', 'task', 'role', 'user', 'user_full_name', 'date_from', 'date_to', 'workload', 'wl_value', 'acc_separately'],
         filters: {
@@ -183,9 +183,9 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 fields: get_pwe_fileds(),
                 data: pwes
             },
-            {fieldtype: 'Section Break'},
+            {fieldtype: 'Section Break', label: __('Загрузка') },
             {
-                label: __('Назначения'),
+                //label: __('Назначения'),
                 fieldname: 'pwa_rows',
                 fieldtype: 'Table',
                 cannot_add_rows: 1,
