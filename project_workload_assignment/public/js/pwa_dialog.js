@@ -10,6 +10,27 @@ frappe.ui.form.on('Issue', {
 	}
 })
 
+/*const original_init = frappe.views.KanbanView.prototype.init;
+frappe.views.KanbanView.prototype.init = function() {
+	console.log('Kanban init bind');
+    return original_init.call(this).then(() => {
+        if (this.doctype === 'Issue' || this.doctype === 'Task') {
+            const original_KanbanBoardColumn = frappe.views.KanbanBoardColumn;
+            frappe.views.KanbanBoardColumn = function(column, wrapper, board_perms) {
+                const self = original_KanbanBoardColumn.call(this, column, wrapper, board_perms);
+                const original_make_cards = self.make_cards;
+                self.make_cards = function() {
+					console.log('make cards 1');
+                    original_make_cards.call(this);
+                    //setupListViewAssignmentFilter(this.cur_list);
+                };
+
+                return self;
+            };
+        }
+    });
+};/* */
+
 function setuFormPWA(frm) {
     if (!frm.doc.project) return;
 
@@ -63,7 +84,11 @@ function start_pwa( frm, task ) {
     start_pwa_dialog( ()=>reload( frm ), task );
 }
 
+let _pwa_starting = false;
+
 function start_pwa_dialog(cbfunc, task) {
+    if ( _pwa_starting ) { return; }
+    _pwa_starting = true;
     frappe.db.get_list('Project Workload Assignment', {
         fields: ['name', 'task', 'role', 'user', 'user_full_name', 'date_from', 'date_to', 'workload', 'wl_value', 'acc_separately'],
         filters: {
@@ -228,7 +253,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                             );
                         } );
                     } else {
-                        frappe.show_alert(__("Вся команда уже назначена.."), 5);
+                        frappe.show_alert(__("Назначены все возможные исполнители"), 5);
                     }
                 },
                 btn_size: 'sm' // xs, sm, lg
@@ -282,6 +307,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     });
 
     d.show();
+    _pwa_starting = false;
 }
 
 function getMaxToDate(date) {
