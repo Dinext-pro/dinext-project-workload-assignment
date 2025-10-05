@@ -16,18 +16,17 @@ function setuFormPWA(frm) {
     if ( frm.doctype == "Task" ) {
         open_pwa_onclick( frm, frm.doc );
     } else {
-        frappe.call({
-            method: "frappe.client.get",
-            type: "GET",
-            args: { doctype: 'Task', filters: { custom_linked_issue: frm.docname } },
-            silent: true,            
-            callback: (r) => {
-                open_pwa_onclick( frm, r.message );
-            },            
-            error: (r) => {
-                // on error
-            }
-        });
+        frappe.db.get_list('Task', {
+            fields: ['name', 'project', 'exp_start_date', 'exp_end_date'],
+            filters: {
+                custom_linked_issue: frm.docname
+            },
+            limit: 1
+            }).then(records => {
+                if ( records && records.length ) {
+                    open_pwa_onclick( frm, records[ 0 ] );
+                }
+            })
     }
 }
 
