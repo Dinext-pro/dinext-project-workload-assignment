@@ -213,19 +213,23 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 click: () => {
                     let new_users = project_users.filter( user => !pwas.some( pwa => pwa.user == user ) )
                     
-                    add_new_pwa( task, pwas, new_users, () => {
-                        const grid = d.fields_dict.pwa_rows.grid;
-                        grid.refresh();
-                        new_users.forEach(
-                            user => {
-                                let row = grid.get_row( user );
-                                row.row.addClass("highlight");
-                                setTimeout(function() { 
-                                    row.row.removeClass("highlight"); 
-                                }, 500);
-                            }
-                        );
-                    } );
+                    if ( new_users.length ) {
+                        add_new_pwa( task, pwas, new_users, () => {
+                            const grid = d.fields_dict.pwa_rows.grid;
+                            grid.refresh();
+                            new_users.forEach(
+                                user => {
+                                    let row = grid.get_row( user );
+                                    row.row.addClass("highlight");
+                                    setTimeout(function() { 
+                                        row.row.removeClass("highlight"); 
+                                    }, 500);
+                                }
+                            );
+                        } );
+                    } else {
+                        frappe.show_alert(__("Вся команда уже назначена.."), 5);
+                    }
                 },
                 btn_size: 'sm' // xs, sm, lg
             },
