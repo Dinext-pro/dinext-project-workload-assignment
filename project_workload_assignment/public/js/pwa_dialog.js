@@ -260,7 +260,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
             await submit_pwa_and_todo(pwas || []);
             d.hide();
             if ( cbfunc ) {
-                cbfunc( pwas );
+                cbfunc( pwas || [] );
             }            
             },
         secondary_action_label: __("Отменить"),
