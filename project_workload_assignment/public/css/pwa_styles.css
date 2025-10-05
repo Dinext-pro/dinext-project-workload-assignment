@@ -1,7 +1,7 @@
-.modal-body .row-check.col {
+.modal-body div[data-fieldname="pwa_rows"] .row-check.col {
     flex: 0 1 12px;
 }
-.modal-body .row .col-xs-1 {
+.modal-body div[data-fieldname="pwa_rows"] .row .col-xs-1 {
     flex: 1 1 5%;
     max-width: 10%;
 }
