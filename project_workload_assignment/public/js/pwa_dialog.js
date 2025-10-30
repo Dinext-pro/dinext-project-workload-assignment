@@ -246,10 +246,14 @@ function get_pwa_fileds( task ) {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             }},            
           {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1,            
-            onchange: function () {
-                console.log(this.get_value());   
-                this.grid_row.on_grid_fields_dict.date_from.refresh_input();  
-                this.grid_row.on_grid_fields_dict.date_to.refresh_input();    
+            onchange: function () { 
+                let dfrom = this.grid_row.on_grid_fields_dict.date_from;
+                let dto = this.grid_row.on_grid_fields_dict.date_to;
+                disp_status = this.get_value() ? "Read" : "Write";
+                dfrom.disp_status = disp_status;
+                dfrom.refresh_input();  
+                dto.disp_status = disp_status;
+                dto.refresh_input();    
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
