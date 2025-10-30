@@ -247,7 +247,9 @@ function get_pwa_fileds( task ) {
             }},            
           {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1,            
             onchange: function () {
-                console.log(this.get_value());          
+                console.log(this.get_value());   
+                this.grid_row.on_grid_fields_dict.date_from.refresh_input();  
+                this.grid_row.on_grid_fields_dict.date_to.refresh_input();    
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
