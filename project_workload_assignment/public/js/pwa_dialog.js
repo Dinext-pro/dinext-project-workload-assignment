@@ -5,7 +5,7 @@ function start_pwa_dialog(cbfunc, task) {
     _pwa_starting = true;
 
     frappe.db.get_list('Project Workload Assignment', {
-        fields: ['name', 'task', 'role', 'user', 'user_full_name', 'date_from', 'date_to', 'workload', 'wl_value', 'acc_separately'],
+        fields: ['name', 'task', 'role', 'user', 'user_full_name', 'task_dates', 'date_from', 'date_to', 'workload', 'wl_value', 'acc_separately'],
         filters: {
             task: task.name
         },
@@ -247,7 +247,7 @@ function get_pwa_fileds( task ) {
             }},            
           {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1,            
             onchange: function () {
-                let value = this.get_value();          
+                console.log(this.get_value());          
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
