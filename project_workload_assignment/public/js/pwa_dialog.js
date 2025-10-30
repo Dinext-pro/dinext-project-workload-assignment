@@ -247,22 +247,11 @@ function get_pwa_fileds( task ) {
             }},            
           {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1,            
             onchange: function (e) { 
-                let row = this.grid.get_row(this.docname);
+                let docname = $(e.target).closest(".grid-row").data("name");
+                let row = this.grid.get_row(docname);
 
                 row.set_field_property('date_from', 'read_only', this.get_value());  
                 row.set_field_property('date_to', 'read_only', this.get_value());  
-                //row.set_dependant_property(df);
-                /*grid_row.set_field_property('item_code', 'read_only', 1);  
-                let dfrom = row.on_grid_fields_dict.date_from;
-                let dto = row.on_grid_fields_dict.date_to;
-                dfrom.df.read_only = this.get_value();
-                dto.df.read_only = this.get_value();
-                disp_status = this.get_value() ? "Read" : "Write";
-                dfrom.disp_status = disp_status;
-                dfrom.refresh_input();  
-                dto.disp_status = disp_status;
-                dto.refresh_input();    
-                this.grid.refresh_row(this.docname);/* */
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
