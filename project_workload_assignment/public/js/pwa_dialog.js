@@ -249,9 +249,10 @@ function get_pwa_fileds( task ) {
             onchange: function (e) { 
                 let docname = $(e.target).closest(".grid-row").data("name");
                 let row = this.grid.get_row(docname);
+                let value = row.get_field("task_dates").get_value();
 
-                row.set_field_property('date_from', 'read_only', this.get_value());  
-                row.set_field_property('date_to', 'read_only', this.get_value());  
+                row.set_field_property('date_from', 'read_only', value );  
+                row.set_field_property('date_to', 'read_only', value );
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
