@@ -250,6 +250,8 @@ function get_pwa_fileds( task ) {
                 let row = this.grid.get_row(this.docname);
                 let dfrom = row.on_grid_fields_dict.date_from;
                 let dto = row.on_grid_fields_dict.date_to;
+                dfrom.df.read_only = this.get_value();
+                dto.df.read_only = this.get_value();
                 /*disp_status = this.get_value() ? "Read" : "Write";
                 dfrom.disp_status = disp_status;
                 dfrom.refresh_input();  
