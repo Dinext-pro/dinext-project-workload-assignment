@@ -251,8 +251,18 @@ function get_pwa_fileds( task ) {
                 let row = this.grid.get_row(docname);
                 let value = row.get_field("task_dates").get_value();
 
-                row.set_field_property('date_from', 'read_only', value );  
-                row.set_field_property('date_to', 'read_only', value );
+                let dfrom = row.get_field("date_from");
+                let dto = row.get_field("date_to");
+
+                let status = value ? "Read" : "Write";
+                dfrom.disp_status = status;
+                dto.disp_status = status;
+
+                dfrom.refresh();
+                dto.refresh();
+                //row.read_only_depends_on 
+                //row.set_field_property('date_from', 'read_only', value );  
+                //row.set_field_property('date_to', 'read_only', value );
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
