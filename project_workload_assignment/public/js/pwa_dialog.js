@@ -258,8 +258,8 @@ function get_pwa_fileds( task ) {
                 dfrom.disp_status = status;
                 dto.disp_status = status;
 
-                dfrom.refresh();
-                dto.refresh();
+                dfrom.refresh_input();
+                dto.refresh_input();
                 //row.read_only_depends_on 
                 //row.set_field_property('date_from', 'read_only', value );  
                 //row.set_field_property('date_to', 'read_only', value );
