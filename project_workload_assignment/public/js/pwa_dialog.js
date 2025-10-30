@@ -246,7 +246,7 @@ function get_pwa_fileds( task ) {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             }},            
           {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1,            
-            onchange: function () { 
+            onchange: function (e) { 
                 let row = this.grid.get_row(this.docname);
 
                 row.set_field_property('date_from', 'read_only', this.get_value());  
