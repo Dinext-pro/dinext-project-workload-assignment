@@ -247,13 +247,15 @@ function get_pwa_fileds( task ) {
             }},            
           {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1,            
             onchange: function () { 
-                let dfrom = this.grid_row.on_grid_fields_dict.date_from;
-                let dto = this.grid_row.on_grid_fields_dict.date_to;
-                disp_status = this.get_value() ? "Read" : "Write";
+                let row = this.grid.get_row(this.docname);
+                let dfrom = row.on_grid_fields_dict.date_from;
+                let dto = row.on_grid_fields_dict.date_to;
+                /*disp_status = this.get_value() ? "Read" : "Write";
                 dfrom.disp_status = disp_status;
                 dfrom.refresh_input();  
                 dto.disp_status = disp_status;
-                dto.refresh_input();    
+                dto.refresh_input();    /* */
+                this.grid.refresh_row(this.docname);
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
