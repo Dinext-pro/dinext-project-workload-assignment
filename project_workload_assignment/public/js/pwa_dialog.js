@@ -267,7 +267,7 @@ function get_pwa_fileds( task ) {
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
             get_status: function(me) {
-                return this.grid_row.on_grid_fields_dict.task_dates ? "Read" : "Write";
+                return me.grid_row.on_grid_fields_dict.task_dates ? "Read" : "Write";
             }
           },
           {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
