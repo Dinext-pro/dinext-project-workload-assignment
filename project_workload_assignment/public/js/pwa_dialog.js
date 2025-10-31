@@ -247,7 +247,7 @@ function get_pwa_fileds( task ) {
             }},            
           {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1,            
             onchange: function (e) { 
-                let docname = $(e.target).closest(".grid-row").data("name");
+                /*let docname = $(e.target).closest(".grid-row").data("name");
                 let row = this.grid.get_row(docname);
                 let value = row.get_field("task_dates").get_value();
 
@@ -256,18 +256,18 @@ function get_pwa_fileds( task ) {
 
                 let status = value ? "Read" : "Write";
                 //dfrom.disp_status = status;
-                //dto.disp_status = status;/* */
+                //dto.disp_status = status;
 
                 //dfrom.refresh_input();
                 //dto.refresh_input();
                 //row.read_only_depends_on 
                 row.set_field_property('date_from', 'read_only', value );  
-                row.set_field_property('date_to', 'read_only', value );
+                row.set_field_property('date_to', 'read_only', value );* */
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
-            on_make: function(me) {
-                console.log( me );
+            get_status: function(me) {
+                return this.grid_row.on_grid_fields_dict.task_dates ? "Read" : "Write";
             }
           },
           {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
