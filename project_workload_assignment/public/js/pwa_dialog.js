@@ -255,17 +255,21 @@ function get_pwa_fileds( task ) {
                 let dto = row.get_field("date_to");
 
                 let status = value ? "Read" : "Write";
-                dfrom.disp_status = status;
-                dto.disp_status = status;
+                //dfrom.disp_status = status;
+                //dto.disp_status = status;/* */
 
-                dfrom.refresh_input();
-                dto.refresh_input();
+                //dfrom.refresh_input();
+                //dto.refresh_input();
                 //row.read_only_depends_on 
-                //row.set_field_property('date_from', 'read_only', value );  
-                //row.set_field_property('date_to', 'read_only', value );
+                row.set_field_property('date_from', 'read_only', value );  
+                row.set_field_property('date_to', 'read_only', value );
             },
           },
-          {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
+          {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+            on_make: function(me) {
+                console.log( me );
+            }
+          },
           {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates"},
           {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select',
             options: '\nВ рабочих часах\nВ % от фонда рабочих часов\nВ % от трудоемкости задачи', in_list_view: 1, columns: 2, reqd: 1},
