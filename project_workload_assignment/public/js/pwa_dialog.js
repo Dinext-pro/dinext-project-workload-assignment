@@ -259,16 +259,8 @@ function get_pwa_fileds( task ) {
                     dfrom.set_value( this.df.task.exp_start_date );
                     dto.set_value( this.df.task.exp_end_date );
                 }
-                
-                row.refresh();
-                //dfrom.disp_status = status;
-                //dto.disp_status = status;
 
-                //dfrom.refresh_input();
-                //dto.refresh_input();
-                //row.read_only_depends_on 
-                row.set_field_property('date_from', 'read_only', value );  
-                row.set_field_property('date_to', 'read_only', value );* */
+                row.refresh();
             },
           },
           {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
