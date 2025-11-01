@@ -325,7 +325,7 @@ function highlightRow( row ) {
         {
             fieldname: 'warning',
             fieldtype: 'HTML',
-            default: __("Не определены плановые данные для роли!"),
+            options: __("Не определены плановые данные для роли!"),
         },
     ]);
     setTimeout(function() { 
