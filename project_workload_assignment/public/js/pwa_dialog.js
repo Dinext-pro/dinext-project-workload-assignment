@@ -284,8 +284,9 @@ function get_pwa_fileds( task ) {
                 if ( value == __('В % от трудоемкости задачи') ) {
                     let task = row.get_field("task_dates").df.task;
                     let role = row.get_field("role").get_value();
-                    //let pwes = this.grid.control.layout.fields_dict.pwe_rows.grid.data;
                     checkPWEforRow( task, role, row );
+                } else {
+                    clearHighlightRow( row );
                 }
             }
           },
@@ -313,24 +314,32 @@ function checkPWEforRow( task, role, row ) {
                 console.log(pwe);
             })
         } else {
-            highlightRow( row );
+            highlightRow( row, __("Не определены трудозатраты для роли: ") + role );
         }
     })
 }
 
-function highlightRow( row ) {
-    let field = row.get_field("workload");
-    field.$wrapper.addClass("warning");
+function highlightRow( row, msg ) {
+    let workload = row.get_field("workload");
+    let role = row.get_field("role");
+
+    workload.$wrapper.addClass("warning");    
+    role.$wrapper.addClass("warning");
+
     row.grid.control.layout.add_fields([
-        {
-            fieldname: 'warning',
-            fieldtype: 'HTML',
-            options: __("Не определены плановые данные для роли!"),
-        },
+        { fieldname: 'warning', fieldtype: 'HTML', options: msg },
     ]);
-    setTimeout(function() { 
-        field.$wrapper.removeClass("warning");
-    }, 1500);
+}
+
+function clearHighlightRow( row ) {
+    let workload = row.get_field("workload");
+    let role = row.get_field("role");
+
+    workload.$wrapper.removeClass("warning");
+    role.$wrapper.removeClass("warning");
+
+    let warning = row.grid.control.layout.get_field( "warning" );
+    warning.toggle(false);
 }
 
 function get_pwe_fileds() {
