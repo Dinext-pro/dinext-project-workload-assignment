@@ -13,5 +13,10 @@
 }
 
 .frappe-control[data-fieldname="pwa_rows"] .warning select.form-control {
-    border: 1px solid var(--alert-bg-warning);
+    border: 1px solid var(--alert-text-warning);
+}
+
+.frappe-control[data-fieldname="warning"] {
+    background: var(--alert-bg-warning);
+    color: var(--alert-text-warning);
 }
