@@ -295,7 +295,7 @@ function get_pwa_fileds( task ) {
 }
 
 function checkPWEforRow( task, role, row ) {
-    frappe.db.count('Project Work Efforts', null, 
+    frappe.db.count('Project Work Efforts',
         { 
             pwe_project: task.project,
             pwe_task: task.name,
