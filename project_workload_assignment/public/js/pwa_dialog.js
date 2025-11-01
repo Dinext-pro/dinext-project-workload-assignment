@@ -256,8 +256,8 @@ function get_pwa_fileds( task ) {
                     let dfrom = row.get_field("date_from");
                     let dto = row.get_field("date_to");
 
-                    dfrom.set_value( getMaxToDate( this.df.task.exp_start_date ) );
-                    dto.set_value( getMaxToDate( this.df.task.exp_end_date ) );
+                    dfrom.set_value( this.df.task.exp_start_date );
+                    dto.set_value( this.df.task.exp_end_date );
                 }
 
                 row.refresh();
