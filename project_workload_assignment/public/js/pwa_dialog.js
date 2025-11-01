@@ -295,15 +295,35 @@ function get_pwa_fileds( task ) {
 }
 
 function checkPWEforRow( task, role, row ) {
-    frappe.db.get_doc('Project Work Efforts', null, 
+    frappe.db.count('Project Work Efforts', null, 
         { 
             pwe_project: task.project,
             pwe_task: task.name,
             pwe_project_role: role
         })
-    .then(pwe => {
-        console.log(pwe);
+    .then(count => {
+        if ( count ) {
+            frappe.db.get_doc('Project Work Efforts', null, 
+                { 
+                    pwe_project: task.project,
+                    pwe_task: task.name,
+                    pwe_project_role: role
+                })
+            .then(pwe => {
+                console.log(pwe);
+            })
+        } else {
+            highlightRow( row );
+        }
     })
+}
+
+function highlightRow( row ) {
+    let field = row.get_field("workload");
+    field.wrapper.addClass("warning");
+    setTimeout(function() { 
+        field.wrapper.removeClass("warning");
+    }, 500);
 }
 
 function get_pwe_fileds() {
