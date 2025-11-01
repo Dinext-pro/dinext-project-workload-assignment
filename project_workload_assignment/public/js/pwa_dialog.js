@@ -321,9 +321,16 @@ function checkPWEforRow( task, role, row ) {
 function highlightRow( row ) {
     let field = row.get_field("workload");
     field.$wrapper.addClass("warning");
+    row.grid.control.layout.add_fields([
+        {
+            fieldname: 'warning',
+            fieldtype: 'HTML',
+            default: __("Не определены плановые данные для роли!"),
+        },
+    ]);
     setTimeout(function() { 
         field.$wrapper.removeClass("warning");
-    }, 500);
+    }, 1500);
 }
 
 function get_pwe_fileds() {
