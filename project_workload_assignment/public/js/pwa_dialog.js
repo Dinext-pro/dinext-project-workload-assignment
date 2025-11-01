@@ -279,16 +279,31 @@ function get_pwa_fileds( task ) {
                 let docname = $(e.target).closest(".grid-row").data("name");
                 let row = this.grid.get_row(docname);
                 let value = row.get_field("workload").get_value();
+                
 
                 if ( value == __('В % от трудоемкости задачи') ) {
-                    let pwes = this.grid.control.layout.fields_dict.pwe_rows.grid.data;
-                    checkPWEforRow( row, pwes );
+                    let task = row.get_field("task_dates").df.task;
+                    let role = row.get_field("role").get_value();
+                    //let pwes = this.grid.control.layout.fields_dict.pwe_rows.grid.data;
+                    checkPWEforRow( task, role, row );
                 }
             }
           },
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
           {fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},
         ];
+}
+
+function checkPWEforRow( task, role, row ) {
+    frappe.db.get_doc('Project Work Efforts', null, 
+        { 
+            pwe_project: task.project,
+            pwe_task: task.name,
+            pwe_project_role: role
+        })
+    .then(pwe => {
+        console.log(pwe);
+    })
 }
 
 function get_pwe_fileds() {
