@@ -245,17 +245,22 @@ function get_pwa_fileds( task ) {
             get_query: (doc, cdt, cdn) =>  {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             }},            
-          {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1,            
+          {fieldname: 'task_dates', label: __('Синх. дат'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
             onchange: function (e) { 
                 let docname = $(e.target).closest(".grid-row").data("name");
                 let row = this.grid.get_row(docname);
+                
+                let value = row.get_field("task_dates").get_value();
+
+                if ( value ) {
+                    let dfrom = row.get_field("date_from");
+                    let dto = row.get_field("date_to");
+
+                    dfrom.set_value( this.df.task.exp_start_date );
+                    dto.set_value( this.df.task.exp_end_date );
+                }
+                
                 row.refresh();
-                /*let value = row.get_field("task_dates").get_value();
-
-                let dfrom = row.get_field("date_from");
-                let dto = row.get_field("date_to");
-
-                let status = value ? "Read" : "Write";
                 //dfrom.disp_status = status;
                 //dto.disp_status = status;
 
