@@ -95,7 +95,7 @@ function add_new_pwa( task, pwas, users, callback=null) {
                     user_full_name: user.full_name || user.name,
                     date_from: getMaxToDate( task.exp_start_date ),
                     date_to: getMaxToDate( task.exp_end_date ),
-                    workload: 'В % от трудоемкости задачи',
+                    workload: __('В % от трудоемкости задачи'),
                     wl_value: 100
                 } ); 
             }
@@ -273,8 +273,19 @@ function get_pwa_fileds( task ) {
                 return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
             }
           },
-          {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select',
-            options: '\nВ рабочих часах\nВ % от фонда рабочих часов\nВ % от трудоемкости задачи', in_list_view: 1, columns: 2, reqd: 1},
+          {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
+            options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
+            onchange: function (e) { 
+                let docname = $(e.target).closest(".grid-row").data("name");
+                let row = this.grid.get_row(docname);
+                let value = row.get_field("workload").get_value();
+
+                if ( value == __('В % от трудоемкости задачи') ) {
+                    let pwes = this.grid.control.layout.fields_dict.pwe_rows.grid.data;
+                    checkPWEforRow( row, pwes );
+                }
+            }
+          },
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
           {fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},
         ];
