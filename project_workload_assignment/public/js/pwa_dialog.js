@@ -320,9 +320,9 @@ function checkPWEforRow( task, role, row ) {
 
 function highlightRow( row ) {
     let field = row.get_field("workload");
-    field.wrapper.addClass("warning");
+    field.$wrapper.addClass("warning");
     setTimeout(function() { 
-        field.wrapper.removeClass("warning");
+        field.$wrapper.removeClass("warning");
     }, 500);
 }
 
