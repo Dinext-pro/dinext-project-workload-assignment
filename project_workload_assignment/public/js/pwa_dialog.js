@@ -249,6 +249,7 @@ function get_pwa_fileds( task ) {
             onchange: function (e) { 
                 let docname = $(e.target).closest(".grid-row").data("name");
                 let row = this.grid.get_row(docname);
+                row.refresh();
                 /*let value = row.get_field("task_dates").get_value();
 
                 let dfrom = row.get_field("date_from");
