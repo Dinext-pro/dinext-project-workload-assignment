@@ -11,3 +11,7 @@
     flex-direction: column-reverse;
     display: flex;
 }
+
+.frappe-control[data-fieldname="pwa_rows"] .warning select.form-control {
+    border: 1px solid var(--alert-bg-warning);
+}
