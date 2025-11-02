@@ -11,3 +11,28 @@
     flex-direction: column-reverse;
     display: flex;
 }
+
+.frappe-control[data-fieldname="pwa_rows"] .warning .form-control {
+    border: 1px solid var(--alert-text-warning);
+}
+
+.frappe-control[data-fieldname="pwa_rows"] .warning .static-area,
+.frappe-control[data-fieldname="pwa_rows"] .warning .static-area a {
+    color: var(--alert-text-warning);
+}
+
+div.warning[tooltip]{
+    position: relative;
+} 
+
+div.warning[tooltip]:hover:after{
+    content: attr(tooltip);
+    position: absolute;
+    left: 50%;
+    top: 2em;
+    background: var(--alert-bg-warning);
+    color: var(--alert-text-warning);
+    padding: 5px;
+    width: 200%;
+    z-index: 10;
+}
