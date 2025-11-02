@@ -249,7 +249,7 @@ function get_pwa_fileds( task ) {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
             onchange: function(e) { 
-                checkWorkload( e, null, this.grid );
+                checkWorkload( e, this.grid_row, this.grid );
             }
           },            
           {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
