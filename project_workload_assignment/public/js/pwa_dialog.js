@@ -100,7 +100,8 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
                 } );                                
             }
             if ( grid ) {
-                grid.data = pwas.filter( pwa => !pwa.__isRemove );
+                let data = pwas.filter( pwa => !pwa.__isRemove );
+                grid.df.data = data;
                 grid.refresh();
             }
             if ( callback ) {
