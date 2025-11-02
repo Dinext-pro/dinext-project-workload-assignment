@@ -152,7 +152,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 label: " " + __('Назначить всю команду'),
                 icon: 'users',
                 click: () => {
-                    let new_users = project_users.filter( user => !pwas.some( pwa => pwa.user == user ) )
+                    let new_users = project_users.filter( user => !pwas.some( pwa => !pwa.__isRemove && pwa.user == user ) )
                     
                     if ( new_users.length ) {
                         add_new_pwa( task, pwas, new_users, () => {
