@@ -37,7 +37,7 @@ function start_pwa_dialog(cbfunc, task) {
             }).then(todos => {
                 if ( todos ) {
                     add_new_pwa( task, pwas, 
-                        todos.filter(todo => !pwas.some( pwa => pwa.user == todo.allocated_to ) ).map( r => r.allocated_to ),
+                        todos.filter(todo => !pwas.some( pwa => pwa.user == todo.allocated_to ) ).map( r => r.allocated_to ), null,
                         () => make_pwa_dialog( cbfunc, task, pwas, pwes ) );
                 }
             });
@@ -76,7 +76,7 @@ function getProjectUserRolesSync(project, user) {
     return roles;
 }
 
-function add_new_pwa( task, pwas, users, callback=null) {
+function add_new_pwa( task, pwas, users, grid=null, callback=null) {
     frappe.db.get_list('User', {
         fields: ['name', 'full_name'],
         filters: [["name", "in", users ]],
@@ -98,6 +98,10 @@ function add_new_pwa( task, pwas, users, callback=null) {
                     workload: __('В % от трудоемкости задачи'),
                     wl_value: 100
                 } );                                
+            }
+            if ( grid ) {
+                grid.data = pwas.filter( pws => !pwa.__isRemove );
+                grid.refresh();
             }
             if ( callback ) {
                 callback();
@@ -133,9 +137,8 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                             }, 500);
                             d.set_value('user_search', '');
                         } else {
-                            add_new_pwa( task, pwas, [uid], () => {
-                                const grid = d.fields_dict.pwa_rows.grid;
-                                grid.refresh();
+                            const grid = d.fields_dict.pwa_rows.grid;
+                            add_new_pwa( task, pwas, [uid], grid, () => {                                                                
                                 let row = grid.get_row( uid );
                                 row.toggle_editable_row();
                                 d.set_value('user_search', '');
@@ -155,9 +158,8 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                     let new_users = project_users.filter( user => !pwas.some( pwa => !pwa.__isRemove && pwa.user == user ) )
                     
                     if ( new_users.length ) {
-                        add_new_pwa( task, pwas, new_users, () => {
-                            const grid = d.fields_dict.pwa_rows.grid;
-                            grid.refresh();
+                        const grid = d.fields_dict.pwa_rows.grid;                        
+                        add_new_pwa( task, pwas, new_users, grid, () => {                                                        
                             new_users.forEach(
                                 user => {
                                     let row = grid.get_row( user );
