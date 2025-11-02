@@ -292,13 +292,15 @@ function get_pwa_fileds( task ) {
 }
 
 function getChangedRow( grid, fieldname ) {
+    let result_row = null;
     grid.grid_rows.forEach( row => {
         let field = row.on_grid_fields_dict[fieldname];
         if ( field && field.last_value != field.get_value() ) {
-            return row;
+            result_row = row;
+            return;
         }
     });
-    return null;
+    return result_row;
 }
 
 function checkWorkload( e, row, grid ) {
