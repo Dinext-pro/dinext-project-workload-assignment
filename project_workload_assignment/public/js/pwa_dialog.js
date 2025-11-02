@@ -289,16 +289,18 @@ function get_pwa_fileds( task ) {
 }
 
 function checkWorkload( e, grid ) {
-    let docname = $(e.target).closest(".grid-row").data("name");
-    let row = grid.get_row(docname);    
-    let value = row.get_field("workload").get_value();
+    if ( e ) {
+        let docname = $(e.target).closest(".grid-row").data("name");
+        let row = grid.get_row(docname);    
+        let value = row.get_field("workload").get_value();
 
-    clearHighlights( row );
-    
-    if ( value == __('В % от трудоемкости задачи') ) {
-        let task = row.get_field("task_dates").df.task;
-        let role = row.get_field("role").get_value();
-        checkPWEforRow( task, role, row );
+        clearHighlights( row );
+        
+        if ( value == __('В % от трудоемкости задачи') ) {
+            let task = row.get_field("task_dates").df.task;
+            let role = row.get_field("role").get_value();
+            checkPWEforRow( task, role, row );
+        }
     }
 }
 
