@@ -166,10 +166,10 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                     let row = grid.get_row( user );
                                     row.row.addClass("highlight");
                                     row.activate();
+                                    row.toggle_editable_row( false );
                                     setTimeout(function() { 
                                         row.row.removeClass("highlight"); 
-                                        checkWorkload( row );
-                                        row.toggle_editable_row( false );
+                                        checkWorkload( row );                                        
                                     }, 500);
                                 }
                             );
