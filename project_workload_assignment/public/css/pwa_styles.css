@@ -26,3 +26,17 @@
     color: var(--alert-text-warning);
     padding: 5px;
 }
+
+div.warning[title]{
+    position: relative;
+} 
+
+div.warning[title]:hover:after{
+    content: attr(title);
+    position: absolute;
+    left: 50%;
+    top: 1em;
+    background: var(--alert-bg-warning);
+    color: var(--alert-text-warning);
+    padding: 5px;
+}
