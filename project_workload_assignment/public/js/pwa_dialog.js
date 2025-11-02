@@ -134,14 +134,14 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                             row.row.addClass("highlight");
                             setTimeout(function() { 
                                 row.row.removeClass("highlight"); 
-                                row.toggle_editable_row();
+                                row.activate();                            
                             }, 500);
                             d.set_value('user_search', '');
                         } else {
                             const grid = d.fields_dict.pwa_rows.grid;
                             add_new_pwa( task, pwas, [uid], grid, () => {                                                                
                                 let row = grid.get_row( uid );
-                                row.toggle_editable_row();
+                                row.activate();
                                 d.set_value('user_search', '');
                                 checkWorkload( row );
                             } );
@@ -169,6 +169,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                     setTimeout(function() { 
                                         row.row.removeClass("highlight"); 
                                         checkWorkload( row );
+                                        row.toggle_editable_row( false );
                                     }, 500);
                                 }
                             );
@@ -232,6 +233,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     grid.grid_rows.forEach( row => { 
         row.activate();
         checkWorkload( row );
+        row.toggle_editable_row( false );
     });
 
     d.show();
