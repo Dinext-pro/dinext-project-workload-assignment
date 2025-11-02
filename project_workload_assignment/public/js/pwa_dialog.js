@@ -139,6 +139,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                 let row = grid.get_row( uid );
                                 row.toggle_editable_row();
                                 d.set_value('user_search', '');
+                                checkWorkload( row );
                             } );
                         }
                     }
@@ -163,6 +164,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                     row.row.addClass("highlight");
                                     setTimeout(function() { 
                                         row.row.removeClass("highlight"); 
+                                        checkWorkload( row );
                                     }, 500);
                                 }
                             );
@@ -249,7 +251,7 @@ function get_pwa_fileds( task ) {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
             onchange: function(e) { 
-                checkWorkload( e, getChangedRow( this.grid, "role" ), this.grid );
+                checkWorkload( getChangedRow( this.grid, "role" ) );
             }
           },            
           {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
@@ -283,7 +285,7 @@ function get_pwa_fileds( task ) {
           {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
             options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
             onchange: function(e) { 
-                checkWorkload( e, null, this.grid );
+                checkWorkload( getChangedRow( this.grid, "workload" ) );
             },
           },
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
@@ -303,12 +305,8 @@ function getChangedRow( grid, fieldname ) {
     return result_row;
 }
 
-function checkWorkload( e, row, grid ) {
-    if ( e || row ) {
-        if ( e ) {
-            let docname = $(e.target).closest(".grid-row").data("name");
-            row = grid.get_row(docname);   
-        }        
+function checkWorkload( row ) {
+    if ( row ) {
         let value = row.get_field("workload").get_value();
 
         clearHighlights( row );
@@ -316,7 +314,10 @@ function checkWorkload( e, row, grid ) {
         if ( value == __('В % от трудоемкости задачи') ) {
             let task = row.get_field("task_dates").df.task;
             let role = row.get_field("role").get_value();
-            checkPWEforRow( task, role, row );
+
+            if ( role && role != "" ) {
+                checkPWEforRow( task, role, row );
+            }
         }
     }
 }
