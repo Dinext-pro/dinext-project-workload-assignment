@@ -357,6 +357,9 @@ function highlightRole( row, msg ) {
     workload.parent.parent().addClass("warning");    
     role.parent.parent().addClass("warning");
 
+    workload.parent.parent().attr('title', msg ); 
+    role.parent.parent().attr('title', msg ); 
+
     row.grid.control.layout.add_fields([
         { fieldname: 'warning_' + row.doc.idx, fieldtype: 'HTML'
             , options: '<span class="warn_msg">' + msg + '</span>' },
@@ -369,6 +372,9 @@ function clearHighlights( row ) {
 
     workload.parent.parent().removeClass("warning");
     role.parent.parent().removeClass("warning");
+
+    workload.parent.parent().attr('title', "" ); 
+    role.parent.parent().attr('title', "" ); 
 
     let warning = row.grid.control.layout.get_field( 'warning_' + row.doc.idx );
     if ( warning ) {
