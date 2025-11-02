@@ -293,7 +293,7 @@ function checkWorkload( e, grid ) {
     let row = grid.get_row(docname);    
     let value = row.get_field("workload").get_value();
 
-    clearHighlightRow( row );
+    clearHighlights( row );
     
     if ( value == __('В % от трудоемкости задачи') ) {
         let task = row.get_field("task_dates").df.task;
@@ -338,7 +338,7 @@ function highlightRole( row, msg ) {
     ]);
 }
 
-function clearHighlightRole( row ) {
+function clearHighlights( row ) {
     let workload = row.get_field("workload");
     let role = row.get_field("role");
 
