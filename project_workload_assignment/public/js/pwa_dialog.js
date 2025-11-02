@@ -97,7 +97,7 @@ function add_new_pwa( task, pwas, users, callback=null) {
                     date_to: getMaxToDate( task.exp_end_date ),
                     workload: __('В % от трудоемкости задачи'),
                     wl_value: 100
-                } ); 
+                } );                                
             }
             if ( callback ) {
                 callback();
@@ -281,6 +281,9 @@ function get_pwa_fileds( task ) {
             options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
             onchange: function (e) { 
                 checkWorkload( e, this.grid );
+            },
+            on_setup( me ) {
+                console.log( me );
             }
           },
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
