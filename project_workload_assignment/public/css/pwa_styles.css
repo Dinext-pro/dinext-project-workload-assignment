@@ -21,12 +21,6 @@
     color: var(--alert-text-warning);
 }
 
-.frappe-control span.warn_msg {
-    background: var(--alert-bg-warning);
-    color: var(--alert-text-warning);
-    padding: 5px;
-}
-
 div.warning[title]{
     position: relative;
 } 
@@ -39,4 +33,6 @@ div.warning[title]:hover:after{
     background: var(--alert-bg-warning);
     color: var(--alert-text-warning);
     padding: 5px;
+    width: max-content;
+    z-index: 1;
 }
