@@ -29,7 +29,7 @@ div.warning[tooltip]:hover:after{
     content: attr(tooltip);
     position: absolute;
     left: 50%;
-    top: 1em;
+    top: 2em;
     background: var(--alert-bg-warning);
     color: var(--alert-text-warning);
     padding: 5px;
