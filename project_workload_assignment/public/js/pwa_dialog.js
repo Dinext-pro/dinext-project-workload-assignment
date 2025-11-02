@@ -93,6 +93,7 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
                     role: ( roles.length == 1 ) ? roles[ 0 ] : null,
                     __islocal: true, 
                     user_full_name: user.full_name || user.name,
+                    task_dates: false,
                     date_from: getMaxToDate( task.exp_start_date ),
                     date_to: getMaxToDate( task.exp_end_date ),
                     workload: __('В % от трудоемкости задачи'),
