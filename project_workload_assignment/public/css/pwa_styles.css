@@ -21,7 +21,7 @@
     color: var(--alert-text-warning);
 }
 
-.frappe-control[data-fieldname~="warning_"] {
+.frappe-control[data-fieldname~="warning"] {
     background: var(--alert-bg-warning);
     color: var(--alert-text-warning);
     padding: 5px;

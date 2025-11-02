@@ -249,7 +249,7 @@ function get_pwa_fileds( task ) {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
             onchange: function(e) { 
-                checkWorkload( e, this.grid_row, this.grid );
+                checkWorkload( e, getChangedRow( this.grid, "role" ), this.grid );
             }
           },            
           {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
@@ -289,6 +289,16 @@ function get_pwa_fileds( task ) {
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
           {fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},
         ];
+}
+
+function getChangedRow( grid, fieldname ) {
+    grid.grid_rows.forEach( row => {
+        let field = row.get_field( fieldname );
+        if ( field && field.last_valye != field.get_value() ) {
+            return row;
+        }
+    });
+    return null;
 }
 
 function checkWorkload( e, row, grid ) {
