@@ -358,7 +358,8 @@ function highlightRole( row, msg ) {
     role.parent.parent().addClass("warning");
 
     row.grid.control.layout.add_fields([
-        { fieldname: 'warning_' + row.doc.idx, fieldtype: 'HTML', options: msg },
+        { fieldname: 'warning_' + row.doc.idx, fieldtype: 'HTML'
+            , options: '<span class="warn_msg">' + msg + '</span>' },
     ]);
 }
 
