@@ -245,7 +245,7 @@ function get_pwa_fileds( task ) {
             get_query: (doc, cdt, cdn) =>  {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
-            onchange: function (e) { 
+            onchange: function(e) { 
                 checkWorkload( e, this.grid );
             }
           },            
@@ -279,10 +279,10 @@ function get_pwa_fileds( task ) {
           },
           {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
             options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
-            onchange: function (e) { 
+            onchange: function(e) { 
                 checkWorkload( e, this.grid );
             },
-            on_setup( me ) {
+            on_make: function( me ) {
                 console.log( me );
             }
           },
