@@ -224,7 +224,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     const grid = d.fields_dict.pwa_rows.grid;
     grid.wrapper.on('click', '.grid-remove-rows, .grid-remove-all-rows', function(e) {
         for (removed of grid.get_selected()) {
-            let found = pwas.find(rec => rec.name == removed);
+            let found = pwas.find(rec => rec.name == removed && !rec.__isRemove );
             if ( found ) {
                 found.__isRemove = true
             }
