@@ -5,7 +5,7 @@ function start_pwa_dialog(cbfunc, task) {
     _pwa_starting = true;
 
     frappe.db.get_list('Project Workload Assignment', {
-        fields: ['name', 'task', 'role', 'user', 'user_full_name', 'date_from', 'date_to', 'workload', 'wl_value', 'acc_separately'],
+        fields: ['name', 'task', 'role', 'user', 'user_full_name', 'task_dates', 'date_from', 'date_to', 'workload', 'wl_value', 'acc_separately'],
         filters: {
             task: task.name
         },
@@ -37,7 +37,7 @@ function start_pwa_dialog(cbfunc, task) {
             }).then(todos => {
                 if ( todos ) {
                     add_new_pwa( task, pwas, 
-                        todos.filter(todo => !pwas.some( pwa => pwa.user == todo.allocated_to ) ).map( r => r.allocated_to ),
+                        todos.filter(todo => !pwas.some( pwa => pwa.user == todo.allocated_to ) ).map( r => r.allocated_to ), null,
                         () => make_pwa_dialog( cbfunc, task, pwas, pwes ) );
                 }
             });
@@ -76,7 +76,7 @@ function getProjectUserRolesSync(project, user) {
     return roles;
 }
 
-function add_new_pwa( task, pwas, users, callback=null) {
+function add_new_pwa( task, pwas, users, grid=null, callback=null) {
     frappe.db.get_list('User', {
         fields: ['name', 'full_name'],
         filters: [["name", "in", users ]],
@@ -93,11 +93,17 @@ function add_new_pwa( task, pwas, users, callback=null) {
                     role: ( roles.length == 1 ) ? roles[ 0 ] : null,
                     __islocal: true, 
                     user_full_name: user.full_name || user.name,
+                    task_dates: false,
                     date_from: getMaxToDate( task.exp_start_date ),
                     date_to: getMaxToDate( task.exp_end_date ),
-                    workload: 'В % от трудоемкости задачи',
+                    workload: __('В % от трудоемкости задачи'),
                     wl_value: 100
-                } ); 
+                } );                                
+            }
+            if ( grid ) {
+                let data = pwas.filter( pwa => !pwa.__isRemove );
+                grid.df.data = data;
+                grid.refresh();
             }
             if ( callback ) {
                 callback();
@@ -129,16 +135,16 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                             row.row.addClass("highlight");
                             setTimeout(function() { 
                                 row.row.removeClass("highlight"); 
-                                row.toggle_editable_row();
+                                row.activate();                            
                             }, 500);
                             d.set_value('user_search', '');
                         } else {
-                            add_new_pwa( task, pwas, [uid], () => {
-                                const grid = d.fields_dict.pwa_rows.grid;
-                                grid.refresh();
+                            const grid = d.fields_dict.pwa_rows.grid;
+                            add_new_pwa( task, pwas, [uid], grid, () => {                                                                
                                 let row = grid.get_row( uid );
-                                row.toggle_editable_row();
+                                row.activate();
                                 d.set_value('user_search', '');
+                                checkWorkload( row );
                             } );
                         }
                     }
@@ -151,18 +157,20 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 label: " " + __('Назначить всю команду'),
                 icon: 'users',
                 click: () => {
-                    let new_users = project_users.filter( user => !pwas.some( pwa => pwa.user == user ) )
+                    let new_users = project_users.filter( user => !pwas.some( pwa => !pwa.__isRemove && pwa.user == user ) )
                     
                     if ( new_users.length ) {
-                        add_new_pwa( task, pwas, new_users, () => {
-                            const grid = d.fields_dict.pwa_rows.grid;
-                            grid.refresh();
+                        const grid = d.fields_dict.pwa_rows.grid;                        
+                        add_new_pwa( task, pwas, new_users, grid, () => {                                                        
                             new_users.forEach(
                                 user => {
                                     let row = grid.get_row( user );
                                     row.row.addClass("highlight");
+                                    row.activate();
+                                    row.toggle_editable_row( false );
                                     setTimeout(function() { 
                                         row.row.removeClass("highlight"); 
+                                        checkWorkload( row );                                        
                                     }, 500);
                                 }
                             );
@@ -197,6 +205,9 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 on_add_row: (idx) => {
                     console.log("on_add_row " + idx);
                 },
+                on_make: (me) => {
+                    console.log("on_make " + me);
+                },
             },
         ],
         primary_action_label: __('Сохранить'),
@@ -214,11 +225,16 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     const grid = d.fields_dict.pwa_rows.grid;
     grid.wrapper.on('click', '.grid-remove-rows, .grid-remove-all-rows', function(e) {
         for (removed of grid.get_selected()) {
-            let found = pwas.find(rec => rec.name == removed);
+            let found = pwas.find(rec => rec.name == removed && !rec.__isRemove );
             if ( found ) {
                 found.__isRemove = true
             }
         }
+    });
+    grid.grid_rows.forEach( row => { 
+        row.activate();
+        checkWorkload( row );
+        row.toggle_editable_row( false );
     });
 
     d.show();
@@ -241,17 +257,132 @@ const formatWLValue = (val, field, options, doc) => {
 function get_pwa_fileds( task ) {
     return [
           {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
-          {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 2, reqd: 1,
+          {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 1, reqd: 1,
             get_query: (doc, cdt, cdn) =>  {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
-            }},
-          {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1},
-          {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1},
-          {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select',
-            options: '\nВ рабочих часах\nВ % от фонда рабочих часов\nВ % от трудоемкости задачи', in_list_view: 1, columns: 2, reqd: 1},
+            },
+            onchange: function(e) { 
+                checkWorkload( getChangedRow( this.grid, "role" ) );
+            }
+          },            
+          {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
+            onchange: function (e) { 
+                let docname = $(e.target).closest(".grid-row").data("name");
+                let row = this.grid.get_row(docname);
+                
+                let value = row.get_field("task_dates").get_value();
+
+                if ( value ) {
+                    let dfrom = row.get_field("date_from");
+                    let dto = row.get_field("date_to");
+
+                    dfrom.set_value( this.df.task.exp_start_date );
+                    dto.set_value( this.df.task.exp_end_date );
+                }
+
+                row.refresh();
+            },
+          },
+          {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+            get_status: function(me) {
+                return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
+            }
+          },
+          {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+            get_status: function(me) {
+                return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
+            }
+          },
+          {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
+            options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
+            onchange: function(e) { 
+                checkWorkload( getChangedRow( this.grid, "workload" ) );
+            },
+          },
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
           {fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},
         ];
+}
+
+function getChangedRow( grid, fieldname ) {
+    let result_row = null;
+    grid.grid_rows.forEach( row => {
+        let field = row.on_grid_fields_dict[fieldname];
+        if ( field && field.last_value != field.get_value() ) {
+            result_row = row;
+            return;
+        }
+    });
+    return result_row;
+}
+
+function checkWorkload( row ) {
+    if ( row ) {
+        let value = row.get_field("workload").get_value();
+
+        clearHighlights( row );
+        
+        if ( value == __('В % от трудоемкости задачи') ) {
+            let task = row.get_field("task_dates").df.task;
+            let role = row.get_field("role").get_value();
+
+            if ( role && role != "" ) {
+                checkPWEforRow( task, role, row );
+            }
+        }
+    }
+}
+
+function checkPWEforRow( task, role, row ) {
+    frappe.db.count('Project Work Efforts', {
+        filters: { 
+            pwe_project: task.project,
+            pwe_task: task.name,
+            pwe_project_role: role
+        }})
+    .then(count => {
+        if ( count ) {
+            frappe.db.get_doc('Project Work Efforts', null, 
+                { 
+                    pwe_project: task.project,
+                    pwe_task: task.name,
+                    pwe_project_role: role
+                })
+            .then(pwe => {                
+                for (let i = 0; i < pwe.pwe_amount; i++) {
+                    let amount = pwe.pwe_amount[ i ];
+                    if ( amount.pwea_expected ) {
+                        rreturn;
+                    }
+                }
+                highlightRole( row, __("Не определены трудозатраты для роли: ") + role );
+            })
+        } else {
+            highlightRole( row, __("Не определены трудозатраты для роли: ") + role );
+        }
+    })
+}
+
+function highlightRole( row, msg ) {
+    let workload = row.get_field("workload");
+    let role = row.get_field("role");
+
+    workload.parent.parent().addClass("warning");    
+    role.parent.parent().addClass("warning");
+
+    workload.parent.parent().attr('tooltip', msg ); 
+    role.parent.parent().attr('tooltip', msg ); 
+}
+
+function clearHighlights( row ) {
+    let workload = row.get_field("workload");
+    let role = row.get_field("role");
+
+    workload.parent.parent().removeClass("warning");
+    role.parent.parent().removeClass("warning");
+
+    workload.parent.parent().attr('tooltip', "" ); 
+    role.parent.parent().attr('tooltip', "" ); 
 }
 
 function get_pwe_fileds() {
