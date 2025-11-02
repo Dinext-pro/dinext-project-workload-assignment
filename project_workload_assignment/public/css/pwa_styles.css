@@ -21,12 +21,12 @@
     color: var(--alert-text-warning);
 }
 
-div.warning[title]{
+div.warning[tooltip]{
     position: relative;
 } 
 
-div.warning[title]:hover:after{
-    content: attr(title);
+div.warning[tooltip]:hover:after{
+    content: attr(tooltip);
     position: absolute;
     left: 50%;
     top: 1em;

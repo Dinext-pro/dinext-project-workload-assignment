@@ -357,8 +357,8 @@ function highlightRole( row, msg ) {
     workload.parent.parent().addClass("warning");    
     role.parent.parent().addClass("warning");
 
-    workload.parent.parent().attr('title', msg ); 
-    role.parent.parent().attr('title', msg ); 
+    workload.parent.parent().attr('tooltip', msg ); 
+    role.parent.parent().attr('tooltip', msg ); 
 }
 
 function clearHighlights( row ) {
@@ -368,8 +368,8 @@ function clearHighlights( row ) {
     workload.parent.parent().removeClass("warning");
     role.parent.parent().removeClass("warning");
 
-    workload.parent.parent().attr('title', "" ); 
-    role.parent.parent().attr('title', "" ); 
+    workload.parent.parent().attr('tooltip', "" ); 
+    role.parent.parent().attr('tooltip', "" ); 
 }
 
 function get_pwe_fileds() {
