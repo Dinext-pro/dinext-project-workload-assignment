@@ -331,12 +331,12 @@ function checkWorkload( row ) {
 }
 
 function checkPWEforRow( task, role, row ) {
-    frappe.db.count('Project Work Efforts',
-        { 
+    frappe.db.count('Project Work Efforts', {
+        filters: { 
             pwe_project: task.project,
             pwe_task: task.name,
             pwe_project_role: role
-        })
+        }})
     .then(count => {
         if ( count ) {
             frappe.db.get_doc('Project Work Efforts', null, 
