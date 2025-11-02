@@ -293,7 +293,7 @@ function get_pwa_fileds( task ) {
 
 function getChangedRow( grid, fieldname ) {
     grid.grid_rows.forEach( row => {
-        let field = row.get_field( fieldname );
+        let field = row.on_grid_fields_dict[fieldname];
         if ( field && field.last_valye != field.get_value() ) {
             return row;
         }
