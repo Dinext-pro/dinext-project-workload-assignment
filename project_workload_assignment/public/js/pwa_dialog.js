@@ -197,6 +197,9 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 on_add_row: (idx) => {
                     console.log("on_add_row " + idx);
                 },
+                on_make: (me) => {
+                    console.log("on_make " + me);
+                },
             },
         ],
         primary_action_label: __('Сохранить'),
@@ -246,7 +249,7 @@ function get_pwa_fileds( task ) {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
             onchange: function(e) { 
-                checkWorkload( e, this.grid );
+                checkWorkload( e, null, this.grid );
             }
           },            
           {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
@@ -280,21 +283,20 @@ function get_pwa_fileds( task ) {
           {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
             options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
             onchange: function(e) { 
-                checkWorkload( e, this.grid );
+                checkWorkload( e, null, this.grid );
             },
-            on_make: function( me ) {
-                console.log( me );
-            }
           },
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
           {fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},
         ];
 }
 
-function checkWorkload( e, grid ) {
-    if ( e ) {
-        let docname = $(e.target).closest(".grid-row").data("name");
-        let row = grid.get_row(docname);    
+function checkWorkload( e, row, grid ) {
+    if ( e || row ) {
+        if ( e ) {
+            let docname = $(e.target).closest(".grid-row").data("name");
+            row = grid.get_row(docname);   
+        }        
         let value = row.get_field("workload").get_value();
 
         clearHighlights( row );
