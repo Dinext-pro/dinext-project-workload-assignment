@@ -162,6 +162,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                 user => {
                                     let row = grid.get_row( user );
                                     row.row.addClass("highlight");
+                                    row.activate();
                                     setTimeout(function() { 
                                         row.row.removeClass("highlight"); 
                                         checkWorkload( row );
