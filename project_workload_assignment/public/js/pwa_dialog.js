@@ -323,8 +323,8 @@ function highlightRow( row, msg ) {
     let workload = row.get_field("workload");
     let role = row.get_field("role");
 
-    workload.$wrapper.addClass("warning");    
-    role.$wrapper.addClass("warning");
+    workload.parent.parent().addClass("warning");    
+    role.parent.parent().addClass("warning");
 
     row.grid.control.layout.add_fields([
         { fieldname: 'warning', fieldtype: 'HTML', options: msg },
@@ -335,11 +335,14 @@ function clearHighlightRow( row ) {
     let workload = row.get_field("workload");
     let role = row.get_field("role");
 
-    workload.$wrapper.removeClass("warning");
-    role.$wrapper.removeClass("warning");
+    workload.parent.parent().removeClass("warning");
+    role.parent.parent().removeClass("warning");
 
     let warning = row.grid.control.layout.get_field( "warning" );
-    warning.toggle(false);
+
+    if ( warning ) {
+        warning.section.hide();
+    }
 }
 
 function get_pwe_fileds() {
