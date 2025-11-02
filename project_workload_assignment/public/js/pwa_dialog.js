@@ -232,6 +232,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
 
     d.show();
     _pwa_starting = false;
+    grid.grid_rows.forEach( row => checkWorkload( row ) );
 }
 
 function getMaxToDate(date) {
