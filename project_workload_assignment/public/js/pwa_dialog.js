@@ -359,11 +359,6 @@ function highlightRole( row, msg ) {
 
     workload.parent.parent().attr('title', msg ); 
     role.parent.parent().attr('title', msg ); 
-
-    row.grid.control.layout.add_fields([
-        { fieldname: 'warning_' + row.doc.idx, fieldtype: 'HTML'
-            , options: '<span class="warn_msg">' + msg + '</span>' },
-    ]);
 }
 
 function clearHighlights( row ) {
@@ -375,11 +370,6 @@ function clearHighlights( row ) {
 
     workload.parent.parent().attr('title', "" ); 
     role.parent.parent().attr('title', "" ); 
-
-    let warning = row.grid.control.layout.get_field( 'warning_' + row.doc.idx );
-    if ( warning ) {
-        warning.section.hide();
-    }
 }
 
 function get_pwe_fileds() {
