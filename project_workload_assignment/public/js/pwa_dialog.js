@@ -345,8 +345,14 @@ function checkPWEforRow( task, role, row ) {
                     pwe_task: task.name,
                     pwe_project_role: role
                 })
-            .then(pwe => {
-                console.log(pwe);
+            .then(pwe => {                
+                for (let i = 0; i < pwe.pwe_amount; i++) {
+                    let amount = pwe.pwe_amount[ i ];
+                    if ( amount.pwea_expected ) {
+                        rreturn;
+                    }
+                }
+                highlightRole( row, __("Не определены трудозатраты для роли: ") + role );
             })
         } else {
             highlightRole( row, __("Не определены трудозатраты для роли: ") + role );
