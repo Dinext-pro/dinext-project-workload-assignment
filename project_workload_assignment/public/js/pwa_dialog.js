@@ -274,14 +274,15 @@ function get_pwa_fileds( task ) {
                 let docname = $(e.target).closest(".grid-row").data("name");
                 let row = getPWAGrid( this ).get_row(docname);
                 
-                let value = row.get_field("task_dates").get_value();
+                let field = row.get_field("task_dates");
+                let value = field.get_value();
 
                 if ( value ) {
                     let dfrom = row.get_field("date_from");
                     let dto = row.get_field("date_to");
 
-                    dfrom.set_value( this.df.task.exp_start_date );
-                    dto.set_value( this.df.task.exp_end_date );
+                    dfrom.set_value( field.df.task.exp_start_date );
+                    dto.set_value( field.df.task.exp_end_date );
                 }
 
                 row.refresh();
