@@ -254,6 +254,10 @@ const formatWLValue = (val, field, options, doc) => {
     return val + " " +  ( ( doc.workload == __("В рабочих часах") ) ? __("ч.") : "%" );
 }
 
+function getPWAGrid(me) {
+    return me.grid || cur_dialog?.fields_dict?.pwa_rows.grid; 
+}
+
 function get_pwa_fileds( task ) {
     return [
           {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
@@ -262,13 +266,13 @@ function get_pwa_fileds( task ) {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
             onchange: function(e) { 
-                checkWorkload( getChangedRow( this.grid, "role" ) );
+                checkWorkload( getChangedRow( getPWAGrid( this ), "role" ) );
             }
           },            
           {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
             onchange: function (e) { 
                 let docname = $(e.target).closest(".grid-row").data("name");
-                let row = this.grid.get_row(docname);
+                let row = getPWAGrid( this ).get_row(docname);
                 
                 let value = row.get_field("task_dates").get_value();
 
@@ -296,7 +300,7 @@ function get_pwa_fileds( task ) {
           {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
             options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
             onchange: function(e) { 
-                checkWorkload( getChangedRow( this.grid, "workload" ) );
+                checkWorkload( getChangedRow( getPWAGrid( this ), "workload" ) );
             },
           },
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
