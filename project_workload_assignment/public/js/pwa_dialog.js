@@ -93,11 +93,12 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
                     role: ( roles.length == 1 ) ? roles[ 0 ] : null,
                     __islocal: true, 
                     user_full_name: user.full_name || user.name,
-                    task_dates: false,
+                    task_dates: true,
                     date_from: getMaxToDate( task.exp_start_date ),
                     date_to: getMaxToDate( task.exp_end_date ),
                     workload: __('В % от трудоемкости задачи'),
-                    wl_value: 100
+                    wl_value: 100,
+                    acc_separately: true
                 } );                                
             }
             if ( grid ) {
@@ -188,7 +189,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 cannot_add_rows: 1,
                 cannot_delete_rows: 1,
                 in_place_edit: true,
-                fields: get_pwe_fileds(),
+                fields: get_pwe_fields(),
                 data: pwes
             },
             {fieldtype: 'Section Break', label: __('Загрузка') },
@@ -200,7 +201,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 cannot_delete_rows: 0,
                 in_place_edit: true,
                 on_setup: null,
-                fields: get_pwa_fileds( task ),
+                fields: get_pwa_fields( task ),
                 data: pwas,
                 on_add_row: (idx) => {
                     console.log("on_add_row " + idx);
@@ -258,10 +259,10 @@ function getPWAGrid(me) {
     return me.grid || cur_dialog?.fields_dict?.pwa_rows.grid; 
 }
 
-function get_pwa_fileds( task ) {
+function get_pwa_fields( task ) {
     return [
           {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
-          {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 1, reqd: 1,
+          {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 2, reqd: 1,
             get_query: (doc, cdt, cdn) =>  {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
@@ -305,7 +306,7 @@ function get_pwa_fileds( task ) {
             },
           },
           {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
-          {fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},
+          /*{fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},/* */
         ];
 }
 
@@ -390,7 +391,7 @@ function clearHighlights( row ) {
     role.parent.parent().attr('tooltip', "" ); 
 }
 
-function get_pwe_fileds() {
+function get_pwe_fields() {
     return [
             { label: __('Роль'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
             { label: __("План"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
