@@ -188,7 +188,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 cannot_add_rows: 1,
                 cannot_delete_rows: 1,
                 in_place_edit: true,
-                fields: get_pwe_fileds(),
+                fields: get_pwe_fields(),
                 data: pwes
             },
             {fieldtype: 'Section Break', label: __('Загрузка') },
@@ -200,7 +200,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 cannot_delete_rows: 0,
                 in_place_edit: true,
                 on_setup: null,
-                fields: get_pwa_fileds( task ),
+                fields: get_pwa_fields( task ),
                 data: pwas,
                 on_add_row: (idx) => {
                     console.log("on_add_row " + idx);
@@ -258,7 +258,7 @@ function getPWAGrid(me) {
     return me.grid || cur_dialog?.fields_dict?.pwa_rows.grid; 
 }
 
-function get_pwa_fileds( task ) {
+function get_pwa_fields( task ) {
     return [
           {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
           {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 1, reqd: 1,
@@ -390,7 +390,7 @@ function clearHighlights( row ) {
     role.parent.parent().attr('tooltip', "" ); 
 }
 
-function get_pwe_fileds() {
+function get_pwe_fields() {
     return [
             { label: __('Роль'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
             { label: __("План"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
