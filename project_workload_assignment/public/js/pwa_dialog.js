@@ -320,7 +320,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                             indicator: 'orange'
                         }, 5);
                     }
-                }
+                },
                 btn_size: 'sm' // xs, sm, lg
             },
             {fieldtype: 'Section Break', label: __('Трудозатраты'), collapsible: 1},
