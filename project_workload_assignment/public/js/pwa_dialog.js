@@ -84,26 +84,26 @@ function add_new_pwa(task, pwas, users, specificRole = null, grid = null, callba
     })
     .then(results => {
         for (const user of results) {
-            // Получаем роли пользователя в проекте
+            // РџРѕР»СѓС‡Р°РµРј СЂРѕР»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РІ РїСЂРѕРµРєС‚Рµ
             let userRoles = getProjectUserRolesSync(task.project, user.name);
             
-            // Определяем, какую роль ставить
+            // РћРїСЂРµРґРµР»СЏРµРј, РєР°РєСѓСЋ СЂРѕР»СЊ СЃС‚Р°РІРёС‚СЊ
             let roleToSet;
             if (specificRole) {
-                // Если передана конкретная роль - используем её
+                // Р•СЃР»Рё РїРµСЂРµРґР°РЅР° РєРѕРЅРєСЂРµС‚РЅР°СЏ СЂРѕР»СЊ - РёСЃРїРѕР»СЊР·СѓРµРј РµС‘
                 roleToSet = specificRole;
             } else if (userRoles.length === 1) {
-                // Если у пользователя одна роль - ставим её автоматически
+                // Р•СЃР»Рё Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РѕРґРЅР° СЂРѕР»СЊ - СЃС‚Р°РІРёРј РµС‘ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё
                 roleToSet = userRoles[0];
             } else {
-                // Если несколько ролей - оставляем пустой для ручного выбора
+                // Р•СЃР»Рё РЅРµСЃРєРѕР»СЊРєРѕ СЂРѕР»РµР№ - РѕСЃС‚Р°РІР»СЏРµРј РїСѓСЃС‚РѕР№ РґР»СЏ СЂСѓС‡РЅРѕРіРѕ РІС‹Р±РѕСЂР°
                 roleToSet = null;
             }
             
             pwas.push({  
                 idx: pwas.length + 1, 
                 user: user.name, 
-                name: `${user.name}_${Date.now()}_${Math.random()}`, // Уникальный ID
+                name: `${user.name}_${Date.now()}_${Math.random()}`, // РЈРЅРёРєР°Р»СЊРЅС‹Р№ ID
                 task: task.name,
                 role: roleToSet,
                 __islocal: true, 
@@ -111,7 +111,7 @@ function add_new_pwa(task, pwas, users, specificRole = null, grid = null, callba
                 task_dates: true,
                 date_from: getMaxToDate(task.exp_start_date),
                 date_to: getMaxToDate(task.exp_end_date),
-                workload: __('В % от трудоемкости задачи'),
+                workload: __('Р’ % РѕС‚ С‚СЂСѓРґРѕРµРјРєРѕСЃС‚Рё Р·Р°РґР°С‡Рё'),
                 wl_value: 100,
                 acc_separately: true
             });
@@ -133,12 +133,12 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     let project_users = getProjectTeamUsersSync( task.project );
     
     const d = new frappe.ui.Dialog({
-        title: __('Назначение загрузки'),
+        title: __('РќР°Р·РЅР°С‡РµРЅРёРµ Р·Р°РіСЂСѓР·РєРё'),
         size: 'extra-large',
         fields: [
             {fieldtype: 'Section Break'},
             {
-                label: __('Пользователь'), 
+                label: __('РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ'), 
                 fieldname: 'user_search', 
                 fieldtype: 'Link', 
                 options: 'User',
@@ -148,23 +148,23 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                     if (uid) {
                         const grid = d.fields_dict.pwa_rows.grid;
                         
-                        // Получаем все роли пользователя в проекте
+                        // РџРѕР»СѓС‡Р°РµРј РІСЃРµ СЂРѕР»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РІ РїСЂРѕРµРєС‚Рµ
                         let userRoles = getProjectUserRolesSync(task.project, uid);
                         
-                        // Получаем существующие назначения пользователя (активные, не удаленные)
+                        // РџРѕР»СѓС‡Р°РµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РЅР°Р·РЅР°С‡РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (Р°РєС‚РёРІРЅС‹Рµ, РЅРµ СѓРґР°Р»РµРЅРЅС‹Рµ)
                         let existingAssignments = pwas.filter(rec => 
                             rec.user == uid && !rec.__isRemove
                         );
                         
-                        // Если у пользователя одна роль
+                        // Р•СЃР»Рё Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РѕРґРЅР° СЂРѕР»СЊ
                         if (userRoles.length === 1) {
                             let existingRole = userRoles[0];
                             let alreadyAssigned = existingAssignments.some(a => a.role === existingRole);
                             
                             if (alreadyAssigned) {
-                                // Уже назначен с этой ролью - просто подсвечиваем
+                                // РЈР¶Рµ РЅР°Р·РЅР°С‡РµРЅ СЃ СЌС‚РѕР№ СЂРѕР»СЊСЋ - РїСЂРѕСЃС‚Рѕ РїРѕРґСЃРІРµС‡РёРІР°РµРј
                                 frappe.show_alert({
-                                    message: __('Пользователь уже назначен на эту роль'),
+                                    message: __('РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅ РЅР° СЌС‚Сѓ СЂРѕР»СЊ'),
                                     indicator: 'orange'
                                 }, 3);
                                 
@@ -176,7 +176,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                     }
                                 });
                             } else {
-                                // Не назначен - добавляем
+                                // РќРµ РЅР°Р·РЅР°С‡РµРЅ - РґРѕР±Р°РІР»СЏРµРј
                                 add_new_pwa(task, pwas, [uid], null, grid, () => {
                                     let newRow = grid.get_row(uid);
                                     if (newRow) {
@@ -186,18 +186,18 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                 });
                             }
                         } 
-                        // Если у пользователя несколько ролей
+                        // Р•СЃР»Рё Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµСЃРєРѕР»СЊРєРѕ СЂРѕР»РµР№
                         else {
-                            // Какие роли уже назначены?
+                            // РљР°РєРёРµ СЂРѕР»Рё СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅС‹?
                             let assignedRoles = existingAssignments.map(a => a.role).filter(r => r);
                             
-                            // Какие роли еще не назначены?
+                            // РљР°РєРёРµ СЂРѕР»Рё РµС‰Рµ РЅРµ РЅР°Р·РЅР°С‡РµРЅС‹?
                             let availableRoles = userRoles.filter(role => !assignedRoles.includes(role));
                             
                             if (availableRoles.length === 0) {
-                                // Все роли уже назначены
+                                // Р’СЃРµ СЂРѕР»Рё СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅС‹
                                 frappe.show_alert({
-                                    message: __('Пользователь уже назначен на все доступные роли'),
+                                    message: __('РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅ РЅР° РІСЃРµ РґРѕСЃС‚СѓРїРЅС‹Рµ СЂРѕР»Рё'),
                                     indicator: 'orange'
                                 }, 3);
                                 
@@ -209,22 +209,22 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                     }
                                 });
                             } else {
-                                // Есть неназначенные роли - показываем диалог выбора
+                                // Р•СЃС‚СЊ РЅРµРЅР°Р·РЅР°С‡РµРЅРЅС‹Рµ СЂРѕР»Рё - РїРѕРєР°Р·С‹РІР°РµРј РґРёР°Р»РѕРі РІС‹Р±РѕСЂР°
                                 let roleDialog = new frappe.ui.Dialog({
-                                    title: __('Выберите роль'),
+                                    title: __('Р’С‹Р±РµСЂРёС‚Рµ СЂРѕР»СЊ'),
                                     fields: [
                                         {
                                             fieldtype: 'Select',
                                             fieldname: 'role',
-                                            label: __('Роль для назначения'),
+                                            label: __('Р РѕР»СЊ РґР»СЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ'),
                                             options: availableRoles,
                                             reqd: 1
                                         }
                                     ],
-                                    primary_action_label: __('Добавить'),
+                                    primary_action_label: __('Р”РѕР±Р°РІРёС‚СЊ'),
                                     primary_action: (values) => {
                                         add_new_pwa(task, pwas, [uid], values.role, grid, () => {
-                                            // Находим добавленную строку (последнюю запись этого пользователя)
+                                            // РќР°С…РѕРґРёРј РґРѕР±Р°РІР»РµРЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ (РїРѕСЃР»РµРґРЅСЋСЋ Р·Р°РїРёСЃСЊ СЌС‚РѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ)
                                             let newAssignments = pwas.filter(p => 
                                                 p.user == uid && !p.__isRemove && !existingAssignments.includes(p)
                                             );
@@ -245,7 +245,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                         roleDialog.hide();
                                         
                                         frappe.show_alert({
-                                            message: __('Добавлена запись с ролью {0}', [values.role]),
+                                            message: __('Р”РѕР±Р°РІР»РµРЅР° Р·Р°РїРёСЃСЊ СЃ СЂРѕР»СЊСЋ {0}', [values.role]),
                                             indicator: 'green'
                                         }, 3);
                                     }
@@ -263,7 +263,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
             {
                 fieldtype: 'Button', 
                 fieldname: 'user_all', 
-                label: " " + __('Назначить всю команду'),
+                label: " " + __('РќР°Р·РЅР°С‡РёС‚СЊ РІСЃСЋ РєРѕРјР°РЅРґСѓ'),
                 icon: 'users',
                 click: () => {
                     let added = false;
@@ -275,7 +275,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                             pwa.user == user && !pwa.__isRemove
                         );
                         
-                        // Для пользователей с одной ролью
+                        // Р”Р»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№ СЃ РѕРґРЅРѕР№ СЂРѕР»СЊСЋ
                         if (userRoles.length === 1) {
                             let role = userRoles[0];
                             let alreadyAssigned = existingAssignments.some(a => a.role === role);
@@ -287,19 +287,19 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                                 skipped.push(`${user} (${role})`);
                             }
                         } 
-                        // Для пользователей с несколькими ролями
+                        // Р”Р»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№ СЃ РЅРµСЃРєРѕР»СЊРєРёРјРё СЂРѕР»СЏРјРё
                         else {
                             let assignedRoles = existingAssignments.map(a => a.role);
                             let newRoles = userRoles.filter(role => !assignedRoles.includes(role));
                             
                             if (newRoles.length > 0) {
-                                // Добавляем по одной записи на каждую новую роль
+                                // Р”РѕР±Р°РІР»СЏРµРј РїРѕ РѕРґРЅРѕР№ Р·Р°РїРёСЃРё РЅР° РєР°Р¶РґСѓСЋ РЅРѕРІСѓСЋ СЂРѕР»СЊ
                                 newRoles.forEach(role => {
                                     add_new_pwa(task, pwas, [user], role, grid);
                                 });
                                 added = true;
                             } else {
-                                skipped.push(`${user} (все роли назначены)`);
+                                skipped.push(`${user} (РІСЃРµ СЂРѕР»Рё РЅР°Р·РЅР°С‡РµРЅС‹)`);
                             }
                         }
                     });
@@ -307,23 +307,23 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                     if (added) {
                         grid.refresh();
                         frappe.show_alert({
-                            message: __('Добавлены новые назначения'),
+                            message: __('Р”РѕР±Р°РІР»РµРЅС‹ РЅРѕРІС‹Рµ РЅР°Р·РЅР°С‡РµРЅРёСЏ'),
                             indicator: 'green'
                         }, 3);
                         
                         if (skipped.length > 0) {
-                            console.log('Пропущены (уже назначены):', skipped);
+                            console.log('РџСЂРѕРїСѓС‰РµРЅС‹ (СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅС‹):', skipped);
                         }
                     } else {
                         frappe.show_alert({
-                            message: __('Все возможные назначения уже существуют'),
+                            message: __('Р’СЃРµ РІРѕР·РјРѕР¶РЅС‹Рµ РЅР°Р·РЅР°С‡РµРЅРёСЏ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‚'),
                             indicator: 'orange'
                         }, 5);
                     }
                 }
                 btn_size: 'sm' // xs, sm, lg
             },
-            {fieldtype: 'Section Break', label: __('Трудозатраты'), collapsible: 1},
+            {fieldtype: 'Section Break', label: __('РўСЂСѓРґРѕР·Р°С‚СЂР°С‚С‹'), collapsible: 1},
             {
                 fieldname: 'pwe_rows',
                 fieldtype: 'Table',
@@ -333,9 +333,9 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 fields: get_pwe_fields(),
                 data: pwes
             },
-            {fieldtype: 'Section Break', label: __('Загрузка') },
+            {fieldtype: 'Section Break', label: __('Р—Р°РіСЂСѓР·РєР°') },
             {
-                //label: __('Назначения'),
+                //label: __('РќР°Р·РЅР°С‡РµРЅРёСЏ'),
                 fieldname: 'pwa_rows',
                 fieldtype: 'Table',
                 cannot_add_rows: 1,
@@ -352,7 +352,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 },
             },
         ],
-        primary_action_label: __('Сохранить'),
+        primary_action_label: __('РЎРѕС…СЂР°РЅРёС‚СЊ'),
         primary_action: async (values) => {
             await submit_pwa_and_todo(pwas || []);
             d.hide();
@@ -360,7 +360,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 cbfunc( pwas || [] );
             }            
             },
-        secondary_action_label: __("Отменить"),
+        secondary_action_label: __("РћС‚РјРµРЅРёС‚СЊ"),
         secondary_action: async (values) => { d.hide(); },
         });
     
@@ -393,7 +393,7 @@ const formatUserDisplay = (val, field, options, doc) => {
 }
 
 const formatWLValue = (val, field, options, doc) => {
-    return val + " " +  ( ( doc.workload == __("В рабочих часах") ) ? __("ч.") : "%" );
+    return val + " " +  ( ( doc.workload == __("Р’ СЂР°Р±РѕС‡РёС… С‡Р°СЃР°С…") ) ? __("С‡.") : "%" );
 }
 
 function getPWAGrid(me) {
@@ -403,7 +403,7 @@ function getPWAGrid(me) {
 function get_pwa_fields( task ) {
     return [
           {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
-          {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 2, reqd: 1,
+          {fieldname: 'role', label: __('Р РѕР»СЊ'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 2, reqd: 1,
             get_query: (doc, cdt, cdn) =>  {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
@@ -411,7 +411,7 @@ function get_pwa_fields( task ) {
                 checkWorkload( getChangedRow( getPWAGrid( this ), "role" ) );
             }
           },            
-          {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
+          {fieldname: 'task_dates', label: __('Р”Р°С‚С‹ Р·Р°РґР°С‡Рё'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
             onchange: function (e) { 
                 let docname = $(e.target).closest(".grid-row").data("name");
                 let row = getPWAGrid( this ).get_row(docname);
@@ -430,24 +430,24 @@ function get_pwa_fields( task ) {
                 row.refresh();
             },
           },
-          {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+          {fieldname: 'date_from', label: __('Р”Р°С‚Р° СЃ'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
             get_status: function(me) {
                 return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
             }
           },
-          {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+          {fieldname: 'date_to', label: __('Р”Р°С‚Р° РїРѕ'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
             get_status: function(me) {
                 return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
             }
           },
-          {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
-            options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
+          {fieldname: 'workload', label: __('Р—Р°РіСЂСѓР·РєР°'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
+            options: '\n' + __('Р’ СЂР°Р±РѕС‡РёС… С‡Р°СЃР°С…') + '\n' + __('Р’ % РѕС‚ С„РѕРЅРґР° СЂР°Р±РѕС‡РёС… С‡Р°СЃРѕРІ') + '\n' + __('Р’ % РѕС‚ С‚СЂСѓРґРѕРµРјРєРѕСЃС‚Рё Р·Р°РґР°С‡Рё'),            
             onchange: function(e) { 
                 checkWorkload( getChangedRow( getPWAGrid( this ), "workload" ) );
             },
           },
-          {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
-          /*{fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},/* */
+          {fieldname: 'wl_value', label: __('Р’РµР»РёС‡РёРЅР°'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
+          /*{fieldname: 'acc_separately', label: __('РЈС‡РёС‚. РѕС‚Рґ.'), fieldtype: 'Check', in_list_view: 1, columns: 1},/* */
         ];
 }
 
@@ -469,7 +469,7 @@ function checkWorkload( row ) {
 
         clearHighlights( row );
         
-        if ( value == __('В % от трудоемкости задачи') ) {
+        if ( value == __('Р’ % РѕС‚ С‚СЂСѓРґРѕРµРјРєРѕСЃС‚Рё Р·Р°РґР°С‡Рё') ) {
             let task = row.get_field("task_dates").df.task;
             let role = row.get_field("role").get_value();
 
@@ -502,10 +502,10 @@ function checkPWEforRow( task, role, row ) {
                         return;
                     }
                 }
-                highlightRole( row, __("Не определены трудозатраты для роли: ") + role );
+                highlightRole( row, __("РќРµ РѕРїСЂРµРґРµР»РµРЅС‹ С‚СЂСѓРґРѕР·Р°С‚СЂР°С‚С‹ РґР»СЏ СЂРѕР»Рё: ") + role );
             })
         } else {
-            highlightRole( row, __("Не определены трудозатраты для роли: ") + role );
+            highlightRole( row, __("РќРµ РѕРїСЂРµРґРµР»РµРЅС‹ С‚СЂСѓРґРѕР·Р°С‚СЂР°С‚С‹ РґР»СЏ СЂРѕР»Рё: ") + role );
         }
     })
 }
@@ -534,25 +534,25 @@ function clearHighlights( row ) {
 
 function get_pwe_fields() {
     return [
-            { label: __('Роль'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
-            { label: __("План"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
-            { label: __("Факт"), fieldname: 'total_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+            { label: __('Р РѕР»СЊ'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
+            { label: __("РџР»Р°РЅ"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+            { label: __("Р¤Р°РєС‚"), fieldname: 'total_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
             { label: __("%"), fieldname: 'completion_percentage', fieldtype: 'Percent', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
-            { label: __("Учтены трудозатраты от"), fieldname: 'users', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 4 }
+            { label: __("РЈС‡С‚РµРЅС‹ С‚СЂСѓРґРѕР·Р°С‚СЂР°С‚С‹ РѕС‚"), fieldname: 'users', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 4 }
         ];
 }
 
 async function submit_pwa_and_todo(rows) {
-    // Проверка на дубликаты пользователь+роль
+    // РџСЂРѕРІРµСЂРєР° РЅР° РґСѓР±Р»РёРєР°С‚С‹ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ+СЂРѕР»СЊ
     const uniqueCombos = new Set();
     const duplicates = [];
     
     for (const row of rows) {
-        if (row.__isRemove) continue; // Пропускаем удаленные
+        if (row.__isRemove) continue; // РџСЂРѕРїСѓСЃРєР°РµРј СѓРґР°Р»РµРЅРЅС‹Рµ
         
-        // Проверяем, что роль указана
+        // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ СЂРѕР»СЊ СѓРєР°Р·Р°РЅР°
         if (!row.role) {
-            frappe.throw(__('Для пользователя {0} не указана роль', [row.user_full_name]));
+            frappe.throw(__('Р”Р»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ {0} РЅРµ СѓРєР°Р·Р°РЅР° СЂРѕР»СЊ', [row.user_full_name]));
         }
         
         const combo = `${row.user}|${row.role}`;
@@ -563,7 +563,7 @@ async function submit_pwa_and_todo(rows) {
     }
     
     if (duplicates.length > 0) {
-        frappe.throw(__('Обнаружены дублирующиеся назначения:\n{0}', [duplicates.join('\n')]));
+        frappe.throw(__('РћР±РЅР°СЂСѓР¶РµРЅС‹ РґСѓР±Р»РёСЂСѓСЋС‰РёРµСЃСЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ:\n{0}', [duplicates.join('\n')]));
     }
     
     await frappe.call({
@@ -572,5 +572,5 @@ async function submit_pwa_and_todo(rows) {
         freeze: true,
     });
     
-    frappe.show_alert({message: __('Данные сохранены'), indicator: 'green'});
+    frappe.show_alert({message: __('Р”Р°РЅРЅС‹Рµ СЃРѕС…СЂР°РЅРµРЅС‹'), indicator: 'green'});
 }
