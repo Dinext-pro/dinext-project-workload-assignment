@@ -36,9 +36,15 @@ function start_pwa_dialog(cbfunc, task) {
                 limit: 0
             }).then(todos => {
                 if ( todos ) {
-                    add_new_pwa( task, pwas, 
-                        todos.filter(todo => !pwas.some( pwa => pwa.user == todo.allocated_to ) ).map( r => r.allocated_to ), null,
-                        () => make_pwa_dialog( cbfunc, task, pwas, pwes ) );
+                    // ИСПРАВЛЕНО: явно указываем null для specificRole и grid
+                    add_new_pwa( 
+                        task, 
+                        pwas, 
+                        todos.filter(todo => !pwas.some( pwa => pwa.user == todo.allocated_to ) ).map( r => r.allocated_to ),
+                        null,  // specificRole
+                        null,  // grid
+                        () => make_pwa_dialog( cbfunc, task, pwas, pwes )  // callback
+                    );
                 }
             });
         });
@@ -117,7 +123,7 @@ function add_new_pwa(task, pwas, users, specificRole = null, grid = null, callba
             });
         }
         
-        if (grid) {
+        if ( grid ) {
             let data = pwas.filter(pwa => !pwa.__isRemove);
             grid.df.data = data;
             grid.refresh();
