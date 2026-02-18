@@ -1,3 +1,4 @@
+# test
 let _pwa_starting = false;
 
 function start_pwa_dialog(cbfunc, task) {
