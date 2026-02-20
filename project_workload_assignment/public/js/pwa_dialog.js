@@ -115,6 +115,9 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
 function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     let project_users = getProjectTeamUsersSync( task.project );
     
+    // Делаем pwas доступной для вложенных функций
+    const pwasRef = pwas;
+    
     const d = new frappe.ui.Dialog({
         title: __('Назначение загрузки'),
         size: 'extra-large',
@@ -281,7 +284,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 cannot_delete_rows: 0,
                 in_place_edit: true,
                 on_setup: null,
-                fields: get_pwa_fields( task ),
+                fields: get_pwa_fields( task, pwasRef ),
                 data: pwas,
                 on_add_row: (idx) => {
                     console.log("on_add_row " + idx);
@@ -339,7 +342,7 @@ function getPWAGrid(me) {
     return me.grid || cur_dialog?.fields_dict?.pwa_rows.grid; 
 }
 
-function get_pwa_fields( task ) {
+function get_pwa_fields( task, pwas ) {  // ← ВАЖНО: добавить параметр
     return [
         {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
         {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role', in_list_view: 1, columns: 2, reqd: 1,
