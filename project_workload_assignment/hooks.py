@@ -21,6 +21,16 @@ app_license = "mit"
 # 	}
 # ]
 
+fixtures = [
+    {
+        "doctype": "Server Script",
+        "filters": [
+            ["module", "in", ["Project Workload Assignment"]],
+            ["disabled", "=", 0]
+        ]
+    }
+]
+
 # Includes in <head>
 # ------------------
 
