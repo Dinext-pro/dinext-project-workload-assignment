@@ -25,8 +25,13 @@ fixtures = [
     {
         "doctype": "Server Script",
         "filters": [
-            ["module", "in", ["Project Workload Assignment"]],
-            ["disabled", "=", 0]
+            ["module", "in", ["Project Workload Assignment"]]
+        ]
+    },
+    {
+        "doctype": "Client Script",
+        "filters": [
+            ["module", "in", ["Project Workload Assignment"]]
         ]
     }
 ]
