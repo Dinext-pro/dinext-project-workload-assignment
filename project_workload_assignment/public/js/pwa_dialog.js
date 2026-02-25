@@ -88,7 +88,7 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
                 pwas.push( {  
                     idx: pwas.length + 1, 
                     user: user.name, 
-                    name: `${user.name}_${Date.now()}_${Math.random()}`, // УНИКАЛЬНЫЙ ID - важно для множественных записей
+                    name: user.name, 
                     task: task.name,
                     role: ( roles.length == 1 ) ? roles[ 0 ] : null,
                     __islocal: true, 
@@ -115,9 +115,6 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
 function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     let project_users = getProjectTeamUsersSync( task.project );
     
-    // Делаем pwas доступной для вложенных функций
-    const pwasRef = pwas;
-    
     const d = new frappe.ui.Dialog({
         title: __('Назначение загрузки'),
         size: 'extra-large',
@@ -132,103 +129,25 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 change: () => {
                     const uid = d.get_value('user_search');
                     if ( uid ) {
-                        const grid = d.fields_dict.pwa_rows.grid;
-                        
-                        // Получаем все роли пользователя в проекте
-                        let userRoles = getProjectUserRolesSync(task.project, uid);
-                        
-                        // Получаем существующие назначения пользователя
-                        let existingAssignments = pwas.filter(rec => 
-                            rec.user == uid && !rec.__isRemove
-                        );
-                        
-                        // Получаем уже назначенные роли
-                        let assignedRoles = existingAssignments
-                            .map(a => a.role)
-                            .filter(role => role);
-                        
-                        // Если у пользователя одна роль
-                        if (userRoles.length === 1) {
-                            let existingRole = userRoles[0];
-                            let alreadyAssigned = assignedRoles.includes(existingRole);
-                            
-                            if (alreadyAssigned) {
-                                // Уже назначен - подсвечиваем как в оригинале
-                                frappe.show_alert({
-                                    message: __('Пользователь уже назначен на эту роль'),
-                                    indicator: 'orange'
-                                }, 3);
-                                
-                                existingAssignments.forEach(assignment => {
-                                    let row = grid.get_row(assignment.name);
-                                    if (row) {
-                                        row.row.addClass("highlight");
-                                        setTimeout(() => {
-                                            row.row.removeClass("highlight");
-                                            row.activate();
-                                        }, 500);
-                                    }
-                                });
-                            } else {
-                                // Не назначен - добавляем
-                                add_new_pwa( task, pwas, [uid], grid, () => {
-                                    let newRow = grid.get_row(uid);
-                                    if (newRow) {
-                                        newRow.activate();
-                                        checkWorkload(newRow);
-                                    }
-                                });
-                            }
-                        } 
-                        // Если у пользователя несколько ролей
-                        else {
-                            // Проверяем, все ли роли уже назначены
-                            if (assignedRoles.length >= userRoles.length) {
-                                // Все роли назначены - показываем сообщение и подсвечиваем существующие
-                                frappe.show_alert({
-                                    message: __('Все роли пользователя уже назначены'),
-                                    indicator: 'orange'
-                                }, 3);
-                                
-                                existingAssignments.forEach(assignment => {
-                                    let row = grid.get_row(assignment.name);
-                                    if (row) {
-                                        row.row.addClass("highlight");
-                                        setTimeout(() => {
-                                            row.row.removeClass("highlight");
-                                        }, 500);
-                                    }
-                                });
-                            } else {
-                                // Есть неназначенные роли - добавляем новую запись
-                                add_new_pwa( task, pwas, [uid], grid, () => {
-                                    // Находим новую запись (последнюю добавленную)
-                                    let newAssignments = pwas.filter(p => 
-                                        p.user == uid && !p.__isRemove && !existingAssignments.includes(p)
-                                    );
-                                    
-                                    newAssignments.forEach(assignment => {
-                                        let row = grid.get_row(assignment.name);
-                                        if (row) {
-                                            row.row.addClass("highlight");
-                                            row.activate();
-                                            setTimeout(() => {
-                                                row.row.removeClass("highlight");
-                                                checkWorkload(row);
-                                            }, 500);
-                                        }
-                                    });
-                                    
-                                    frappe.show_alert({
-                                        message: __('Добавлена новая запись. Осталось назначить роли: {0}', 
-                                            [userRoles.filter(r => !assignedRoles.includes(r)).join(', ')]),
-                                        indicator: 'green'
-                                    }, 5);
-                                });
-                            }
+                        let found = pwas.find(rec => rec.user == uid);
+                        if ( found ) {
+                            const grid = d.fields_dict.pwa_rows.grid;
+                            let row = grid.get_row( found.name );
+                            row.row.addClass("highlight");
+                            setTimeout(function() { 
+                                row.row.removeClass("highlight"); 
+                                row.activate();                            
+                            }, 500);
+                            d.set_value('user_search', '');
+                        } else {
+                            const grid = d.fields_dict.pwa_rows.grid;
+                            add_new_pwa( task, pwas, [uid], grid, () => {                                                                
+                                let row = grid.get_row( uid );
+                                row.activate();
+                                d.set_value('user_search', '');
+                                checkWorkload( row );
+                            } );
                         }
-                        
-                        d.set_value('user_search', '');
                     }
                 }
             },
@@ -239,7 +158,6 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 label: " " + __('Назначить всю команду'),
                 icon: 'users',
                 click: () => {
-                    // ОСТАВЛЯЕМ КАК В ОРИГИНАЛЕ - быстрое добавление всех сразу
                     let new_users = project_users.filter( user => !pwas.some( pwa => !pwa.__isRemove && pwa.user == user ) )
                     
                     if ( new_users.length ) {
@@ -248,15 +166,13 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                             new_users.forEach(
                                 user => {
                                     let row = grid.get_row( user );
-                                    if (row) {
-                                        row.row.addClass("highlight");
-                                        row.activate();
-                                        row.toggle_editable_row( false );
-                                        setTimeout(function() { 
-                                            row.row.removeClass("highlight"); 
-                                            checkWorkload( row );                                        
-                                        }, 500);
-                                    }
+                                    row.row.addClass("highlight");
+                                    row.activate();
+                                    row.toggle_editable_row( false );
+                                    setTimeout(function() { 
+                                        row.row.removeClass("highlight"); 
+                                        checkWorkload( row );                                        
+                                    }, 500);
                                 }
                             );
                         } );
@@ -264,7 +180,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                         frappe.show_alert(__("Назначены все возможные исполнители"), 5);
                     }
                 },
-                btn_size: 'sm'
+                btn_size: 'sm' // xs, sm, lg
             },
             {fieldtype: 'Section Break', label: __('Трудозатраты'), collapsible: 1},
             {
@@ -278,13 +194,14 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
             },
             {fieldtype: 'Section Break', label: __('Загрузка') },
             {
+                //label: __('Назначения'),
                 fieldname: 'pwa_rows',
                 fieldtype: 'Table',
                 cannot_add_rows: 1,
                 cannot_delete_rows: 0,
                 in_place_edit: true,
                 on_setup: null,
-                fields: get_pwa_fields( task, pwasRef ),
+                fields: get_pwa_fields( task ),
                 data: pwas,
                 on_add_row: (idx) => {
                     console.log("on_add_row " + idx);
@@ -301,10 +218,10 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
             if ( cbfunc ) {
                 cbfunc( pwas || [] );
             }            
-        },
+            },
         secondary_action_label: __("Отменить"),
         secondary_action: async (values) => { d.hide(); },
-    });
+        });
     
     const grid = d.fields_dict.pwa_rows.grid;
     grid.wrapper.on('click', '.grid-remove-rows, .grid-remove-all-rows', function(e) {
@@ -342,32 +259,18 @@ function getPWAGrid(me) {
     return me.grid || cur_dialog?.fields_dict?.pwa_rows.grid; 
 }
 
-function get_pwa_fields( task, pwas ) {  // ← ВАЖНО: добавить параметр
+function get_pwa_fields( task ) {
     return [
-        {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
-        {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role', in_list_view: 1, columns: 2, reqd: 1,
+          {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
+          {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 2, reqd: 1,
             get_query: (doc, cdt, cdn) =>  {
-                // Получаем все роли пользователя
-                let userRoles = getProjectUserRolesSync( task.project, doc.user );
-                
-                // Получаем уже назначенные роли для этого пользователя (кроме текущей записи)
-                let assignedRoles = pwas
-                    .filter(pwa => pwa.user == doc.user && !pwa.__isRemove && pwa.name != doc.name)
-                    .map(pwa => pwa.role)
-                    .filter(role => role);
-                
-                // Оставляем только те роли, которые еще не назначены + текущую роль если она уже выбрана
-                let availableRoles = userRoles.filter(role => 
-                    !assignedRoles.includes(role) || role == doc.role
-                );
-                
-                return { filters: [["Project Role", "name", "in", availableRoles ]] };
+                return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
             onchange: function(e) { 
                 checkWorkload( getChangedRow( getPWAGrid( this ), "role" ) );
             }
-        },            
-        {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
+          },            
+          {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
             onchange: function (e) { 
                 let docname = $(e.target).closest(".grid-row").data("name");
                 let row = getPWAGrid( this ).get_row(docname);
@@ -385,25 +288,26 @@ function get_pwa_fields( task, pwas ) {  // ← ВАЖНО: добавить п�
 
                 row.refresh();
             },
-        },
-        {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+          },
+          {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
             get_status: function(me) {
                 return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
             }
-        },
-        {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+          },
+          {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
             get_status: function(me) {
                 return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
             }
-        },
-        {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
+          },
+          {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
             options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
             onchange: function(e) { 
                 checkWorkload( getChangedRow( getPWAGrid( this ), "workload" ) );
             },
-        },
-        {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
-    ];
+          },
+          {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
+          /*{fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},/* */
+        ];
 }
 
 function getChangedRow( grid, fieldname ) {
@@ -489,47 +393,20 @@ function clearHighlights( row ) {
 
 function get_pwe_fields() {
     return [
-        { label: __('Роль'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
-        { label: __("План"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
-        { label: __("Факт"), fieldname: 'total_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
-        { label: __("%"), fieldname: 'completion_percentage', fieldtype: 'Percent', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
-        { label: __("Учтены трудозатраты от"), fieldname: 'users', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 4 }
-    ];
+            { label: __('Роль'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
+            { label: __("План"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+            { label: __("Факт"), fieldname: 'total_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+            { label: __("%"), fieldname: 'completion_percentage', fieldtype: 'Percent', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+            { label: __("Учтены трудозатраты от"), fieldname: 'users', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 4 }
+        ];
 }
 
 async function submit_pwa_and_todo(rows) {
-    // Проверка на дубликаты пользователь+роль
-    const uniqueCombos = new Set();
-    const duplicates = [];
-    
-    for (const row of rows) {
-        if (row.__isRemove) continue;
-        
-        if (!row.role) {
-            frappe.throw(__('Для пользователя {0} не указана роль', [row.user_full_name]));
-        }
-        
-        const combo = `${row.user}|${row.role}`;
-        if (uniqueCombos.has(combo)) {
-            duplicates.push(`${row.user_full_name} - ${row.role}`);
-        }
-        uniqueCombos.add(combo);
-    }
-    
-    if (duplicates.length > 0) {
-        frappe.throw(__('Обнаружены дублирующиеся назначения:\n{0}', [duplicates.join('\n')]));
-    }
-    
-    await frappe.call({
-        method: 'bulk_process_pwa',
-        args: { rows: rows },
-        freeze: true,
-    });
-    
-    frappe.show_alert({message: __('Данные сохранены'), indicator: 'green'});
-}
+  await frappe.call({
+    method: 'bulk_process_pwa',
+    args: { rows: rows },
+    freeze: true,
+  });
 
-// Делаем функцию глобальной
-if (typeof window !== 'undefined') {
-    window.start_pwa_dialog = start_pwa_dialog;
+  frappe.show_alert({message: __('Данные сохранены'), indicator: 'green'});
 }
