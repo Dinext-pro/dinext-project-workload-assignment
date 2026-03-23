@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2026-02-25 11:48:24.519758",
+ "creation": "2025-11-08 17:34:32.932645",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -20,8 +20,7 @@
    "fieldname": "user",
    "fieldtype": "Link",
    "label": "\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a",
-   "options": "User",
-   "width": "0"
+   "options": "User"
   },
   {
    "fieldname": "tab_break_288d",
@@ -64,11 +63,11 @@
    "label": "Projects Workload Report"
   }
  ],
- "hide_toolbar": 1,
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-02-25 20:52:01.152751",
+ "modified": "2026-03-23 20:51:55.488182",
  "modified_by": "Administrator",
  "module": "Project Workload Assignment",
  "name": "Projects Workload Report",
@@ -86,6 +85,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
