@@ -33,7 +33,13 @@ fixtures = [
         "filters": [
             ["module", "in", ["Project Workload Assignment"]]
         ]
-    }
+    },
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            ["module", "in", ["Project Workload Assignment"]]
+        ]
+    },
 ]
 
 # Includes in <head>
