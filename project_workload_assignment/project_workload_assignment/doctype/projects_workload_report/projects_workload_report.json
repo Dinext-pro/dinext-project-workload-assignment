@@ -64,10 +64,11 @@
   }
  ],
  "grid_page_length": 50,
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-26 21:00:09.594416",
+ "modified": "2026-04-27 16:22:00.085130",
  "modified_by": "Administrator",
  "module": "Project Workload Assignment",
  "name": "Projects Workload Report",
