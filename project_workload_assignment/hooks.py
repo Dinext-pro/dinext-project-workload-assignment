@@ -41,6 +41,7 @@ fixtures = [
         ]
     },
 ]
+''''''
 
 # Includes in <head>
 # ------------------
@@ -112,7 +113,8 @@ doctype_js = {
 # ------------
 
 # before_install = "project_workload_assignment.install.before_install"
-# after_install = "project_workload_assignment.install.after_install"
+after_install = "project_workload_assignment.install.after_install"
+after_migrate = "project_workload_assignment.install.after_migrate"
 
 # Uninstallation
 # ------------
