@@ -1,0 +1,501 @@
+(function() {
+    const ensureAgGrid = window.DinextProjectsAgGridBootstrap
+        ? window.DinextProjectsAgGridBootstrap.ensure.bind(window.DinextProjectsAgGridBootstrap)
+        : function() {
+            return Promise.reject(new Error("Load /assets/project_workload_assignment/js/ag_grid/bootstrap.js first"));
+        };
+
+    function getDefaultRowLevel(row) {
+        const indent = Number(row && row.indent);
+        return Number.isFinite(indent) ? Math.max(0, indent) : 0;
+    }
+
+    function getWorkloadTreeRowLevel(row) {
+        if (!row) return 0;
+        if (row.level === "user" || row.isUser) return 0;
+        if (row.level === "role" || row.isRole) return 1;
+        if (row.level === "task" || row.isTask) {
+            const indent = Number(row.indent);
+            return Number.isFinite(indent) ? Math.max(2, indent) : 2;
+        }
+        return getDefaultRowLevel(row);
+    }
+
+    function getTreeLevelAttr(row) {
+        if (!row) return "";
+        if (row.level) return row.level;
+        if (row._isProject) return "project";
+        if (row._isUser) return "user";
+        return "";
+    }
+
+    function getToggleSymbol() {
+        return "›";
+    }
+
+    function getProjectWorkloadToggleIndent(row, table) {
+        const indent = Number(row && row.indent);
+        if (Number.isFinite(indent) && indent > 0) {
+            return 28 + (indent - 1) * 18;
+        }
+        const level = table ? table.getRowLevel(row) : getWorkloadTreeRowLevel(row);
+        if (level <= 0) return 0;
+        return 28 + (level - 1) * 18;
+    }
+
+    function resolveRowLevel(row, table) {
+        if (table && typeof table.getRowLevel === "function") {
+            return table.getRowLevel(row);
+        }
+        if (row && row.level) {
+            return getWorkloadTreeRowLevel(row);
+        }
+        return getDefaultRowLevel(row);
+    }
+
+    function getDefaultRowKey(row, index) {
+        if (!row) return `row-${index}`;
+        if (row._agRowKey) return row._agRowKey;
+
+        if (row.level === "user" || row.isUser || row._isUser) {
+            return `user:${row.email || row._email || row.participant || index}`;
+        }
+        if (row.level === "role" || row.isRole) {
+            return `role:${row.email || row._email || "user"}:${row.roleName || row.role || row.participant || index}`;
+        }
+        if (row.level === "task" || row.isTask) {
+            return `task:${row.email || row._email || "user"}:${row.roleName || row.role || "role"}:${row.task_id || row.name || row.participant || index}`;
+        }
+        if (row._isAbsenceRow) {
+            return `absence:${row._email || row.email || index}`;
+        }
+        if (row._isLazyPlaceholder) {
+            return `placeholder:${row._email || row.email || index}`;
+        }
+        if (row._isProject) {
+            return `project:${row._email || row.email || "user"}:${row._project || row.project || row.participant || index}`;
+        }
+
+        return `row:${row.participant || row.name || index}:${index}`;
+    }
+
+    function getRowId(row, index, table) {
+        if (!row) return `row-${index}`;
+        const key = table ? table.getRowKey(row, index) : getDefaultRowKey(row, index);
+        row._agRowId = key;
+        return row._agRowId;
+    }
+
+    function getParticipantIndent(row, table) {
+        const indentSize = table && Number.isFinite(Number(table.options.indentSize))
+            ? Number(table.options.indentSize)
+            : 18;
+        return (table ? table.getRowLevel(row) : getDefaultRowLevel(row)) * indentSize;
+    }
+
+    function isDefaultExpandableRow(row) {
+        if (!row) return false;
+        if (row.expandable === true) return true;
+        return !!(
+            (row._isUser && row._email)
+            || row.isUser
+            || row.isRole
+            || row.level === "user"
+            || row.level === "role"
+        );
+    }
+
+    function toVisibleRows(rows, table) {
+        const visibleRows = [];
+        const expandedOnPath = [];
+
+        (rows || []).forEach((row, index) => {
+            if (!row) return;
+
+            const level = resolveRowLevel(row, table);
+            expandedOnPath.length = level;
+
+            const parentVisible = level === 0 || expandedOnPath[level - 1] === true;
+            if (!parentVisible) {
+                return;
+            }
+
+            visibleRows.push(row);
+
+            const expandable = table.isRowExpandable(row, index);
+            const rowKey = table.getRowKey(row, index);
+            const isExpanded = !expandable || table.expandedRows.has(rowKey);
+            expandedOnPath[level] = isExpanded;
+        });
+
+        return visibleRows;
+    }
+
+    function toAgColumn(column, index, table) {
+        const field = column.id || column.name || `col_${index}`;
+        const isParticipant = field === "participant" || index === 0;
+        const width = Number(column.width) || (isParticipant ? table.options.participantWidth || 220 : 50);
+        const minWidth = Number(column.minWidth) || (isParticipant ? Math.min(width, 160) : width);
+        const maxWidth = Number(column.maxWidth) || (isParticipant ? undefined : width);
+
+        const agColumn = {
+            field,
+            colId: field,
+            headerName: column.name || "",
+            headerComponent: ProjectsWorkloadAgGridHeader,
+            headerComponentParams: {
+                html: column.name || ""
+            },
+            width,
+            minWidth,
+            pinned: isParticipant ? "left" : undefined,
+            lockPinned: isParticipant,
+            suppressMovable: true,
+            sortable: !!column.sortable,
+            resizable: isParticipant,
+            cellClass: params => {
+                const classes = [];
+                if (isParticipant) classes.push("projects-workload-ag-grid-participant-cell");
+                if (params.data && params.data.level) classes.push(`level-${params.data.level}`);
+                if (typeof column.cellClass === "function") {
+                    const customClass = column.cellClass(params);
+                    if (Array.isArray(customClass)) {
+                        classes.push(...customClass);
+                    } else if (customClass) {
+                        classes.push(customClass);
+                    }
+                } else if (column.cellClass) {
+                    classes.push(column.cellClass);
+                }
+                return classes;
+            },
+            cellRenderer: params => {
+                if (isParticipant) {
+                    return table.renderParticipantCell(params.data, column, params);
+                }
+
+                if (typeof column.format === "function") {
+                    return column.format(params.value, null, column, params.data);
+                }
+
+                return params.value == null ? "" : String(params.value);
+            }
+        };
+
+        if (Number.isFinite(maxWidth)) {
+            agColumn.maxWidth = maxWidth;
+        }
+
+        return agColumn;
+    }
+
+    function isFrappeDarkTheme() {
+        const root = document.documentElement;
+        const resolvedTheme = root.getAttribute("data-theme");
+        const selectedTheme = root.getAttribute("data-theme-mode");
+
+        if (resolvedTheme) return resolvedTheme === "dark";
+        return selectedTheme === "dark";
+    }
+
+    class ProjectsWorkloadAgGridHeader {
+        init(params) {
+            const rawHtml = params.html || params.displayName || "";
+            const parts = String(rawHtml)
+                .split(/<br\s*\/?>/i)
+                .map(part => part.replace(/<\/?small>/gi, "").trim())
+                .filter(Boolean);
+
+            this.eGui = document.createElement("div");
+            this.eGui.className = "projects-workload-ag-grid-header";
+
+            if (parts.length > 1) {
+                this.eGui.innerHTML = `
+                    <div class="projects-workload-ag-grid-header-main">${parts[0]}</div>
+                    <div class="projects-workload-ag-grid-header-sub">${parts.slice(1).join(" ")}</div>
+                `;
+            } else {
+                this.eGui.innerHTML = `<div class="projects-workload-ag-grid-header-single">${parts[0] || rawHtml}</div>`;
+            }
+        }
+
+        getGui() {
+            return this.eGui;
+        }
+    }
+
+    class ProjectsWorkloadAgGridTable {
+        constructor(container, options = {}) {
+            this.container = container;
+            this.wrapper = container;
+            this.options = options;
+            this.columns = options.columns || [];
+            this.rows = options.data || [];
+            this.expandedRows = new Set();
+            this.loading = false;
+            this.getRowLevel = typeof options.getRowLevel === "function"
+                ? options.getRowLevel
+                : row => (row && row.level ? getWorkloadTreeRowLevel(row) : getDefaultRowLevel(row));
+            this.getRowKey = typeof options.getRowKey === "function"
+                ? options.getRowKey
+                : getDefaultRowKey;
+            this.isRowExpandable = typeof options.isRowExpandable === "function"
+                ? options.isRowExpandable
+                : isDefaultExpandableRow;
+            this.onCellDoubleClick = typeof options.onCellDoubleClick === "function"
+                ? options.onCellDoubleClick
+                : null;
+
+            this.container.classList.add("projects-workload-ag-grid");
+            if (options.extraClass) {
+                String(options.extraClass).split(/\s+/).filter(Boolean).forEach(className => {
+                    this.container.classList.add(className);
+                });
+            }
+            this.applyTheme();
+            this.themeObserver = new MutationObserver(() => this.applyTheme());
+            this.themeObserver.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ["data-theme", "data-theme-mode"]
+            });
+            this.rowmanager = {
+                collapseAllNodes: () => {
+                    this.expandedRows.clear();
+                    this.renderRows();
+                },
+                openSingleNode: rowIndex => {
+                    const row = this.rows[rowIndex];
+                    if (!row) return;
+                    this.expandedRows.add(this.getRowKey(row, rowIndex));
+                    this.renderRows();
+                },
+            };
+
+            this.gridOptions = {
+                theme: "legacy",
+                columnDefs: this.columns.map((column, index) => toAgColumn(column, index, this)),
+                rowData: [],
+                rowHeight: options.rowHeight || 40,
+                headerHeight: options.headerHeight || 70,
+                suppressColumnVirtualisation: false,
+                suppressRowVirtualisation: false,
+                animateRows: false,
+                ensureDomOrder: false,
+                loadingOverlayComponentParams: {
+                    loadingMessage: options.freezeMessage || __("Идет загрузка данных...")
+                },
+                getRowId: params => params.data && params.data._agRowId ? params.data._agRowId : getRowId(params.data, 0, this),
+                getRowClass: params => params.data && params.data.level ? `level-${params.data.level}` : "",
+                onGridReady: params => {
+                    this.api = params.api;
+                    this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
+                    this.renderRows();
+                },
+                onCellClicked: params => this.handleCellClick(params),
+                onCellDoubleClicked: params => this.handleCellDoubleClick(params)
+            };
+
+            this.api = window.agGrid.createGrid(this.container, this.gridOptions);
+            this.renderRows();
+        }
+
+        applyTheme() {
+            const isDark = isFrappeDarkTheme();
+            this.container.classList.toggle("ag-theme-quartz", !isDark);
+            this.container.classList.toggle("ag-theme-quartz-dark", isDark);
+            this.container.classList.toggle("projects-workload-ag-grid-dark", isDark);
+        }
+
+        refresh(rows, columns) {
+            this.rows = rows || [];
+            this.columns = columns || this.columns || [];
+            this.rows.forEach((row, index) => {
+                if (row) {
+                    delete row._agRowId;
+                    getRowId(row, index, this);
+                }
+            });
+
+            const columnDefs = this.columns.map((column, index) => toAgColumn(column, index, this));
+            this.setGridOption("columnDefs", columnDefs);
+            this.renderRows();
+        }
+
+        renderRows() {
+            const visibleRows = toVisibleRows(this.rows, this);
+            visibleRows.forEach((row, index) => getRowId(row, index, this));
+            this.setGridOption("rowData", visibleRows);
+            this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
+            this.refreshParticipantCells();
+        }
+
+        refreshParticipantCells() {
+            if (!this.api) return;
+            if (typeof this.api.refreshCells === "function") {
+                this.api.refreshCells({ columns: ["participant"], force: true });
+            }
+        }
+
+        setGridOption(key, value) {
+            if (!this.api) return;
+            if (typeof this.api.setGridOption === "function") {
+                this.api.setGridOption(key, value);
+                return;
+            }
+
+            if (key === "rowData" && typeof this.api.setRowData === "function") {
+                this.api.setRowData(value);
+            } else if (key === "columnDefs" && typeof this.api.setColumnDefs === "function") {
+                this.api.setColumnDefs(value);
+            }
+        }
+
+        findRowIndex(row) {
+            if (!row) return -1;
+            const targetKey = this.getRowKey(row, 0);
+            for (let i = 0; i < this.rows.length; i++) {
+                const current = this.rows[i];
+                if (current === row) {
+                    return i;
+                }
+                if (this.getRowKey(current, i) === targetKey) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        renderParticipantCell(row, column, params) {
+            if (!row) return "";
+
+            const value = params.value == null ? row.participant : params.value;
+            const rowIndex = this.findRowIndex(row);
+            const treeLevel = getTreeLevelAttr(row);
+            const rowKey = this.getRowKey(row, rowIndex >= 0 ? rowIndex : 0);
+            const hasToggle = this.isRowExpandable(row, rowIndex);
+            const expanded = hasToggle && this.expandedRows.has(rowKey);
+            const toggleClass = expanded
+                ? "projects-workload-ag-grid-toggle is-expanded"
+                : "projects-workload-ag-grid-toggle";
+            const isProjectGrid = this.container.classList.contains("project-workload-ag-grid");
+            let participantStyle = "";
+            let toggleHtml = "";
+            if (isProjectGrid) {
+                const toggleIndent = getProjectWorkloadToggleIndent(row, this);
+                const indentStyle = toggleIndent ? ` style="margin-left:${toggleIndent}px"` : "";
+                if (hasToggle) {
+                    toggleHtml = `<span class="${toggleClass}"${indentStyle}>${getToggleSymbol()}</span>`;
+                } else if (toggleIndent > 0) {
+                    toggleHtml = `<span class="projects-workload-ag-grid-toggle-spacer"${indentStyle}></span>`;
+                }
+            } else {
+                const indent = getParticipantIndent(row, this);
+                if (indent) {
+                    participantStyle = ` style="padding-left:${indent}px"`;
+                }
+                if (hasToggle) {
+                    toggleHtml = `<span class="${toggleClass}">${getToggleSymbol()}</span>`;
+                }
+            }
+            let content = "";
+
+            if (typeof column.format === "function") {
+                content = column.format(value, null, column, row);
+            } else {
+                content = value == null ? "" : String(value);
+            }
+
+            if (row._isLazyPlaceholder) {
+                content = `<span class="projects-workload-ag-grid-placeholder">${content}</span>`;
+            }
+
+            const treeLevelAttr = treeLevel ? ` data-tree-level="${treeLevel}"` : "";
+
+            return `
+                <div class="projects-workload-ag-grid-participant"${treeLevelAttr}${participantStyle}>
+                    ${toggleHtml}
+                    <span class="projects-workload-ag-grid-participant-content">${content}</span>
+                </div>
+            `;
+        }
+
+        handleCellClick(params) {
+            const row = params.data;
+            if (!row || params.column.getColId() !== "participant" || !this.isRowExpandable(row)) {
+                return;
+            }
+
+            const rowIndex = this.findRowIndex(row);
+            const rowKey = this.getRowKey(row, rowIndex >= 0 ? rowIndex : 0);
+
+            if (row._detailsLoaded === false && typeof window.loadProjectDetailsForUser === "function" && window.cur_frm) {
+                if (this.expandedRows.has(rowKey)) {
+                    this.expandedRows.delete(rowKey);
+                    this.renderRows();
+                    return;
+                }
+                this.expandedRows.add(rowKey);
+                this.renderRows();
+                window.loadProjectDetailsForUser(window.cur_frm, row);
+                return;
+            }
+
+            if (this.expandedRows.has(rowKey)) {
+                this.expandedRows.delete(rowKey);
+            } else {
+                this.expandedRows.add(rowKey);
+            }
+            this.renderRows();
+        }
+
+        handleCellDoubleClick(params) {
+            const column = this.columns.find(col => (col.id || col.name) === params.column.getColId()) || {
+                id: params.column.getColId()
+            };
+
+            if (this.onCellDoubleClick) {
+                this.onCellDoubleClick(params.data, column, params);
+            } else if (typeof window.handleDoubleClick === "function") {
+                window.handleDoubleClick(params.data, column);
+            }
+        }
+
+        setCellDoubleClickHandler(handler) {
+            this.onCellDoubleClick = typeof handler === "function" ? handler : null;
+        }
+
+        freeze(message) {
+            this.loading = true;
+            if (this.api && typeof this.api.setGridOption === "function") {
+                this.api.setGridOption("loading", true);
+            }
+            if (message) {
+                this.container.setAttribute("data-loading-message", message);
+            }
+        }
+
+        unfreeze() {
+            this.loading = false;
+            if (this.api && typeof this.api.setGridOption === "function") {
+                this.api.setGridOption("loading", false);
+            }
+            this.container.removeAttribute("data-loading-message");
+        }
+
+        destroy() {
+            if (this.themeObserver) {
+                this.themeObserver.disconnect();
+                this.themeObserver = null;
+            }
+            if (this.api && typeof this.api.destroy === "function") {
+                this.api.destroy();
+            }
+            this.container.innerHTML = "";
+        }
+    }
+
+    window.ProjectsWorkloadAgGrid = {
+        ensure: ensureAgGrid,
+        Table: ProjectsWorkloadAgGridTable
+    };
+})();
