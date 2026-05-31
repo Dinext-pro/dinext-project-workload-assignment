@@ -20,6 +20,7 @@ class FormDict(TypedDict, total=False):
 	view_type: Literal['daily', 'weekly', 'monthly']
 	date_from: str | date | None
 	date_to: str | date | None
+	no_agg: bool | str | int
 
 
 class UserData(TypedDict):
@@ -174,6 +175,18 @@ class ErrorResponse(TypedDict):
 	message: str
 
 
+def _parse_bool_form_value(value, default: bool = False) -> bool:
+	if value is None:
+		return default
+	if isinstance(value, bool):
+		return value
+	if isinstance(value, (int, float)):
+		return bool(value)
+	if isinstance(value, str):
+		return value.strip().lower() in ("1", "true", "yes", "on")
+	return default
+
+
 def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadResponse | ErrorResponse:
 	"""fd — dict или объект с .get как frappe._dict."""
 	if fd is None:
@@ -188,6 +201,7 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		view_type = fd.get('view_type', 'daily')
 		date_from = fd.get('date_from')
 		date_to = fd.get('date_to')
+		no_agg = _parse_bool_form_value(fd.get('no_agg'), default=False)
 		
 		logger(f"Project: {project}, View Type: {view_type}, Period: {date_from} to {date_to}")
 		
@@ -1297,6 +1311,12 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		    user_row['expandable'] = roles_added_for_user > 0
 		
 		logger(f"Generated tree data with {len(tree_data)} rows (including task hierarchy)")
+
+		hierarchical_task_results_response = (
+			{k: dict(v) for k, v in task_results.items()}
+			if no_agg
+			else hierarchical_task_results
+		)
 		
 		# ========== 11. ПОДГОТОВКА МЕТАДАННЫХ ==========
 		
@@ -1310,7 +1330,7 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		return {
 		    'tree_data': tree_data,
 		    'task_results': task_results,           # ← добавить
-		    'hierarchical_task_results': hierarchical_task_results,  # ← добавить
+		    'hierarchical_task_results': hierarchical_task_results_response,
 		    'periods': periods,
 		    'users_count': len(users_list),
 		    'tasks_count': len(unique_tasks),
