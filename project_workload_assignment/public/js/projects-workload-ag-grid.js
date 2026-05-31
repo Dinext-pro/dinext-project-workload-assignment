@@ -1,9 +1,269 @@
 (function() {
-    const ensureAgGrid = window.DinextProjectsAgGridBootstrap
-        ? window.DinextProjectsAgGridBootstrap.ensure.bind(window.DinextProjectsAgGridBootstrap)
-        : function() {
-            return Promise.reject(new Error("Load /assets/project_workload_assignment/js/ag_grid/bootstrap.js first"));
-        };
+    const BOOTSTRAP_JS = "/assets/dinext_common/js/ag-grid/bootstrap.js";
+    let bootstrapPromise = null;
+    let initPromise = null;
+
+    function loadBootstrap() {
+        if (window.DinextAgGrid && typeof window.DinextAgGrid.ensure === "function") {
+            return Promise.resolve();
+        }
+
+        if (!bootstrapPromise) {
+            bootstrapPromise = new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[src="${BOOTSTRAP_JS}"]`);
+                if (existing) {
+                    existing.addEventListener("load", resolve, { once: true });
+                    existing.addEventListener("error", reject, { once: true });
+                    if (window.DinextAgGrid) resolve();
+                    return;
+                }
+
+                const script = document.createElement("script");
+                script.src = BOOTSTRAP_JS;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            }).then(() => {
+                if (!window.DinextAgGrid || typeof window.DinextAgGrid.ensure !== "function") {
+                    throw new Error("DinextAgGrid bootstrap не загрузился");
+                }
+            });
+        }
+
+        return bootstrapPromise;
+    }
+
+    function injectProjectsWorkloadAgGridCss() {
+        if (document.getElementById("projects-workload-ag-grid-css")) return;
+
+        const style = document.createElement("style");
+        style.id = "projects-workload-ag-grid-css";
+        style.textContent = `
+            .projects-workload-ag-grid {
+                width: calc(100% - 4px);
+                height: 70vh;
+                min-height: 420px;
+                margin: 0.5rem 0 4px 4px;
+                border-radius: 0;
+                font-family: inherit;
+                font-size: var(--text-md);
+                --ag-font-family: inherit;
+                --ag-font-size: var(--text-md);
+                --ag-border-radius: 0;
+                --ag-wrapper-border-radius: 0;
+                --ag-row-border-color: transparent;
+                --ag-cell-horizontal-border: none;
+                --ag-border-color: var(--border-color);
+                --ag-header-column-separator-display: none;
+                --ag-header-column-resize-handle-display: none;
+                --ag-background-color: var(--bg-color);
+                --ag-header-background-color: rgb(243, 243, 243);
+                --ag-header-foreground-color: var(--text-color);
+                --ag-foreground-color: var(--text-color);
+                --projects-workload-ag-header-bg: rgb(243, 243, 243);
+                --projects-workload-ag-header-main-color: var(--text-color);
+                --projects-workload-ag-header-sub-color: var(--text-color);
+            }
+            .projects-workload-ag-grid .ag-pinned-left-header {
+                --ag-header-column-resize-handle-display: block;
+            }
+            [data-theme="dark"] .projects-workload-ag-grid,
+            .projects-workload-ag-grid.projects-workload-ag-grid-dark {
+                --ag-background-color: rgb(23, 23, 23);
+                --ag-header-background-color: var(--subtle-fg, #1f2226);
+                --ag-foreground-color: var(--text-color);
+                --projects-workload-ag-header-bg: var(--subtle-fg, #1f2226);
+                --projects-workload-ag-header-main-color: var(--text-color, #f4f4f4);
+                --projects-workload-ag-header-sub-color: var(--text-color, #f4f4f4);
+            }
+            .projects-workload-ag-grid .ag-root-wrapper {
+                border: 1px solid var(--border-color) !important;
+                border-radius: 0 !important;
+                background: var(--ag-background-color) !important;
+            }
+            .projects-workload-ag-grid .ag-root,
+            .projects-workload-ag-grid .ag-body,
+            .projects-workload-ag-grid .ag-body-viewport,
+            .projects-workload-ag-grid .ag-center-cols-viewport,
+            .projects-workload-ag-grid .ag-center-cols-container,
+            .projects-workload-ag-grid .ag-pinned-left-cols-container {
+                background: var(--ag-background-color) !important;
+            }
+            .projects-workload-ag-grid .ag-row {
+                border: none !important;
+                background: transparent !important;
+            }
+            .projects-workload-ag-grid .ag-cell {
+                padding: 0 !important;
+                margin: 0 !important;
+                line-height: normal;
+                border: none !important;
+                overflow: hidden !important;
+            }
+            .projects-workload-ag-grid .ag-cell-wrapper,
+            .projects-workload-ag-grid .ag-cell-value {
+                width: 100%;
+                height: 100%;
+                padding: 0 !important;
+                margin: 0 !important;
+                display: block;
+            }
+            .projects-workload-ag-grid .ag-header-cell-label {
+                justify-content: center;
+                text-align: center;
+            }
+            .projects-workload-ag-grid .ag-header,
+            .projects-workload-ag-grid .ag-header-row,
+            .projects-workload-ag-grid .ag-header-cell {
+                background: var(--projects-workload-ag-header-bg);
+            }
+            .projects-workload-ag-grid .ag-header {
+                border-bottom: none !important;
+            }
+            .projects-workload-ag-grid .ag-header-cell {
+                padding: 0 !important;
+                border-right: none !important;
+            }
+            .projects-workload-ag-grid .ag-header-viewport .ag-header-cell-resize {
+                display: none !important;
+            }
+            .projects-workload-ag-grid .ag-header-cell::before,
+            .projects-workload-ag-grid .ag-header-group-cell::before {
+                display: none !important;
+            }
+            .projects-workload-ag-grid .ag-header-viewport .ag-header-cell-resize::after {
+                display: none !important;
+            }
+            .projects-workload-ag-grid .ag-pinned-left-header,
+            .projects-workload-ag-grid .ag-pinned-left-cols-container {
+                border-right: 1px solid var(--border-color) !important;
+            }
+            .projects-workload-ag-grid[data-loading-message]::after {
+                content: attr(data-loading-message);
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 10;
+                padding: 8px 12px;
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                background: var(--fg-color, var(--bg-color));
+                color: var(--text-color);
+                box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.12));
+                pointer-events: none;
+            }
+            .projects-workload-ag-grid .projects-workload-ag-grid-header {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+                line-height: 1.4;
+                text-align: center;
+                padding: 10px 0 !important;
+            }
+            .projects-workload-ag-grid .projects-workload-ag-grid-header-main {
+                color: var(--projects-workload-ag-header-main-color);
+                font-size: 12px;
+                font-weight: 600;
+            }
+            .projects-workload-ag-grid .projects-workload-ag-grid-header-sub {
+                margin-top: 2px;
+                color: var(--projects-workload-ag-header-sub-color);
+                font-size: 11px;
+                font-weight: 700;
+                opacity: 0.9;
+            }
+            .projects-workload-ag-grid .projects-workload-ag-grid-header-single {
+                color: var(--projects-workload-ag-header-main-color);
+                font-size: 12px;
+                font-weight: 600;
+                white-space: normal;
+            }
+            .projects-workload-ag-grid-participant {
+                display: flex;
+                align-items: center;
+                height: 100%;
+                padding: 0 8px !important;
+                cursor: default;
+            }
+            .projects-workload-ag-grid .project-user-avatar-wrap,
+            .projects-workload-ag-grid .projects-user-avatar-wrap {
+                position: relative;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 26px;
+                height: 26px;
+                flex-shrink: 0;
+            }
+            .projects-workload-ag-grid .project-user-avatar-wrap .project-user-avatar,
+            .projects-workload-ag-grid .projects-user-avatar-wrap .projects-user-avatar {
+                width: 26px;
+                height: 26px;
+            }
+            .projects-workload-ag-grid-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 18px;
+                min-width: 18px;
+                height: 18px;
+                color: var(--text-muted, #6c7680);
+                cursor: pointer;
+                font-size: 24px;
+                font-weight: 700;
+                line-height: 1;
+                user-select: none;
+                flex-shrink: 0;
+                align-self: center;
+                transform: rotate(0deg);
+                transform-origin: center center;
+                transition: transform 0.15s ease;
+            }
+            .projects-workload-ag-grid-toggle.is-expanded {
+                transform: rotate(90deg);
+                transform-origin: center center;
+                transition: transform 0.15s ease;
+                padding-left: 4px !important;
+                padding-bottom: 8px !important;
+            }
+            .projects-workload-ag-grid-toggle-spacer {
+                display: inline-block;
+                width: 18px;
+                min-width: 18px;
+                height: 18px;
+                flex-shrink: 0;
+            }
+            .projects-workload-ag-grid-placeholder {
+                color: var(--text-muted, #6c7680);
+                font-style: italic;
+            }
+            .projects-workload-ag-grid.project-workload-ag-grid .projects-workload-ag-grid-participant-content .project-role-display,
+            .projects-workload-ag-grid.project-workload-ag-grid .projects-workload-ag-grid-participant-content .project-task-display {
+                width: 100%;
+            }
+            .projects-workload-ag-grid.project-workload-ag-grid .projects-workload-ag-grid-participant-content .project-role-name {
+                padding-left: 4px !important;
+                font-weight: 600;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function ensureAgGrid() {
+        if (!initPromise) {
+            initPromise = loadBootstrap()
+                .then(() => window.DinextAgGrid.ensure())
+                .then(() => {
+                    injectProjectsWorkloadAgGridCss();
+                });
+        }
+
+        return initPromise;
+    }
 
     function getDefaultRowLevel(row) {
         const indent = Number(row && row.indent);
@@ -31,6 +291,39 @@
 
     function getToggleSymbol() {
         return "›";
+    }
+
+    function escapeHtml(text) {
+        return String(text || "")
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    function getUserAvatarInitial(fullName) {
+        return ((fullName && fullName.charAt(0)) || "U").toUpperCase();
+    }
+
+    function buildUserAvatarHtml(fullName, userImage, classPrefix) {
+        const initial = getUserAvatarInitial(fullName);
+        const safeName = escapeHtml(fullName);
+        const placeholderClass = `${classPrefix}-placeholder`;
+        const placeholderHtml = `<div class="${placeholderClass}">${initial}</div>`;
+
+        if (!userImage) {
+            return placeholderHtml;
+        }
+
+        const safeSrc = escapeHtml(userImage);
+        return (
+            `<span class="${classPrefix}-wrap">` +
+            `<img src="${safeSrc}" class="${classPrefix}" alt="${safeName}" ` +
+            `onerror="this.style.display='none';var p=this.parentElement&&this.parentElement.querySelector('.${placeholderClass}');if(p)p.style.display='flex';">` +
+            `<div class="${placeholderClass}" style="display:none">${initial}</div>` +
+            `</span>`
+        );
     }
 
     function getProjectWorkloadToggleIndent(row, table) {
@@ -95,14 +388,16 @@
 
     function isDefaultExpandableRow(row) {
         if (!row) return false;
-        if (row.expandable === true) return true;
-        return !!(
-            (row._isUser && row._email)
-            || row.isUser
-            || row.isRole
-            || row.level === "user"
-            || row.level === "role"
-        );
+        if (typeof row.expandable === "boolean") {
+            return row.expandable;
+        }
+        if (row._isLazyPlaceholder || row._isAbsenceRow || row._isProject) {
+            return false;
+        }
+        if (row.level === "task" || row.isTask) {
+            return false;
+        }
+        return false;
     }
 
     function toVisibleRows(rows, table) {
@@ -261,13 +556,15 @@
             this.rowmanager = {
                 collapseAllNodes: () => {
                     this.expandedRows.clear();
-                    this.renderRows();
+                    this.renderRows({ forceFull: true });
                 },
                 openSingleNode: rowIndex => {
                     const row = this.rows[rowIndex];
                     if (!row) return;
-                    this.expandedRows.add(this.getRowKey(row, rowIndex));
+                    const rowKey = this.getRowKey(row, rowIndex);
+                    this.expandedRows.add(rowKey);
                     this.renderRows();
+                    this.syncToggleDomByRowKey(rowKey, true);
                 },
             };
 
@@ -318,21 +615,99 @@
 
             const columnDefs = this.columns.map((column, index) => toAgColumn(column, index, this));
             this.setGridOption("columnDefs", columnDefs);
-            this.renderRows();
+            this.renderRows({ forceFull: true });
         }
 
-        renderRows() {
+        renderRows(options = {}) {
+            const opts = options || {};
             const visibleRows = toVisibleRows(this.rows, this);
             visibleRows.forEach((row, index) => getRowId(row, index, this));
+
+            const nextIdList = visibleRows.map(row => row._agRowId);
+            const nextIdSet = new Set(nextIdList);
+            const canDelta = !opts.forceFull
+                && this.api
+                && typeof this.api.applyTransaction === "function"
+                && Array.isArray(this._visibleRowIdList);
+
+            if (canDelta) {
+                const prevIdSet = new Set(this._visibleRowIdList);
+                const toAdd = [];
+                let addIndex = -1;
+
+                visibleRows.forEach((row, index) => {
+                    if (!prevIdSet.has(row._agRowId)) {
+                        if (addIndex < 0) {
+                            addIndex = index;
+                        }
+                        toAdd.push(row);
+                    }
+                });
+
+                const toRemove = [];
+                this.api.forEachNode(node => {
+                    const id = node.data && node.data._agRowId;
+                    if (id && !nextIdSet.has(id)) {
+                        toRemove.push(node.data);
+                    }
+                });
+
+                if (toAdd.length || toRemove.length) {
+                    const tx = {};
+                    if (toRemove.length) {
+                        tx.remove = toRemove;
+                    }
+                    if (toAdd.length) {
+                        tx.add = toAdd;
+                        if (addIndex >= 0) {
+                            tx.addIndex = addIndex;
+                        }
+                    }
+                    this.api.applyTransaction(tx);
+                    this._visibleRowIdList = nextIdList;
+                    this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
+                    return;
+                }
+
+                this._visibleRowIdList = nextIdList;
+                return;
+            }
+
             this.setGridOption("rowData", visibleRows);
+            this._visibleRowIdList = nextIdList;
             this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
-            this.refreshParticipantCells();
         }
 
-        refreshParticipantCells() {
-            if (!this.api) return;
-            if (typeof this.api.refreshCells === "function") {
-                this.api.refreshCells({ columns: ["participant"], force: true });
+        syncToggleDomByRowKey(rowKey, expanded) {
+            if (!rowKey) {
+                return;
+            }
+
+            const rowEl = this.container.querySelector(
+                `.ag-row[row-id="${CSS.escape(String(rowKey))}"]`
+            );
+            if (!rowEl) {
+                return;
+            }
+
+            const toggle = rowEl.querySelector(".projects-workload-ag-grid-toggle");
+            if (toggle) {
+                toggle.classList.toggle("is-expanded", !!expanded);
+            }
+        }
+
+        syncToggleDomFromClick(params, expanded) {
+            const cellEl = params.eGridCell
+                || (params.event && params.event.target
+                    ? params.event.target.closest('[col-id="participant"]')
+                    : null);
+            if (!cellEl) {
+                return;
+            }
+
+            const toggle = cellEl.querySelector(".projects-workload-ag-grid-toggle");
+            if (toggle) {
+                toggle.classList.toggle("is-expanded", !!expanded);
             }
         }
 
@@ -363,6 +738,31 @@
                 }
             }
             return -1;
+        }
+
+        rowHasTreeChildren(row) {
+            const rowIndex = this.findRowIndex(row);
+            if (rowIndex < 0) {
+                return false;
+            }
+
+            const level = this.getRowLevel(row);
+            for (let i = rowIndex + 1; i < this.rows.length; i++) {
+                const nextRow = this.rows[i];
+                if (!nextRow) {
+                    continue;
+                }
+
+                const nextLevel = this.getRowLevel(nextRow);
+                if (nextLevel <= level) {
+                    break;
+                }
+                if (nextLevel === level + 1) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         renderParticipantCell(row, column, params) {
@@ -432,20 +832,24 @@
                 if (this.expandedRows.has(rowKey)) {
                     this.expandedRows.delete(rowKey);
                     this.renderRows();
+                    this.syncToggleDomFromClick(params, false);
                     return;
                 }
                 this.expandedRows.add(rowKey);
                 this.renderRows();
+                this.syncToggleDomFromClick(params, true);
                 window.loadProjectDetailsForUser(window.cur_frm, row);
                 return;
             }
 
-            if (this.expandedRows.has(rowKey)) {
-                this.expandedRows.delete(rowKey);
-            } else {
+            const expanded = !this.expandedRows.has(rowKey);
+            if (expanded) {
                 this.expandedRows.add(rowKey);
+            } else {
+                this.expandedRows.delete(rowKey);
             }
             this.renderRows();
+            this.syncToggleDomFromClick(params, expanded);
         }
 
         handleCellDoubleClick(params) {
@@ -496,6 +900,7 @@
 
     window.ProjectsWorkloadAgGrid = {
         ensure: ensureAgGrid,
-        Table: ProjectsWorkloadAgGridTable
+        Table: ProjectsWorkloadAgGridTable,
+        buildUserAvatarHtml
     };
 })();

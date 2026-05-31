@@ -7,32 +7,80 @@
 - pwr_run_tasks_forecast_workload → get_tasks_forecast_and_workload_v2 → tasks_forecast_workload.run_get_tasks_forecast_and_workload
 """
 
+from typing import TypedDict, Literal, TYPE_CHECKING
+
 import frappe
 
 from project_workload_assignment.project_workload_assignment.project_workload.single_project_workload_tree import (
 	run_get_project_workload_data,
+	ProjectWorkloadResponse,
+	ErrorResponse,
 )
 from project_workload_assignment.project_workload_assignment.project_workload.tasks_forecast_workload import (
 	run_get_tasks_forecast_and_workload,
+	TasksForecastResponse,
+	ErrorTasksResponse,
 )
 from project_workload_assignment.project_workload_assignment.project_workload.team_workload_grid import (
 	run_get_projects_workload_data_v2,
+	TeamWorkloadResponse,
+	ErrorTeamWorkloadResponse,
 )
 
 
+# ==================== TypedDict для входных данных ====================
+
+class TeamWorkloadFormInput(TypedDict, total=False):
+	"""Входные параметры для отчёта загрузки команды (team_workload_grid)."""
+	user: str | None
+	project: str | None
+	user_group: str | None
+	view_type: Literal['daily', 'weekly', 'monthly']
+	period_range: Literal['quarter', 'half_year', 'year']
+	mode: Literal['full', 'user_totals', 'user_projects']
+	detail_user: str | None
+	limit: str | int
+	offset: str | int
+
+
+class ProjectWorkloadFormInput(TypedDict, total=False):
+	"""Входные параметры для дерева загрузки проекта (single_project_workload_tree)."""
+	project: str
+	view_type: Literal['daily', 'weekly', 'monthly']
+	date_from: str | None
+	date_to: str | None
+
+
+class ForecastPeriodInput(TypedDict, total=False):
+	"""Период из входных данных для прогноза задач."""
+	year: int
+	month: int
+	is_past: bool
+
+
+class TasksForecastFormInput(TypedDict, total=False):
+	"""Входные параметры для прогноза задач (tasks_forecast_workload)."""
+	project: str
+	periods: list[ForecastPeriodInput] | None
+	view_options: Literal['Только факт', 'Только прогноз', 'Прогноз и факт']
+
+
 @frappe.whitelist()
-def pwr_run_team_workload_grid():
+def pwr_run_team_workload_grid() -> TeamWorkloadResponse | ErrorTeamWorkloadResponse:
 	"""Отчёт загрузки команды (Projects Workload Report). API method: get_projects_workload_data_v2."""
-	return run_get_projects_workload_data_v2(frappe.form_dict)
+	form_input: TeamWorkloadFormInput = frappe.form_dict
+	return run_get_projects_workload_data_v2(form_input)
 
 
 @frappe.whitelist()
-def pwr_run_project_workload_tree():
+def pwr_run_project_workload_tree() -> ProjectWorkloadResponse | ErrorResponse:
 	"""Дерево загрузки одного проекта (форма Project). API method: get_project_workload_data."""
-	return run_get_project_workload_data(frappe.form_dict)
+	form_input: ProjectWorkloadFormInput = frappe.form_dict
+	return run_get_project_workload_data(form_input)
 
 
 @frappe.whitelist()
-def pwr_run_tasks_forecast_workload():
+def pwr_run_tasks_forecast_workload() -> TasksForecastResponse | ErrorTasksResponse:
 	"""Прогноз PWE и факт PWA по задачам проекта. API method: get_tasks_forecast_and_workload_v2."""
-	return run_get_tasks_forecast_and_workload(frappe.form_dict)
+	form_input: TasksForecastFormInput = frappe.form_dict
+	return run_get_tasks_forecast_and_workload(form_input)

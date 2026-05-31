@@ -1,14 +1,180 @@
 # Copyright (c) 2026, Dinext
 """Дерево загрузки одного проекта: ответ API get_project_workload_data (бывший Server Script V3)."""
 
+from typing import TypedDict, Literal
+from datetime import date
+
 import frappe
+from frappe.utils.data import getdate
 
 from project_workload_assignment.project_workload_assignment.project_workload.assignments import (
 	fetch_project_assignments_with_worker_context,
 )
 
 
-def run_get_project_workload_data(fd):
+# ==================== TypedDict определения ====================
+
+class FormDict(TypedDict, total=False):
+	"""Параметры запроса из frappe.form_dict."""
+	project: str
+	view_type: Literal['daily', 'weekly', 'monthly']
+	date_from: str | date | None
+	date_to: str | date | None
+
+
+class UserData(TypedDict):
+	"""Данные пользователя для ответа."""
+	full_name: str
+	user_image: str | None
+	email: str
+	name: str
+	wholiday_list: str | None
+	wtimesheet_template: str | None
+	hours_on_date: float | None
+	tt_working_hours_on_date: str | None
+
+
+class TaskDict(TypedDict):
+	"""Данные задачи в словаре tasks_dict."""
+	task_id: str
+	task_subject: str
+	parent_task_id: str | None
+	children: list[str]
+	has_direct_load: bool
+
+
+class PeriodDaily(TypedDict):
+	"""Дневной период."""
+	key: str
+	date: str
+	year: int
+	month: int
+	day: int
+	weekday: int
+
+
+class PeriodWeekly(TypedDict):
+	"""Недельный период."""
+	key: str
+	date: str
+	start_date: str
+	end_date: str
+	year: int
+	week: int
+	week_start: str
+	week_end: str
+
+
+class PeriodMonthly(TypedDict):
+	"""Месячный период."""
+	key: str
+	date: str
+	start_date: str
+	end_date: str
+	year: int
+	month: int
+	month_start: str
+	month_end: str
+
+
+Period = PeriodDaily | PeriodWeekly | PeriodMonthly
+
+
+class UserHolidayEntry(TypedDict):
+	"""Запись праздника пользователя."""
+	date: str
+	weekly_off: bool
+
+
+class HolidayItem(TypedDict):
+	"""Элемент праздника."""
+	date: str
+	description: str | None
+	weekly_off: bool | None
+
+
+class AbsenceItem(TypedDict):
+	"""Элемент отсутствия."""
+	from_date: date | str
+	to_date: date | str
+	type: str
+	alfrom_hours: float | None
+	alto_hours: float | None
+
+
+class TreeDataRow(TypedDict):
+	"""Строка данных дерева."""
+	participant: str
+	user_data: UserData
+	role: str
+	task_id: str | None
+	task_subject: str | None
+	indent: int
+	expandable: bool
+	isTask: bool | None
+	isUser: bool | None
+	isRole: bool | None
+	email: str
+	roleName: str | None
+	level: str
+	has_direct_load: bool | None
+	workload_total: str
+
+
+class Metadata(TypedDict):
+	"""Метаданные ответа."""
+	project_holidays: list[HolidayItem]
+	user_holidays: dict[str, list[UserHolidayEntry]]
+	user_absences: dict[str, list[AbsenceItem]]
+	user_daily_hours: dict[str, dict[str, float]]
+	monthly_plans_count: int
+	project_dates: dict[str, str]
+	display_dates: dict[str, str | None]
+
+
+class Performance(TypedDict):
+	"""Показатели производительности."""
+	calculation_time_ms: float
+	assignments: int
+	workload_calculations: int
+
+
+class DebugInfo(TypedDict):
+	"""Отладочная информация."""
+	weekend_logic: str
+	loading_types_supported: list[str]
+	project_weekly_off_dates_count: int
+	monthly_plans_loaded: int
+	structure: str
+
+
+class ProjectWorkloadResponse(TypedDict):
+	"""Основной ответ API get_project_workload_data."""
+	tree_data: list[TreeDataRow]
+	periods: list[Period]
+	users_count: int
+	tasks_count: int
+	assignments_count: int
+	message: str
+	task_results: dict[str, dict[str, float]]
+	hierarchical_task_results: dict[str, dict[str, float]]
+	metadata: Metadata
+	performance: Performance
+	debug_info: DebugInfo
+
+
+class ErrorResponse(TypedDict):
+	"""Ответ при ошибке."""
+	tree_data: list
+	periods: list
+	users_count: int
+	tasks_count: int
+	assignments_count: int
+	error: str
+	message: str
+
+
+def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadResponse | ErrorResponse:
 	"""fd — dict или объект с .get как frappe._dict."""
 	if fd is None:
 		fd = {}
@@ -905,6 +1071,17 @@ def run_get_project_workload_data(fd):
 		
 		tree_data = []
 		
+		def count_direct_task_children(role_row_index):
+		    """Считает задачи первого уровня под строкой роли (после фильтрации по нагрузке)."""
+		    count = 0
+		    for i in range(role_row_index + 1, len(tree_data)):
+		        row = tree_data[i]
+		        if row.get('level') in ('user', 'role'):
+		            break
+		        if row.get('level') == 'task' and row.get('indent') == 2:
+		            count += 1
+		    return count
+		
 		# Функция для рекурсивного добавления задач в tree_data
 		def add_task_to_tree(task_id, role, user_email, user_row_data, indent_level, parent_role_row):
 		    """Рекурсивно добавляет задачу и всех её детей в tree_data"""
@@ -1016,7 +1193,7 @@ def run_get_project_workload_data(fd):
 		            'email': user_email
 		        },
 		        'indent': 0,
-		        'expandable': len(user_roles) > 0,
+		        'expandable': False,
 		        'isUser': True,
 		        'email': user_email,
 		        'level': 'user'
@@ -1035,6 +1212,7 @@ def run_get_project_workload_data(fd):
 		    user_row['workload_total'] = f"{user_total_hours:.1f}"
 		    tree_data.append(user_row)
 		    logger(f"Добавлен пользователь: {user_email}")
+		    roles_added_for_user = 0
 		
 		    # Роли пользователя (уровень 1)
 		    for role, role_data in user_roles.items():
@@ -1065,7 +1243,7 @@ def run_get_project_workload_data(fd):
 		            'user_data': user_row['user_data'],
 		            'role': role,
 		            'indent': 1,
-		            'expandable': len(all_relevant_tasks) > 0,
+		            'expandable': False,
 		            'isRole': True,
 		            'email': user_email,
 		            'roleName': role,
@@ -1081,6 +1259,7 @@ def run_get_project_workload_data(fd):
 		
 		        role_row['workload_total'] = f"{role_total_hours:.1f}"
 		        tree_data.append(role_row)
+		        role_row_index = len(tree_data) - 1
 		        logger(f"Добавлена роль: {role}")
 		
 		        # Находим корневые задачи для этой роли (те, у которых нет родителя или родитель не в all_relevant_tasks)
@@ -1106,6 +1285,16 @@ def run_get_project_workload_data(fd):
 		                2,  # начальный отступ для задач
 		                role_row
 		            )
+		
+		        visible_root_tasks = count_direct_task_children(role_row_index)
+		        role_row['expandable'] = visible_root_tasks > 0
+		        logger(
+		            f"Роль {role}: expandable={role_row['expandable']} "
+		            f"(видимых корневых задач: {visible_root_tasks})"
+		        )
+		        roles_added_for_user += 1
+		
+		    user_row['expandable'] = roles_added_for_user > 0
 		
 		logger(f"Generated tree data with {len(tree_data)} rows (including task hierarchy)")
 		
