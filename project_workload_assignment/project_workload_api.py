@@ -49,6 +49,7 @@ class ProjectWorkloadFormInput(TypedDict, total=False):
 	view_type: Literal['daily', 'weekly', 'monthly']
 	date_from: str | None
 	date_to: str | None
+	no_agg: bool | str | int
 
 
 class ForecastPeriodInput(TypedDict, total=False):
