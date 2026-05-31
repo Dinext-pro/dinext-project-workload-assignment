@@ -1,10 +1,173 @@
 # Copyright (c) 2026, Dinext
 """Сетка загрузки команды: ответ API get_projects_workload_data_v2 (бывший Exp_V2)."""
 
+from typing import TypedDict, Literal
+from datetime import date, datetime
+
 import frappe
 
 
-def run_get_projects_workload_data_v2(fd):
+# ==================== TypedDict определения ====================
+
+class TeamWorkloadFormDict(TypedDict, total=False):
+	"""Параметры запроса из frappe.form_dict."""
+	user: str | None
+	project: str | None
+	user_group: str | None
+	view_type: Literal['daily', 'weekly', 'monthly']
+	period_range: Literal['quarter', 'half_year', 'year']
+	mode: Literal['full', 'user_totals', 'user_projects']
+	detail_user: str | None
+	limit: int | str
+	offset: int | str
+
+
+class TeamWorkloadPeriodDaily(TypedDict):
+	"""Дневной период для отчёта команды."""
+	key: str
+	date: str
+	year: int
+	month: int
+	day: int
+	weekday: int
+
+
+class TeamWorkloadPeriodWeekly(TypedDict):
+	"""Недельный период для отчёта команды."""
+	key: str
+	year: int
+	week: int
+	start_date: str
+	end_date: str
+
+
+class TeamWorkloadPeriodMonthly(TypedDict):
+	"""Месячный период для отчёта команды."""
+	key: str
+	year: int
+	month: int
+	start_date: str
+	end_date: str
+
+
+TeamWorkloadPeriod = TeamWorkloadPeriodDaily | TeamWorkloadPeriodWeekly | TeamWorkloadPeriodMonthly
+
+
+class UserDataSummary(TypedDict):
+	"""Краткие данные пользователя для tree_data."""
+	full_name: str | None
+	user_image: str | None
+	email: str
+	name: str
+
+
+class AbsenceEntry(TypedDict):
+	"""Запись отсутствия."""
+	from_date: date | str
+	to_date: date | str
+	type: str
+	alfrom_hours: float | None
+	alto_hours: float | None
+
+
+class HolidayEntry(TypedDict):
+	"""Запись праздника."""
+	date: str
+	description: str | None
+	weekly_off: bool | None
+
+
+class UserInfo(TypedDict):
+	"""Информация о пользователе."""
+	name: str
+	full_name: str
+	user_image: str | None
+	email: str
+	wholiday_list: str | None
+	wtimesheet_template: str | None
+	hours_on_date: float | None
+	tt_working_hours_on_date: str | None
+
+
+class ProjectInfo(TypedDict):
+	"""Информация о проекте."""
+	name: str
+	project_name: str
+	holiday_list: str | None
+
+
+class TreeDataUserRow(TypedDict, total=False):
+	"""Строка пользователя в tree_data."""
+	participant: str
+	user_data: UserDataSummary
+	indent: int
+	expandable: bool
+	_isUser: bool
+	_detailsLoaded: bool
+	_email: str
+	_workingHours: dict[str, float]
+	_absences: list[AbsenceEntry]
+	_userHolidays: list[HolidayEntry]
+	workload_total: str
+
+
+class TreeDataProjectRow(TypedDict, total=False):
+	"""Строка проекта в tree_data."""
+	participant: str
+	user_data: UserDataSummary
+	project: str
+	project_name: str
+	indent: int
+	expandable: bool
+	_isProject: bool
+	_email: str
+	_project: str
+	_workingHours: dict[str, float]
+	_absences: list[AbsenceEntry]
+	_userHolidays: list[HolidayEntry]
+	_projectHolidays: list[HolidayEntry]
+	workload_total: str
+
+
+class PerformanceInfo(TypedDict):
+	"""Информация о производительности."""
+	calculation_time_ms: float
+	assignments: int
+	date_calculations: int
+	working_day_cache_size: int
+	trace: list[str]
+
+
+class TeamWorkloadResponse(TypedDict):
+	"""Основной ответ API get_projects_workload_data_v2."""
+	tree_data: list[TreeDataUserRow | TreeDataProjectRow]
+	periods: list[TeamWorkloadPeriod]
+	users_count: int
+	projects_count: int
+	assignments_count: int
+	mode: str
+	limit: int
+	offset: int
+	next_offset: int | None
+	has_more: bool
+	total_users: int
+	message: str
+	performance: PerformanceInfo
+
+
+class ErrorTeamWorkloadResponse(TypedDict):
+	"""Ответ при ошибке."""
+	tree_data: list
+	periods: list
+	users_count: int
+	projects_count: int
+	assignments_count: int
+	mode: str
+	error: str
+	message: str
+
+
+def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWorkloadResponse | ErrorTeamWorkloadResponse:
 	"""fd — dict или объект с .get как frappe._dict."""
 	if fd is None:
 		fd = {}
@@ -841,6 +1004,13 @@ def run_get_projects_workload_data_v2(fd):
 		        }
 		
 		    # Создаем строку пользователя
+		    user_project_names = list(assignments_by_user_project.get(user_email, {}).keys())
+		    user_has_absences = len(user_absences.get(user_email, [])) > 0
+		    if direct_user_totals:
+		        user_expandable = len(user_project_names) > 0 or user_has_absences
+		    else:
+		        user_expandable = len(project_names_result) > 0 or user_has_absences
+
 		    user_row = {
 		        'participant': user_email,
 		        'user_data': {
@@ -850,7 +1020,7 @@ def run_get_projects_workload_data_v2(fd):
 		            'name': user_email
 		        },
 		        'indent': 0,
-		        'expandable': direct_user_totals or len(projects_result) > 0,
+		        'expandable': user_expandable,
 		        '_isUser': True,
 		        '_detailsLoaded': return_project_rows,
 		        '_email': user_email,

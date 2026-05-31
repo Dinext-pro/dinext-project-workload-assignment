@@ -1,26 +1,73 @@
 # Copyright (c) 2026, Dinext
 """Общая выборка назначений Project Workload (ISS-2026-00865 этап II)."""
 
+from typing import Any, TypedDict
+from datetime import date
+
 import frappe
 from frappe.query_builder.functions import Count
 from frappe.utils import getdate
 
 
-def _as_date(value):
+# ==================== TypedDict определения ====================
+
+class AssignmentRow(TypedDict):
+	"""Строка назначения из fetch_pwr_report_assignments."""
+	name: str
+	task: str
+	role: str | None
+	user: str
+	date_from: date | str
+	date_to: date | str
+	workload: str | None
+	wl_value: float | None
+	acc_separately: bool | None
+	project_name: str
+
+
+class ProjectAssignmentRow(TypedDict):
+	"""Строка назначения из fetch_project_assignments_with_worker_context."""
+	task_id: str
+	task_subject: str | None
+	assignment_name: str
+	role: str | None
+	user: str
+	date_from: date | str
+	date_to: date | str
+	workload: str | None
+	wl_value: float | None
+	acc_separately: bool | None
+	full_name: str | None
+	user_image: str | None
+	email: str
+	wholiday_list: str | None
+	wtimesheet_template: str | None
+	hours_on_date: float | None
+	tt_working_hours_on_date: str | None
+
+
+class UserTotalsBundle(TypedDict):
+	"""Результат fetch_pwr_user_totals_bundle."""
+	total_users: int
+	page_users: list[str]
+	assignments: list[AssignmentRow]
+
+
+def _as_date(value: str | date | None) -> date | None:
 	if value is None:
 		return None
 	return getdate(value)
 
 
 def build_pwr_assignment_base_query(
-	window_start,
-	window_end,
+	window_start: str | date,
+	window_end: str | date,
 	*,
-	user=None,
-	project=None,
-	user_group_parent=None,
-	use_sql_user_group_join=False,
-):
+	user: str | None = None,
+	project: str | None = None,
+	user_group_parent: str | None = None,
+	use_sql_user_group_join: bool = False,
+) -> tuple[Any, Any, Any]:
 	"""Базовый qb: PWA + Task, пересечение интервала назначения с [window_start, window_end]."""
 	window_start = _as_date(window_start)
 	window_end = _as_date(window_end)
@@ -52,15 +99,15 @@ def build_pwr_assignment_base_query(
 
 
 def fetch_pwr_report_assignments(
-	window_start,
-	window_end,
+	window_start: str | date,
+	window_end: str | date,
 	*,
-	user=None,
-	project=None,
-	user_group_parent=None,
-	use_sql_user_group_join=False,
-	restrict_users=None,
-):
+	user: str | None = None,
+	project: str | None = None,
+	user_group_parent: str | None = None,
+	use_sql_user_group_join: bool = False,
+	restrict_users: list[str] | None = None,
+) -> list[AssignmentRow]:
 	"""Строки как в Get Projects Workload Data_Exp_V2 (поля PWA + project_name)."""
 	q, PWA, Task = build_pwr_assignment_base_query(
 		window_start,
@@ -91,14 +138,14 @@ def fetch_pwr_report_assignments(
 
 
 def count_pwr_report_distinct_users(
-	window_start,
-	window_end,
+	window_start: str | date,
+	window_end: str | date,
 	*,
-	user=None,
-	project=None,
-	user_group_parent=None,
-	use_sql_user_group_join=False,
-):
+	user: str | None = None,
+	project: str | None = None,
+	user_group_parent: str | None = None,
+	use_sql_user_group_join: bool = False,
+) -> int:
 	q, PWA, Task = build_pwr_assignment_base_query(
 		window_start,
 		window_end,
@@ -114,16 +161,16 @@ def count_pwr_report_distinct_users(
 
 
 def fetch_pwr_report_user_page(
-	window_start,
-	window_end,
+	window_start: str | date,
+	window_end: str | date,
 	*,
-	limit,
-	offset,
-	user=None,
-	project=None,
-	user_group_parent=None,
-	use_sql_user_group_join=False,
-):
+	limit: int,
+	offset: int,
+	user: str | None = None,
+	project: str | None = None,
+	user_group_parent: str | None = None,
+	use_sql_user_group_join: bool = False,
+) -> list[str]:
 	q, PWA, Task = build_pwr_assignment_base_query(
 		window_start,
 		window_end,
@@ -140,7 +187,7 @@ def fetch_pwr_report_user_page(
 		.offset(int(offset))
 		.run(as_dict=True)
 	)
-	out = []
+	out: list[str] = []
 	for r in rows:
 		u = r.get("user")
 		if u:
@@ -149,16 +196,16 @@ def fetch_pwr_report_user_page(
 
 
 def fetch_pwr_user_totals_bundle(
-	window_start,
-	window_end,
-	limit,
-	offset,
+	window_start: str | date,
+	window_end: str | date,
+	limit: int | str | None,
+	offset: int | str | None,
 	*,
-	user=None,
-	project=None,
-	user_group_parent=None,
-	use_sql_user_group_join=False,
-):
+	user: str | None = None,
+	project: str | None = None,
+	user_group_parent: str | None = None,
+	use_sql_user_group_join: bool = False,
+) -> UserTotalsBundle:
 	"""Режим user_totals отчёта команды: count, страница пользователей, назначения только по странице."""
 	lim = int(limit or 0) or 20
 	off = int(offset or 0)
@@ -194,7 +241,11 @@ def fetch_pwr_user_totals_bundle(
 	return {"total_users": total_users, "page_users": page_users, "assignments": assignments}
 
 
-def fetch_project_assignments_with_worker_context(project, date_from, date_to):
+def fetch_project_assignments_with_worker_context(
+	project: str,
+	date_from: str | date,
+	date_to: str | date,
+) -> list[ProjectAssignmentRow]:
 	"""Строки как в Get_Project_Workload_Data_V3 (Task + PWA + User + Worker + Timesheet Template)."""
 	date_from = _as_date(date_from)
 	date_to = _as_date(date_to)

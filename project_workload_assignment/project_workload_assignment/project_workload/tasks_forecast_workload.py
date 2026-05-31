@@ -1,9 +1,78 @@
 # Copyright (c) 2026, Dinext
 """Прогноз PWE и распределение нагрузки PWA по задачам проекта (API get_tasks_forecast_and_workload)."""
 
-import frappe
+from __future__ import annotations
 
-def run_get_tasks_forecast_and_workload(fd):
+from typing import TypedDict, Literal
+from datetime import date
+
+import frappe
+from frappe.utils.data import getdate
+
+
+# ==================== TypedDict определения ====================
+
+class ForecastFormDict(TypedDict, total=False):
+	"""Параметры запроса из frappe.form_dict."""
+	project: str
+	periods: list[ForecastPeriod] | None
+	view_options: Literal['Только факт', 'Только прогноз', 'Прогноз и факт']
+
+
+class ForecastPeriod(TypedDict):
+	"""Период для прогноза."""
+	year: int
+	month: int
+	is_past: bool
+
+
+class TaskUserDetail(TypedDict):
+	"""Детали пользователя в задаче."""
+	assigned_hours: float
+	workload_type: str
+	percentage: float
+
+
+class TaskPeriodDetail(TypedDict):
+	"""Детали периода в задаче."""
+	forecast_hours: float
+	users: dict[str, TaskUserDetail]
+
+
+class TaskRoleDetails(TypedDict):
+	"""Детали роли в задаче."""
+	period_key: TaskPeriodDetail
+
+
+class TaskDetails(TypedDict):
+	"""Детали задачи."""
+	role: TaskRoleDetails
+
+
+class TaskAggregated(TypedDict):
+	"""Агрегированные данные задачи."""
+	task: str
+	task_subject: str
+	total_forecast: float
+	total_assigned: float
+
+
+class TasksForecastResponse(TypedDict):
+	"""Успешный ответ API get_tasks_forecast_and_workload."""
+	tasks: list[TaskAggregated]
+	tasks_details: dict[str, TaskDetails]
+	total_tasks: int
+
+
+class ErrorTasksResponse(TypedDict):
+	"""Ответ при ошибке."""
+	tasks: list[TaskAggregated]
+	tasks_details: dict[str, TaskDetails]
+	total_tasks: int
+	error: str
+
+
+def run_get_tasks_forecast_and_workload(fd: ForecastFormDict | None) -> TasksForecastResponse | ErrorTasksResponse:
 	"""fd — dict или frappe._dict с полями project, periods, view_options."""
 	if fd is None:
 		fd = {}
@@ -23,7 +92,7 @@ def debug_log(message):
 
         frappe.log(message)
 
-def _tasks_forecast_impl(fd):
+def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastResponse | ErrorTasksResponse:
 
     """Получает все задачи с прогнозом (PWE) и нагрузкой (PWA)"""
 
