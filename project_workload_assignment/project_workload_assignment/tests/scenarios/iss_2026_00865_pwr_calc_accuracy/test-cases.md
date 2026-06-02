@@ -20,7 +20,7 @@
   - Исторические Server Script (см. `.sandbox/local/server-script/api/`): **до этапа I** — `Get Projects Workload Data_Exp` (`get_projects_workload_data`); **ветка OLD** — `Get Projects Workload Data_Exp_OLD` (`get_projects_workload_data_old`, в SQL до сих пор `date_to >= CURDATE()`, не `nowdate()`); **до этапа II** — отключённые `PWR Legacy - … (Pre-Phase2)` (тот же `api_method`, что у тонких обёрток); **TC-10** фиксирует контракт уже перенесённого в Python V2 на фикстуре TC-01 (`fixtures/tc10_team_v2_golden.json`).
 - sync_required: `no` (логика в Python-приложении; sandbox/fixtures для прогона не обязательны)
 - run_targets:
-  - `project_workload_assignment.project_workload_assignment.tests.scenarios.iss_2026_00865_pwr_calc_accuracy.test_pwr_calc_accuracy` (**16** тестовых методов: TC-01…TC-10, TC-04b, TC-05b, TC-12…TC-14).
+  - `project_workload_assignment.project_workload_assignment.tests.scenarios.iss_2026_00865_pwr_calc_accuracy.test_pwr_calc_accuracy` (**17** тестовых методов: TC-01…TC-10, TC-04b, TC-05b, TC-12…TC-15).
   - **TC-11** — UI smoke вне `bench run-tests` (см. журнал). TC-10 — золотой JSON контракта Python V2; ручной A/B с `PWR Legacy` по-прежнему через переключение `disabled` (один `api_method` на активный скрипт).
 - Команда прогона (backend-контейнер):  
   `docker exec "dinext-frappe-local-backend-1" bench --site dev.dinext.localhost run-tests --app project_workload_assignment --module project_workload_assignment.project_workload_assignment.tests.scenarios.iss_2026_00865_pwr_calc_accuracy.test_pwr_calc_accuracy`
@@ -151,9 +151,15 @@
   - notes: создаётся `User Group` с именем `ISS-2026-00865-PWR-UG` (только `Administrator`); второй пользователь с PWA не попадает в выборку.
   - last_run: 2026-05-07 — `dev.dinext.localhost`, модуль PWR — OK
 
+- 🟢 TC-15: «В рабочих часах» 10 ч на 01.06–05.06 — дневные ячейки не зависят от `hours_on_date` (8 vs 4); weekly V2≈V3≈10 ч
+  - surface: `Python` | actor: `business_user`
+  - artifacts: `test_tc15_*`, `prepare_case_hours_on_date_invariant`, `set_admin_hours_on_date`
+  - notes: регрессия кейса Ivan (ISS-2026-00865); равномерное распределение по рабочим дням + полный `user_daily_hours` в V3 для weekly/monthly.
+  - last_run: 2026-06-01 — `dev.dinext.localhost`, TC-15 — OK
+
 ## Primary test artifacts
 
-- `test_pwr_calc_accuracy.py` — TC-01 … TC-10, TC-04b, TC-05b, TC-12, TC-13, TC-14
+- `test_pwr_calc_accuracy.py` — TC-01 … TC-10, TC-04b, TC-05b, TC-12, TC-13, TC-14, TC-15
 - `fixtures/tc10_team_v2_golden.json` — эталон TC-10
 - `data_setup.py` — reset и prepare-*
 
@@ -165,6 +171,7 @@
 | 2026-05-07 | agent | OK (15/15) | До добавления TC-10: `bench run-tests` по модулю на `dev.dinext.localhost` (~53 с). |
 | 2026-05-14 | agent | OK (16/16) | TC-10: `test_tc10_v2_response_contract_golden` + `fixtures/tc10_team_v2_golden.json`; уточнены линейки `Exp` / `Exp_OLD` / `PWR Legacy`; `bench run-tests` PWR на `dev.dinext.localhost`. |
 | 2026-05-14 | agent + Cursor Browser | OK (TC-11) | UI smoke `Projects Workload Report` на `http://dev.dinext.localhost:8080/app/projects-workload-report`: сетка, фильтры, смена Weekly/Daily/Monthly, refresh, «Показать еще 20». Детали в TC-11 `last_run`. |
+| 2026-06-01 | agent | OK (TC-15) | Fix: равномерное «В рабочих часах» + V3 `user_daily_hours` weekly/monthly; TC-09 по-прежнему ERROR (workflow AFL). |
 
 ## Side effects повторного прогона
 

@@ -21,9 +21,18 @@ ANCHOR_MONDAY = "2026-05-04"
 WEEK_START = "2026-05-04"
 WEEK_END = "2026-05-10"
 
+# Кейс Ivan (01.06–05.06): пн–пт, 10 ч «В рабочих часах», hours_on_date 8 vs 4.
+IVAN_ANCHOR_MONDAY = "2026-06-01"
+IVAN_DATE_FROM = "2026-06-01"
+IVAN_DATE_END = "2026-06-05"
+IVAN_WL_HOURS = 10.0
+IVAN_WORKING_DAYS = 5
+
 # Сохраняем Worker.wholiday_list у Administrator между reset и восстановлением (см. _detach_*).
 _PWR_ADMIN_WHOLIDAY_SAVED = False
 _PWR_ADMIN_WHOLIDAY_VALUE: str | None = None
+_PWR_TT_HOURS_SAVED = False
+_PWR_TT_HOURS_VALUE: float | None = None
 
 
 def _detach_admin_worker_holiday_list() -> None:
@@ -86,7 +95,42 @@ def owned_entities() -> dict[str, list[str]]:
 	}
 
 
+def _restore_admin_timesheet_hours_on_date_if_saved() -> None:
+	global _PWR_TT_HOURS_SAVED, _PWR_TT_HOURS_VALUE
+	if not _PWR_TT_HOURS_SAVED:
+		return
+	tt = _admin_timesheet_template_name()
+	if tt and _PWR_TT_HOURS_VALUE is not None:
+		frappe.db.set_value(
+			"Timesheet Template",
+			tt,
+			"hours_on_date",
+			_PWR_TT_HOURS_VALUE,
+			update_modified=False,
+		)
+	_PWR_TT_HOURS_SAVED = False
+	_PWR_TT_HOURS_VALUE = None
+
+
+def _admin_timesheet_template_name() -> str | None:
+	return frappe.db.get_value("Worker", {"wuser": BUSINESS_USER}, "wtimesheet_template")
+
+
+def set_admin_hours_on_date(hours: float) -> None:
+	"""Меняет Timesheet Template.hours_on_date у Worker Administrator; восстанавливается в reset."""
+	global _PWR_TT_HOURS_SAVED, _PWR_TT_HOURS_VALUE
+	tt = _admin_timesheet_template_name()
+	if not tt:
+		frappe.throw("У Administrator нет Worker/wtimesheet_template — сценарий hours_on_date недоступен")
+	if not _PWR_TT_HOURS_SAVED:
+		prev = frappe.db.get_value("Timesheet Template", tt, "hours_on_date")
+		_PWR_TT_HOURS_VALUE = float(prev) if prev is not None else 8.0
+		_PWR_TT_HOURS_SAVED = True
+	frappe.db.set_value("Timesheet Template", tt, "hours_on_date", float(hours), update_modified=False)
+
+
 def reset_owned_data() -> None:
+	_restore_admin_timesheet_hours_on_date_if_saved()
 	_restore_admin_worker_holiday_list_if_saved()
 	for leave_name in frappe.get_all(
 		"Application For Leave",
@@ -257,7 +301,15 @@ def _create_task(project_name: str, subject_suffix: str) -> str:
 	return task.name
 
 
-def _create_pwa(task: str, wl_value: float, *, workload: str | None = None, user: str | None = None) -> str:
+def _create_pwa(
+	task: str,
+	wl_value: float,
+	*,
+	workload: str | None = None,
+	user: str | None = None,
+	date_from: str | None = None,
+	date_to: str | None = None,
+) -> str:
 	doc = frappe.get_doc(
 		{
 			"doctype": "Project Workload Assignment",
@@ -265,14 +317,49 @@ def _create_pwa(task: str, wl_value: float, *, workload: str | None = None, user
 			"role": ensure_project_role(),
 			"user": user or BUSINESS_USER,
 			"task_dates": 1,
-			"date_from": WEEK_START,
-			"date_to": WEEK_END,
+			"date_from": date_from or WEEK_START,
+			"date_to": date_to or WEEK_END,
 			"workload": workload or WORKLOAD_TYPE,
 			"wl_value": wl_value,
 		}
 	)
 	doc.insert(ignore_permissions=True)
 	return doc.name
+
+
+def prepare_case_hours_on_date_invariant(
+	wl_hours: float = IVAN_WL_HOURS,
+	date_from: str = IVAN_DATE_FROM,
+	date_to: str = IVAN_DATE_END,
+) -> dict[str, str]:
+	"""01.06–05.06, «В рабочих часах»: дневные/недельные часы не зависят от hours_on_date."""
+	reset_owned_data()
+	_detach_admin_worker_holiday_list()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company в базе — сценарий не может создать Project")
+	ensure_project_role()
+	project = _create_project(company, holiday_list=None)
+	frappe.db.set_value("Project", project, "expected_start_date", date_from, update_modified=False)
+	frappe.db.set_value("Project", project, "expected_end_date", date_to, update_modified=False)
+	task = _create_task(project, "Ivan Jun01-05")
+	frappe.db.set_value("Task", task, "exp_start_date", date_from, update_modified=False)
+	frappe.db.set_value("Task", task, "exp_end_date", date_to, update_modified=False)
+	pwa = _create_pwa(
+		task,
+		wl_hours,
+		date_from=date_from,
+		date_to=date_to,
+	)
+	return {
+		"company": company,
+		"project": project,
+		"task": task,
+		"pwa": pwa,
+		"date_from": date_from,
+		"date_to": date_to,
+		"holiday_list": "",
+	}
 
 
 def prepare_case_hours_without_project_holiday_list(wl_hours: float = 40.0) -> dict[str, str]:
