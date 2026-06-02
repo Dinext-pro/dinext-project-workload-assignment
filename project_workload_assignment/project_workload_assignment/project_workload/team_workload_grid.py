@@ -802,17 +802,10 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            date_from = frappe.utils.getdate(assignment['date_from'])
 		            date_to = frappe.utils.getdate(assignment['date_to'])
 		
-		            # Тип 1: В рабочих часах (ОРИГИНАЛЬНАЯ ЛОГИКА)
+		            # Тип 1: В рабочих часах — равномерно по рабочим дням назначения (не от hours_on_date).
 		            if assignment['workload'] == 'В рабочих часах':
-		                total_assignment_hours = 0.0
-		                if assignment['wl_value']:
-		                    total_assignment_hours = float(assignment['wl_value'])
-		
-		                # ISS-2026-00865: для "В рабочих часах" сохраняем оригинальный знаменатель
-		                # по полному диапазону назначения. Если обрезать его видимым окном,
-		                # итоговые часы в tree_data изменятся.
-		                total_available_in_period = 0.0
-		                date_available_hours = {}  # Кэшируем доступные часы по датам
+		                total_assignment_hours = float(assignment['wl_value'] or 0)
+		                working_dates = []
 		
 		                current_date = date_from
 		                while current_date <= date_to:
@@ -820,38 +813,23 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		                    date_str = str(current_date)
 		
 		                    if is_working_day_cached(date_str, user_email, project_name):
-		                        day_base_hours_dict = user_daily_hours.get(user_email, {})
-		                        day_base_hours = day_base_hours_dict.get(date_str, 8.0)
-		                        absence_hours = get_absence_hours(date_str, user_email)
-		                        available_hours = day_base_hours - absence_hours
-		                        if available_hours < 0:
-		                            available_hours = 0.0
-		
-		                        total_available_in_period = total_available_in_period + available_hours
-		                        date_available_hours[date_str] = available_hours
+		                        working_dates.append(date_str)
 		                        assignment_calculations = assignment_calculations + 1
 		
 		                    current_date = frappe.utils.add_days(current_date, 1)
 		
-		                if total_available_in_period > 0:
-		                    # Распределяем нагрузку по датам
-		                    date_keys = list(date_available_hours.keys())
-		                    for date_str in date_keys:
-		                        available_hours_on_date = date_available_hours[date_str]
-		                        if available_hours_on_date > 0:
-		                            daily_ratio = available_hours_on_date / total_available_in_period
-		                            daily_hours = total_assignment_hours * daily_ratio
+		                if working_dates:
+		                    daily_hours_each = total_assignment_hours / len(working_dates)
+		                    for date_str in working_dates:
+		                        period_key = find_period_key(date_str)
 		
-		                            # ISS-2026-00865: быстрый lookup вместо вложенного перебора periods.
-		                            period_key = find_period_key(date_str)
-		
-		                            if period_key:
-		                                if direct_user_totals:
-		                                    current_value = results[user_email][period_key]
-		                                    results[user_email][period_key] = current_value + daily_hours
-		                                else:
-		                                    current_value = results[user_email][project_name][period_key]
-		                                    results[user_email][project_name][period_key] = current_value + daily_hours
+		                        if period_key:
+		                            if direct_user_totals:
+		                                current_value = results[user_email][period_key]
+		                                results[user_email][period_key] = current_value + daily_hours_each
+		                            else:
+		                                current_value = results[user_email][project_name][period_key]
+		                                results[user_email][project_name][period_key] = current_value + daily_hours_each
 		
 		            # Тип 2: В % от фонда рабочих часов (ОРИГИНАЛЬНАЯ ЛОГИКА)
 		            elif assignment['workload'] == 'В % от фонда рабочих часов':

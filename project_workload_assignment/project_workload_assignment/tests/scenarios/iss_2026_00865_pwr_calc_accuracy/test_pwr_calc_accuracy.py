@@ -24,8 +24,14 @@ from project_workload_assignment.project_workload_assignment.project_workload.te
 from .data_setup import (
 	ANCHOR_MONDAY,
 	BUSINESS_USER,
+	IVAN_ANCHOR_MONDAY,
+	IVAN_DATE_FROM,
+	IVAN_DATE_END,
+	IVAN_WL_HOURS,
+	IVAN_WORKING_DAYS,
 	WEEK_END,
 	WEEK_START,
+	prepare_case_hours_on_date_invariant,
 	prepare_case_hours_with_weekend_holiday_list,
 	prepare_case_hours_without_project_holiday_list,
 	prepare_case_percent_fund_without_holiday_list,
@@ -34,6 +40,7 @@ from .data_setup import (
 	prepare_case_user_group_excludes_second_user,
 	reset_owned_data,
 	SECOND_USER_EMAIL,
+	set_admin_hours_on_date,
 	try_create_application_for_leave_tc09,
 )
 
@@ -607,6 +614,89 @@ class TestISS202600865PwrCalcAccuracy(FrappeTestCase):
 			_parse_float_cell(r2.get("workload_total")),
 			delta=0.01,
 		)
+
+	def test_tc15_hours_on_date_does_not_change_working_hours_cells_v2_v3(self):
+		"""10 ч на 01.06–05.06: при hours_on_date 8 и 4 дневные часы ≈2; weekly V2≈V3≈10 (кейс Ivan)."""
+		ctx = prepare_case_hours_on_date_invariant()
+		project_name = ctx["project"]
+		expected_daily = IVAN_WL_HOURS / IVAN_WORKING_DAYS
+		fd_v2_daily = {
+			"mode": "full",
+			"view_type": "daily",
+			"period_range": "quarter",
+			"project": project_name,
+		}
+		fd_v3_daily = {
+			"project": project_name,
+			"view_type": "daily",
+			"date_from": IVAN_DATE_FROM,
+			"date_to": IVAN_DATE_END,
+		}
+		fd_v2_weekly = {**fd_v2_daily, "view_type": "weekly"}
+		fd_v3_weekly = {**fd_v3_daily, "view_type": "weekly"}
+
+		def _daily_map_v2():
+			out = run_get_projects_workload_data_v2(fd_v2_daily)
+			row = _find_team_v2_user_row(out.get("tree_data") or [], BUSINESS_USER)
+			periods = out.get("periods") or []
+			result = {}
+			for ymd in (IVAN_DATE_FROM, "2026-06-02", "2026-06-03", "2026-06-04", IVAN_DATE_END):
+				key = _period_key_for_daily_date(periods, ymd)
+				if key:
+					result[ymd] = _parse_float_cell(row.get(key))
+			return result, _parse_float_cell(row.get("workload_total"))
+
+		def _daily_map_v3():
+			out = run_get_project_workload_data(fd_v3_daily)
+			row = _find_v3_user_row(out.get("tree_data") or [], BUSINESS_USER)
+			periods = out.get("periods") or []
+			result = {}
+			for ymd in (IVAN_DATE_FROM, "2026-06-02", "2026-06-03", "2026-06-04", IVAN_DATE_END):
+				key = _period_key_for_daily_date(periods, ymd)
+				if key:
+					result[ymd] = _parse_float_cell(row.get(key))
+			return result, _parse_float_cell(row.get("workload_total"))
+
+		with patch.object(frappe.utils, "nowdate", return_value=IVAN_ANCHOR_MONDAY):
+			frappe.set_user(BUSINESS_USER)
+			set_admin_hours_on_date(8.0)
+			daily8_v2, tot8_v2 = _daily_map_v2()
+			daily8_v3, tot8_v3 = _daily_map_v3()
+			set_admin_hours_on_date(4.0)
+			daily4_v2, tot4_v2 = _daily_map_v2()
+			daily4_v3, tot4_v3 = _daily_map_v3()
+			out_v2_w = run_get_projects_workload_data_v2(fd_v2_weekly)
+			out_v3_w = run_get_project_workload_data(fd_v3_weekly)
+
+		for ymd, h8 in daily8_v2.items():
+			self.assertAlmostEqual(
+				h8,
+				expected_daily,
+				delta=0.15,
+				msg=f"V2 hours_on_date=8: {ymd}={h8}, expected≈{expected_daily}",
+			)
+			self.assertAlmostEqual(
+				daily4_v2.get(ymd, 0.0),
+				h8,
+				delta=0.15,
+				msg=f"V2 daily must not change when hours_on_date 8→4 at {ymd}",
+			)
+		for ymd, h8 in daily8_v3.items():
+			self.assertAlmostEqual(h8, daily4_v3.get(ymd, 0.0), delta=0.15, msg=f"V3 daily 8 vs 4 at {ymd}")
+			self.assertAlmostEqual(h8, expected_daily, delta=0.15, msg=f"V3 hours_on_date=8 at {ymd}")
+
+		self.assertAlmostEqual(tot8_v2, IVAN_WL_HOURS, delta=0.25)
+		self.assertAlmostEqual(tot4_v2, IVAN_WL_HOURS, delta=0.25)
+		self.assertAlmostEqual(tot8_v3, IVAN_WL_HOURS, delta=0.25)
+		self.assertAlmostEqual(tot4_v3, IVAN_WL_HOURS, delta=0.25)
+
+		row_w2 = _find_team_v2_user_row(out_v2_w.get("tree_data") or [], BUSINESS_USER)
+		row_w3 = _find_v3_user_row(out_v3_w.get("tree_data") or [], BUSINESS_USER)
+		w2 = _parse_float_cell(row_w2.get("workload_total"))
+		w3 = _parse_float_cell(row_w3.get("workload_total"))
+		self.assertAlmostEqual(w2, IVAN_WL_HOURS, delta=0.35, msg=f"V2 weekly total={w2}")
+		self.assertAlmostEqual(w3, IVAN_WL_HOURS, delta=0.35, msg=f"V3 weekly total={w3}")
+		self.assertAlmostEqual(w2, w3, delta=0.35, msg=f"weekly V2={w2} V3={w3}")
 
 
 def reset():
