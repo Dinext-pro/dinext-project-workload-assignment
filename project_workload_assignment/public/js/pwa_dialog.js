@@ -1,9 +1,24 @@
 let _pwa_starting = false;
 
+function ensure_task_dates(task) {
+    if (task.exp_start_date && task.exp_end_date) {
+        return Promise.resolve(task);
+    }
+    return frappe.db.get_value('Task', task.name, ['exp_start_date', 'exp_end_date'])
+        .then(r => {
+            if (r.message) {
+                task.exp_start_date = r.message.exp_start_date;
+                task.exp_end_date = r.message.exp_end_date;
+            }
+            return task;
+        });
+}
+
 function start_pwa_dialog(cbfunc, task) {
     if ( _pwa_starting ) { return; }
     _pwa_starting = true;
 
+    ensure_task_dates(task).then(() => {
     frappe.db.get_list('Project Workload Assignment', {
         fields: ['name', 'task', 'role', 'user', 'user_full_name', 'task_dates', 'date_from', 'date_to', 'workload', 'wl_value', 'acc_separately'],
         filters: {
@@ -42,6 +57,9 @@ function start_pwa_dialog(cbfunc, task) {
                 }
             });
         });
+    });
+    }).catch(() => {
+        _pwa_starting = false;
     });
 }
 

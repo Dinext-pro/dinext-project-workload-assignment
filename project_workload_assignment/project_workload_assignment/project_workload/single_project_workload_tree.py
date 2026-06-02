@@ -42,6 +42,8 @@ class TaskDict(TypedDict):
 	parent_task_id: str | None
 	children: list[str]
 	has_direct_load: bool
+	exp_start_date: str | None
+	exp_end_date: str | None
 
 
 class PeriodDaily(TypedDict):
@@ -368,7 +370,9 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 				'task_subject': task.task_subject,
 				'parent_task_id': task.parent_task_id,
 				'children': [],
-				'has_direct_load': False  # Будет установлено позже
+				'has_direct_load': False,  # Будет установлено позже
+				'exp_start_date': str(task.exp_start_date) if task.exp_start_date else None,
+				'exp_end_date': str(task.exp_end_date) if task.exp_end_date else None,
 			}
 		
 		# Строим иерархию (заполняем children)
@@ -1161,6 +1165,8 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 				'role': role,
 				'task_id': task_id,
 				'task_subject': task_info['task_subject'],
+				'exp_start_date': task_info.get('exp_start_date'),
+				'exp_end_date': task_info.get('exp_end_date'),
 				'indent': indent_level,
 				'expandable': len(children_with_load) > 0,  # Раскрываем только если есть дети с нагрузкой
 				'isTask': True,
