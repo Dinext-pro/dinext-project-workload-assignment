@@ -802,10 +802,11 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            date_from = frappe.utils.getdate(assignment['date_from'])
 		            date_to = frappe.utils.getdate(assignment['date_to'])
 		
-		            # Тип 1: В рабочих часах — равномерно по рабочим дням назначения (не от hours_on_date).
+		            # Тип 1: В рабочих часах — пропорционально доступным часам каждого рабочего дня.
+		            # Сумма = wl_value; праздники/полные отсутствия исключаются; укороченные дни — через user_daily_hours.
 		            if assignment['workload'] == 'В рабочих часах':
 		                total_assignment_hours = float(assignment['wl_value'] or 0)
-		                working_dates = []
+		                date_available = {}
 		
 		                current_date = date_from
 		                while current_date <= date_to:
@@ -813,23 +814,34 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		                    date_str = str(current_date)
 		
 		                    if is_working_day_cached(date_str, user_email, project_name):
-		                        working_dates.append(date_str)
-		                        assignment_calculations = assignment_calculations + 1
+		                        day_base_hours_dict = user_daily_hours.get(user_email, {})
+		                        day_base_hours = day_base_hours_dict.get(date_str, 8.0)
+		                        absence_hours = get_absence_hours(date_str, user_email)
+		                        available_hours = day_base_hours - absence_hours
+		                        if available_hours < 0:
+		                            available_hours = 0.0
+		                        if available_hours > 0:
+		                            date_available[date_str] = available_hours
+		                            assignment_calculations = assignment_calculations + 1
 		
 		                    current_date = frappe.utils.add_days(current_date, 1)
 		
-		                if working_dates:
-		                    daily_hours_each = total_assignment_hours / len(working_dates)
-		                    for date_str in working_dates:
+		                total_available = 0.0
+		                for available_hours in date_available.values():
+		                    total_available = total_available + available_hours
+		
+		                if total_available > 0:
+		                    for date_str, available_hours in date_available.items():
+		                        daily_load = total_assignment_hours * (available_hours / total_available)
 		                        period_key = find_period_key(date_str)
 		
 		                        if period_key:
 		                            if direct_user_totals:
 		                                current_value = results[user_email][period_key]
-		                                results[user_email][period_key] = current_value + daily_hours_each
+		                                results[user_email][period_key] = current_value + daily_load
 		                            else:
 		                                current_value = results[user_email][project_name][period_key]
-		                                results[user_email][project_name][period_key] = current_value + daily_hours_each
+		                                results[user_email][project_name][period_key] = current_value + daily_load
 		
 		            # Тип 2: В % от фонда рабочих часов (ОРИГИНАЛЬНАЯ ЛОГИКА)
 		            elif assignment['workload'] == 'В % от фонда рабочих часов':

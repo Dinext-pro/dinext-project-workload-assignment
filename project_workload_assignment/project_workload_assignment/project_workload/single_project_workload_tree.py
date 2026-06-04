@@ -870,30 +870,35 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 						assignment_date_from = frappe.utils.getdate(assignment.date_from)
 						assignment_date_to = frappe.utils.getdate(assignment.date_to)
 		
-						# Тип 1: В рабочих часах — равномерно по рабочим дням (не от hours_on_date).
+						# Тип 1: В рабочих часах — пропорционально доступным часам каждого рабочего дня.
 						if assignment.workload == 'В рабочих часах':
 							total_assignment_hours = float(assignment.wl_value or 0)
-							working_dates = []
+							date_available = {}
 		
 							current_date = assignment_date_from
 							while current_date <= assignment_date_to:
 								date_str = str(current_date)
 		
 								if is_working_day_optimized(date_str, user_email):
-									working_dates.append(date_str)
-									workload_calculations = workload_calculations + 1
+									available_hours = get_available_hours(date_str, user_email)
+									if available_hours > 0:
+										date_available[date_str] = available_hours
+										workload_calculations = workload_calculations + 1
 		
 								current_date = frappe.utils.add_days(current_date, 1)
 		
-							if working_dates:
-								daily_hours_each = total_assignment_hours / len(working_dates)
-								for date_str in working_dates:
+							total_available = sum(date_available.values())
+							if total_available > 0:
+								for date_str, available_hours in date_available.items():
+									daily_load = total_assignment_hours * (
+										available_hours / total_available
+									)
 									period_key = date_to_period_key.get(date_str)
 									if not period_key:
 										continue
 		
-									role_result[period_key] = role_result.get(period_key, 0.0) + daily_hours_each
-									task_result[period_key] = task_result.get(period_key, 0.0) + daily_hours_each
+									role_result[period_key] = role_result.get(period_key, 0.0) + daily_load
+									task_result[period_key] = task_result.get(period_key, 0.0) + daily_load
 		
 						# Тип 2: В % от фонда рабочих часов
 						elif assignment.workload == 'В % от фонда рабочих часов':
