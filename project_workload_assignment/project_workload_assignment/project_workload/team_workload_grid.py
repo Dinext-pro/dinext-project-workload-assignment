@@ -1,5 +1,14 @@
 # Copyright (c) 2026, Dinext
-"""Сетка загрузки команды: ответ API get_projects_workload_data_v2 (бывший Exp_V2)."""
+"""Сетка загрузки команды: ответ API get_projects_workload_data_v2 (бывший Exp_V2).
+
+Ядро вынесено из Server Script в это приложение (ISS-2026-00865):
+`project_workload_assignment.project_workload_api.pwr_run_team_workload_grid` → этот модуль.
+Тонкие обёртки остаются в Server Script на сайте (api_method без тела расчёта).
+
+ISS-2026-00926: при merge DinextAgGrid не откатывать `_userHolidays` в project-row и пропорциональный
+сплит «В рабочих часах»; UI-календарь для % — в CS (`getHolidaysForRow`). См.
+`.issues/ISS-2026-00926/cross-ref-iss-2026-00865.md`.
+"""
 
 from typing import TypedDict, Literal
 from datetime import date, datetime
@@ -802,8 +811,9 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            date_from = frappe.utils.getdate(assignment['date_from'])
 		            date_to = frappe.utils.getdate(assignment['date_to'])
 		
-		            # Тип 1: В рабочих часах — пропорционально доступным часам каждого рабочего дня.
-		            # Сумма = wl_value; праздники/полные отсутствия исключаются; укороченные дни — через user_daily_hours.
+		            # Тип 1: В рабочих часах — пропорционально available_hours дня (не равный делитель по числу дней).
+		            # Сумма = wl_value; праздники/полные отсутствия исключаются; укороченные дни — user_daily_hours.
+		            # ISS-2026-00926: та же формула в V3 (single_project_workload_tree), если трогаете расчёт.
 		            if assignment['workload'] == 'В рабочих часах':
 		                total_assignment_hours = float(assignment['wl_value'] or 0)
 		                date_available = {}
@@ -1057,6 +1067,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            '_project': project_name,
 		            '_workingHours': user_daily_hours.get(user_email, {}),
 		            '_absences': user_absences.get(user_email, []),
+		            # ISS-2026-00865 #7: оба календаря в project-row; клиент объединяет для weekly/monthly %.
 		            '_userHolidays': holiday_lists_cache.get(user_info.get('wholiday_list', ''), []),
 		            '_projectHolidays': holiday_lists_cache.get(project_info.get('holiday_list', ''), [])
 		        }

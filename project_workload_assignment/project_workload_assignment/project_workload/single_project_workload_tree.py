@@ -1,5 +1,9 @@
 # Copyright (c) 2026, Dinext
-"""Дерево загрузки одного проекта: ответ API get_project_workload_data (бывший Server Script V3)."""
+"""Дерево загрузки одного проекта: ответ API get_project_workload_data (бывший Server Script V3).
+
+ISS-2026-00926: entrypoint `pwr_run_project_workload_tree` в project_workload_api; при правках расчёта
+сохранить паритет с team_workload_grid (пропорциональный сплит, см. ~873). Карта: cross-ref-iss-2026-00865.md.
+"""
 
 from typing import TypedDict, Literal
 from datetime import date
@@ -870,7 +874,7 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 						assignment_date_from = frappe.utils.getdate(assignment.date_from)
 						assignment_date_to = frappe.utils.getdate(assignment.date_to)
 		
-						# Тип 1: В рабочих часах — пропорционально доступным часам каждого рабочего дня.
+						# Тип 1: пропорционально available_hours дня (паритет с team_workload_grid, ISS-2026-00865).
 						if assignment.workload == 'В рабочих часах':
 							total_assignment_hours = float(assignment.wl_value or 0)
 							date_available = {}

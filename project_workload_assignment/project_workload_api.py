@@ -1,6 +1,10 @@
 # Copyright (c) 2026, Dinext
 """Whitelisted API для вызова из Server Script через frappe.call (RestrictedPython без import).
 
+ISS-2026-00865: расчёт PWR/PWE/прогноза — только здесь и в `project_workload.*` этого app.
+Server Script на сайте — тонкие обёртки (`frappe.call` на методы ниже), без копии ядра в `script`.
+ISS-2026-00926: новый DinextAgGrid UI не меняет эти entrypoints; не возвращать логику в dinext_common.
+
 Три точки входа (whitelist → api_method Server Script → модуль ядра):
 - pwr_run_team_workload_grid → get_projects_workload_data_v2 → team_workload_grid.run_get_projects_workload_data_v2
 - pwr_run_project_workload_tree → get_project_workload_data → single_project_workload_tree.run_get_project_workload_data
