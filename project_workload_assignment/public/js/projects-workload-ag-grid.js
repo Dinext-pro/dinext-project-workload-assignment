@@ -1,3 +1,15 @@
+/**
+ * Legacy PWR / Project workload AG Grid adapter (`ProjectsWorkloadAgGrid.Table`).
+ *
+ * ISS-2026-00865 (prod until ISS-2026-00926 DinextAgGrid ships). When porting to 00926, keep:
+ * - Tree: `toVisibleRows` + `expandedOnPath`, stable `getRowKey` (`user:email`, `project:…`).
+ * - UI: `participantColumnWidth` + `onColumnResized`; `syncAllToggleDom` / `refreshParticipantCells`
+ *   after `renderRows` (expand arrow vs visible children; width survives refresh / load-more).
+ * - Project tab: `getProjectWorkloadToggleIndent`, toggle `›` vs spacer (architect #9–10).
+ *
+ * PWR Python: `project_workload_assignment.project_workload.*` + `project_workload_api` (not dinext_common).
+ * Porting map: `.issues/ISS-2026-00926/cross-ref-iss-2026-00865.md`
+ */
 (function() {
     const BOOTSTRAP_JS = "/assets/dinext_common/js/ag-grid/bootstrap.js";
     let bootstrapPromise = null;
@@ -400,6 +412,7 @@
         return false;
     }
 
+    // ISS-2026-00865 / port to ISS-2026-00926: independent expand per branch (not one flag per indent level).
     function toVisibleRows(rows, table) {
         const visibleRows = [];
         const expandedOnPath = [];
@@ -538,6 +551,7 @@
             this.columns = options.columns || [];
             this.rows = options.data || [];
             this.expandedRows = new Set();
+            // ISS-2026-00865: survives refresh()/columnDefs rebuild and load-more (00926: same in preset/factory).
             this.participantColumnWidth = Number(options.participantWidth) || 220;
             this.loading = false;
             this.getRowLevel = typeof options.getRowLevel === "function"
