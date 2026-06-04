@@ -426,10 +426,21 @@
         return visibleRows;
     }
 
+    function getParticipantColumnWidth(table, column, isParticipant) {
+        if (!isParticipant) {
+            return Number(column.width) || 50;
+        }
+        const saved = Number(table.participantColumnWidth);
+        if (Number.isFinite(saved) && saved > 0) {
+            return saved;
+        }
+        return Number(column.width) || table.options.participantWidth || 220;
+    }
+
     function toAgColumn(column, index, table) {
         const field = column.id || column.name || `col_${index}`;
         const isParticipant = field === "participant" || index === 0;
-        const width = Number(column.width) || (isParticipant ? table.options.participantWidth || 220 : 50);
+        const width = getParticipantColumnWidth(table, column, isParticipant);
         const minWidth = Number(column.minWidth) || (isParticipant ? Math.min(width, 160) : width);
         const maxWidth = Number(column.maxWidth) || (isParticipant ? undefined : width);
 
@@ -527,6 +538,7 @@
             this.columns = options.columns || [];
             this.rows = options.data || [];
             this.expandedRows = new Set();
+            this.participantColumnWidth = Number(options.participantWidth) || 220;
             this.loading = false;
             this.getRowLevel = typeof options.getRowLevel === "function"
                 ? options.getRowLevel
@@ -558,13 +570,14 @@
                     this.expandedRows.clear();
                     this.renderRows({ forceFull: true });
                 },
-                openSingleNode: rowIndex => {
-                    const row = this.rows[rowIndex];
+                openSingleNode: rowIndexOrKey => {
+                    const row = this.findRowByIndexOrKey(rowIndexOrKey);
                     if (!row) return;
-                    const rowKey = this.getRowKey(row, rowIndex);
+                    const rowIndex = this.findRowIndex(row);
+                    const rowKey = this.getRowKey(row, rowIndex >= 0 ? rowIndex : 0);
                     this.expandedRows.add(rowKey);
                     this.renderRows();
-                    this.syncToggleDomByRowKey(rowKey, true);
+                    this.scheduleToggleDomSync();
                 },
             };
 
@@ -587,7 +600,9 @@
                     this.api = params.api;
                     this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
                     this.renderRows();
+                    this.applyParticipantColumnWidth();
                 },
+                onColumnResized: params => this.handleColumnResized(params),
                 onCellClicked: params => this.handleCellClick(params),
                 onCellDoubleClicked: params => this.handleCellDoubleClick(params)
             };
@@ -616,6 +631,94 @@
             const columnDefs = this.columns.map((column, index) => toAgColumn(column, index, this));
             this.setGridOption("columnDefs", columnDefs);
             this.renderRows({ forceFull: true });
+            this.applyParticipantColumnWidth();
+        }
+
+        findRowByIndexOrKey(rowIndexOrKey) {
+            if (typeof rowIndexOrKey === "number" && Number.isFinite(rowIndexOrKey)) {
+                return this.rows[rowIndexOrKey] || null;
+            }
+            const targetKey = String(rowIndexOrKey || "");
+            if (!targetKey) return null;
+            for (let i = 0; i < this.rows.length; i++) {
+                const row = this.rows[i];
+                if (!row) continue;
+                if (this.getRowKey(row, i) === targetKey) {
+                    return row;
+                }
+            }
+            return null;
+        }
+
+        handleColumnResized(params) {
+            if (!params || !params.finished) return;
+            const col = params.column;
+            if (!col || col.getColId() !== "participant") return;
+            const width = col.getActualWidth();
+            if (Number.isFinite(width) && width > 0) {
+                this.participantColumnWidth = width;
+            }
+        }
+
+        applyParticipantColumnWidth() {
+            if (!this.api || !this.participantColumnWidth) return;
+            const width = this.participantColumnWidth;
+            if (typeof this.api.setColumnWidths === "function") {
+                this.api.setColumnWidths([{ key: "participant", newWidth: width }]);
+                return;
+            }
+            const col = typeof this.api.getColumn === "function"
+                ? this.api.getColumn("participant")
+                : null;
+            if (col && typeof col.setWidth === "function") {
+                col.setWidth(width);
+            }
+        }
+
+        scheduleToggleDomSync() {
+            if (this._toggleDomSyncScheduled) return;
+            this._toggleDomSyncScheduled = true;
+            requestAnimationFrame(() => {
+                this._toggleDomSyncScheduled = false;
+                this.syncAllToggleDom();
+            });
+        }
+
+        syncAllToggleDom() {
+            if (!this.api || typeof this.api.forEachNode !== "function") return;
+
+            this.api.forEachNode(node => {
+                const row = node.data;
+                if (!row) return;
+
+                const rowIndex = this.findRowIndex(row);
+                if (!this.isRowExpandable(row, rowIndex)) return;
+
+                const rowKey = this.getRowKey(row, rowIndex >= 0 ? rowIndex : 0);
+                const rowId = row._agRowId || rowKey;
+                const expanded = this.expandedRows.has(rowKey);
+                const rowEl = this.container.querySelector(
+                    `.ag-row[row-id="${CSS.escape(String(rowId))}"]`
+                );
+                if (!rowEl) return;
+
+                const toggle = rowEl.querySelector(".projects-workload-ag-grid-toggle");
+                if (toggle) {
+                    toggle.classList.toggle("is-expanded", expanded);
+                }
+            });
+        }
+
+        refreshParticipantCells() {
+            if (!this.api) return;
+            if (typeof this.api.refreshCells === "function") {
+                this.api.refreshCells({
+                    columns: ["participant"],
+                    force: true
+                });
+                return;
+            }
+            this.scheduleToggleDomSync();
         }
 
         renderRows(options = {}) {
@@ -666,16 +769,21 @@
                     this.api.applyTransaction(tx);
                     this._visibleRowIdList = nextIdList;
                     this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
+                    this.refreshParticipantCells();
+                    this.scheduleToggleDomSync();
                     return;
                 }
 
                 this._visibleRowIdList = nextIdList;
+                this.scheduleToggleDomSync();
                 return;
             }
 
             this.setGridOption("rowData", visibleRows);
             this._visibleRowIdList = nextIdList;
             this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
+            this.refreshParticipantCells();
+            this.scheduleToggleDomSync();
         }
 
         syncToggleDomByRowKey(rowKey, expanded) {
@@ -832,12 +940,10 @@
                 if (this.expandedRows.has(rowKey)) {
                     this.expandedRows.delete(rowKey);
                     this.renderRows();
-                    this.syncToggleDomFromClick(params, false);
                     return;
                 }
                 this.expandedRows.add(rowKey);
                 this.renderRows();
-                this.syncToggleDomFromClick(params, true);
                 window.loadProjectDetailsForUser(window.cur_frm, row);
                 return;
             }
@@ -849,7 +955,6 @@
                 this.expandedRows.delete(rowKey);
             }
             this.renderRows();
-            this.syncToggleDomFromClick(params, expanded);
         }
 
         handleCellDoubleClick(params) {
