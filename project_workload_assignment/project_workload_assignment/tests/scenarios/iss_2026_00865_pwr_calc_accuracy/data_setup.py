@@ -196,6 +196,10 @@ def reset_owned_data() -> None:
 	if frappe.db.exists("Project Role", ROLE_NAME):
 		frappe.delete_doc("Project Role", ROLE_NAME, force=True, ignore_permissions=True)
 
+	for portfolio_name in (PORTFOLIO_A_NAME, PORTFOLIO_B_NAME):
+		if frappe.db.exists("Project Portfolio", portfolio_name):
+			frappe.delete_doc("Project Portfolio", portfolio_name, force=True, ignore_permissions=True)
+
 
 def ensure_project_role() -> str:
 	if not frappe.db.exists("Project Role", ROLE_NAME):
@@ -240,10 +244,32 @@ def _create_holiday_list_for_weekend_rows(company: str) -> str:
 	return doc.name
 
 
-def _create_project(company: str, holiday_list: str | None) -> str:
+def _ensure_project_portfolio(name: str) -> str:
+	if not frappe.db.exists("DocType", "Project Portfolio"):
+		frappe.throw("DocType Project Portfolio не установлен — нужен dinext_projects")
+	if frappe.db.exists("Project Portfolio", name):
+		return name
+	frappe.get_doc(
+		{
+			"doctype": "Project Portfolio",
+			"name": name,
+			"status": "Активный",
+		}
+	).insert(ignore_permissions=True)
+	return name
+
+
+def _create_project(
+	company: str,
+	holiday_list: str | None,
+	*,
+	project_name: str | None = None,
+	project_id: str | None = None,
+	project_portfolio: str | None = None,
+) -> str:
 	# На bench с dinext_projects у Project autoname = prompt — без явного name insert падает.
-	project_name = f"{PREFIX} Project"
-	project_id = f"{PREFIX}-PRJ"
+	project_name = project_name or f"{PREFIX} Project"
+	project_id = project_id or f"{PREFIX}-PRJ"
 	existing = frappe.get_all(
 		"Project",
 		filters={"project_name": project_name},
@@ -255,6 +281,14 @@ def _create_project(company: str, holiday_list: str | None) -> str:
 		pname = existing[0]
 		if holiday_list:
 			frappe.db.set_value("Project", pname, "holiday_list", holiday_list, update_modified=False)
+		if project_portfolio:
+			frappe.db.set_value(
+				"Project",
+				pname,
+				"custom_project_portfolio",
+				project_portfolio,
+				update_modified=False,
+			)
 		return pname
 
 	pt = _default_project_type_name()
@@ -277,6 +311,7 @@ def _create_project(company: str, holiday_list: str | None) -> str:
 			"expected_start_date": WEEK_START,
 			"expected_end_date": WEEK_END,
 			"holiday_list": holiday_list,
+			"custom_project_portfolio": project_portfolio,
 		}
 	)
 	p.insert(ignore_permissions=True)
@@ -530,6 +565,8 @@ def prepare_case_two_users_hours_for_pagination(
 
 LEAVE_MARK_TC09 = f"{PREFIX} TC-09 full day"
 USER_GROUP_NAME = f"{PREFIX}-UG"
+PORTFOLIO_A_NAME = f"{PREFIX}-Portfolio-A"
+PORTFOLIO_B_NAME = f"{PREFIX}-Portfolio-B"
 
 
 def try_create_application_for_leave_tc09(
@@ -560,6 +597,47 @@ def try_create_application_for_leave_tc09(
 	doc.flags.ignore_validate = True
 	doc.insert(ignore_permissions=True)
 	return doc.name
+
+
+def prepare_case_project_portfolio_filters_other_project() -> dict[str, str]:
+	"""Два проекта в разных портфелях: фильтр project_portfolio оставляет только назначения своего проекта."""
+	if not frappe.db.exists("DocType", "Project Portfolio"):
+		frappe.throw("DocType Project Portfolio не установлен")
+	_detach_admin_worker_holiday_list()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company для PWR portfolio case")
+	portfolio_a = _ensure_project_portfolio(PORTFOLIO_A_NAME)
+	portfolio_b = _ensure_project_portfolio(PORTFOLIO_B_NAME)
+	project_a = _create_project(
+		company,
+		None,
+		project_name=f"{PREFIX} Project A",
+		project_id=f"{PREFIX}-PRJ-A",
+		project_portfolio=portfolio_a,
+	)
+	project_b = _create_project(
+		company,
+		None,
+		project_name=f"{PREFIX} Project B",
+		project_id=f"{PREFIX}-PRJ-B",
+		project_portfolio=portfolio_b,
+	)
+	task_a = _create_task(project_a, "Portfolio A")
+	task_b = _create_task(project_b, "Portfolio B")
+	pwa_a = _create_pwa(task_a, 30.0)
+	pwa_b = _create_pwa(task_b, 15.0)
+	return {
+		"company": company,
+		"portfolio_a": portfolio_a,
+		"portfolio_b": portfolio_b,
+		"project_a": project_a,
+		"project_b": project_b,
+		"task_a": task_a,
+		"task_b": task_b,
+		"pwa_a": pwa_a,
+		"pwa_b": pwa_b,
+	}
 
 
 def prepare_case_user_group_excludes_second_user() -> dict[str, str]:

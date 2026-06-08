@@ -65,6 +65,7 @@ def build_pwr_assignment_base_query(
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> tuple[Any, Any, Any]:
@@ -80,6 +81,11 @@ def build_pwr_assignment_base_query(
 	if user_group_parent and use_sql_user_group_join:
 		UGM = frappe.qb.DocType("User Group Member")
 		q = q.inner_join(UGM).on((UGM.parent == user_group_parent) & (UGM.user == PWA.user))
+
+	if project_portfolio:
+		Project = frappe.qb.DocType("Project")
+		q = q.inner_join(Project).on(Task.project == Project.name)
+		q = q.where(Project.custom_project_portfolio == project_portfolio)
 
 	q = (
 		q.where(PWA.user.isnotnull())
@@ -104,6 +110,7 @@ def fetch_pwr_report_assignments(
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 	restrict_users: list[str] | None = None,
@@ -114,6 +121,7 @@ def fetch_pwr_report_assignments(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -143,6 +151,7 @@ def count_pwr_report_distinct_users(
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> int:
@@ -151,6 +160,7 @@ def count_pwr_report_distinct_users(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -168,6 +178,7 @@ def fetch_pwr_report_user_page(
 	offset: int,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> list[str]:
@@ -176,6 +187,7 @@ def fetch_pwr_report_user_page(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -203,6 +215,7 @@ def fetch_pwr_user_totals_bundle(
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> UserTotalsBundle:
@@ -214,6 +227,7 @@ def fetch_pwr_user_totals_bundle(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -224,6 +238,7 @@ def fetch_pwr_user_totals_bundle(
 		offset=off,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -234,6 +249,7 @@ def fetch_pwr_user_totals_bundle(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 		restrict_users=page_users,

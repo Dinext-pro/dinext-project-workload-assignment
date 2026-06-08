@@ -22,6 +22,7 @@ class TeamWorkloadFormDict(TypedDict, total=False):
 	"""Параметры запроса из frappe.form_dict."""
 	user: str | None
 	project: str | None
+	project_portfolio: str | None
 	user_group: str | None
 	view_type: Literal['daily', 'weekly', 'monthly']
 	period_range: Literal['quarter', 'half_year', 'year']
@@ -205,6 +206,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		# ISS-2026-00865 V2: режимы нужны для первичной загрузки пользователей и lazy-load проектов.
 		user = fd.get('user')
 		project = fd.get('project')
+		project_portfolio = fd.get('project_portfolio')
 		user_group = fd.get('user_group')
 		view_type = fd.get('view_type', 'daily')
 		period_range = fd.get('period_range', 'quarter')
@@ -230,8 +232,8 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    # Для детализации считаем только одного пользователя, сохраняя остальные фильтры.
 		    user = detail_user
 		
-		frappe.log("Filter values - user: " + str(user) + ", project: " + str(project) + ", user_group: " + str(user_group) + ", mode: " + str(mode))
-		perf_log("PARAMS mode=" + str(mode) + ", limit=" + str(limit) + ", offset=" + str(offset) + ", detail_user=" + str(detail_user) + ", view_type=" + str(view_type) + ", period_range=" + str(period_range) + ", user=" + str(user) + ", project=" + str(project) + ", user_group=" + str(user_group))
+		frappe.log("Filter values - user: " + str(user) + ", project: " + str(project) + ", project_portfolio: " + str(project_portfolio) + ", user_group: " + str(user_group) + ", mode: " + str(mode))
+		perf_log("PARAMS mode=" + str(mode) + ", limit=" + str(limit) + ", offset=" + str(offset) + ", detail_user=" + str(detail_user) + ", view_type=" + str(view_type) + ", period_range=" + str(period_range) + ", user=" + str(user) + ", project=" + str(project) + ", project_portfolio=" + str(project_portfolio) + ", user_group=" + str(user_group))
 		
 		# ISS-2026-00865 V2: для user_totals сначала выбираем только страницу пользователей,
 		# а затем грузим назначения только по этой странице. Детализация проектов остается
@@ -276,6 +278,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        offset,
 		        user=user,
 		        project=project,
+		        project_portfolio=project_portfolio,
 		        user_group_parent=user_group,
 		        use_sql_user_group_join=use_join,
 		    )
@@ -301,6 +304,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        we,
 		        user=user,
 		        project=project,
+		        project_portfolio=project_portfolio,
 		        user_group_parent=user_group,
 		        use_sql_user_group_join=bool(use_sql_ug),
 		        restrict_users=None,

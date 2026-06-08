@@ -37,6 +37,7 @@ from .data_setup import (
 	prepare_case_percent_fund_without_holiday_list,
 	prepare_case_percent_task_effort,
 	prepare_case_two_users_hours_for_pagination,
+	prepare_case_project_portfolio_filters_other_project,
 	prepare_case_user_group_excludes_second_user,
 	reset_owned_data,
 	SECOND_USER_EMAIL,
@@ -482,6 +483,29 @@ class TestISS202600865PwrCalcAccuracy(FrappeTestCase):
 			float(golden["week_daily_sum"]),
 			delta=float(golden.get("week_daily_sum_delta", 0.25)),
 		)
+
+	def test_tc15_project_portfolio_filters_assignments(self):
+		"""project_portfolio оставляет назначения только проектов выбранного портфеля."""
+		if not frappe.db.exists("DocType", "Project Portfolio"):
+			self.skipTest("DocType Project Portfolio не установлен")
+		ctx = prepare_case_project_portfolio_filters_other_project()
+		base = {
+			"mode": "full",
+			"view_type": "daily",
+			"period_range": "quarter",
+		}
+		with patch.object(frappe.utils, "nowdate", return_value=ANCHOR_MONDAY):
+			frappe.set_user(BUSINESS_USER)
+			out_all = run_get_projects_workload_data_v2(base)
+			out_a = run_get_projects_workload_data_v2({**base, "project_portfolio": ctx["portfolio_a"]})
+			out_b = run_get_projects_workload_data_v2({**base, "project_portfolio": ctx["portfolio_b"]})
+		self.assertGreater(int(out_all.get("assignments_count") or 0), 0)
+		row_a = _find_team_v2_user_row(out_a.get("tree_data") or [], BUSINESS_USER)
+		row_b = _find_team_v2_user_row(out_b.get("tree_data") or [], BUSINESS_USER)
+		self.assertIsNotNone(row_a)
+		self.assertIsNotNone(row_b)
+		self.assertAlmostEqual(_parse_float_cell(row_a.get("workload_total")), 30.0, delta=0.35)
+		self.assertAlmostEqual(_parse_float_cell(row_b.get("workload_total")), 15.0, delta=0.35)
 
 	def test_tc14_user_group_filters_second_user_full_and_user_totals(self):
 		"""user_group только с Administrator: в full одна строка пользователя ~40 ч; user_totals + SQL join — total_users=1."""
