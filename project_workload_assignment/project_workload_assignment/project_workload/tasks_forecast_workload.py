@@ -356,6 +356,52 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
     
 
+    plan_cache = {}
+
+    plan_query = (
+
+        frappe.qb.from_(PWE)
+
+        .left_join(PWEA)
+
+        .on(PWEA.parent == PWE.name)
+
+        .select(
+
+            PWE.pwe_task.as_('task'),
+
+            PWE.pwe_project_role.as_('role'),
+
+            PWEA.pwea_year.as_('year'),
+
+            PWEA.pwea_month.as_('month'),
+
+            PWEA.pwea_plan.as_('plan_hours')
+
+        )
+
+        .where(PWE.pwe_project == project)
+
+        .where(PWEA.pwea_plan.isnotnull())
+
+        .where(PWEA.pwea_plan > 0)
+
+    )
+
+    for row in plan_query.run(as_dict=True):
+
+        if row.get('year') and row.get('month'):
+
+            month = int(row.get('month'))
+
+            key = f"{row.get('task')}_{row.get('role')}_{row.get('year')}_{month}"
+
+            plan_cache[key] = float(row.get('plan_hours', 0))
+
+    debug_log(f"Plan cache size: {len(plan_cache)}")
+
+    
+
     # ========== 3. ПОЛУЧАЕМ ВСЕ НАЗНАЧЕНИЯ (PWA) ==========
 
     debug_log("=== STEP 4: GET ASSIGNMENTS (PWA) ===")
@@ -840,9 +886,9 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
     
 
-    def calculate_effort_percentage_workload(assignment, period, forecast_hours):
+    def calculate_effort_percentage_workload(assignment, period, plan_hours):
 
-        if not forecast_hours or forecast_hours <= 0:
+        if not plan_hours or plan_hours <= 0:
 
             return 0
 
@@ -858,7 +904,7 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             return 0
 
-        base_daily = forecast_hours / working_days
+        base_daily = plan_hours / working_days
 
         return percentage * base_daily * working_days
 
@@ -1078,9 +1124,11 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
                 if workload_type == 'В % от трудоемкости задачи':
 
-                    if forecast_hours > 0:
+                    plan_hours = plan_cache.get(forecast_key, 0)
 
-                        assigned = calculate_effort_percentage_workload(assignment, period, forecast_hours)
+                    if plan_hours > 0:
+
+                        assigned = calculate_effort_percentage_workload(assignment, period, plan_hours)
 
                     else:
 
