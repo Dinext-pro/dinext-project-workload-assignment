@@ -365,6 +365,52 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
     
 
+    plan_cache = {}
+
+    plan_query = (
+
+        frappe.qb.from_(PWE)
+
+        .left_join(PWEA)
+
+        .on(PWEA.parent == PWE.name)
+
+        .select(
+
+            PWE.pwe_task.as_('task'),
+
+            PWE.pwe_project_role.as_('role'),
+
+            PWEA.pwea_year.as_('year'),
+
+            PWEA.pwea_month.as_('month'),
+
+            PWEA.pwea_plan.as_('plan_hours')
+
+        )
+
+        .where(PWE.pwe_project == project)
+
+        .where(PWEA.pwea_plan.isnotnull())
+
+        .where(PWEA.pwea_plan > 0)
+
+    )
+
+    for row in plan_query.run(as_dict=True):
+
+        if row.get('year') and row.get('month'):
+
+            month = int(row.get('month'))
+
+            key = f"{row.get('task')}_{row.get('role')}_{row.get('year')}_{month}"
+
+            plan_cache[key] = float(row.get('plan_hours', 0))
+
+    debug_log(f"Plan cache size: {len(plan_cache)}")
+
+    
+
     # ========== 3. ПОЛУЧАЕМ ВСЕ НАЗНАЧЕНИЯ (PWA) ==========
 
     debug_log("=== STEP 4: GET ASSIGNMENTS (PWA) ===")
