@@ -11,6 +11,7 @@ from project_workload_assignment.project_workload_assignment.project_workload.as
 	fetch_flat_report_assignments,
 )
 from project_workload_assignment.project_workload_assignment.project_workload.context_loaders import (
+	filter_assignments_by_permitted_workers,
 	load_holiday_data,
 	load_monthly_plan_cache,
 	load_projects,
@@ -58,6 +59,7 @@ def get_data(filters: dict | None) -> list[dict]:
 		task=filters.get("task"),
 		user_group_parent=filters.get("user_group"),
 	)
+	assignments = filter_assignments_by_permitted_workers(assignments)
 	if not assignments:
 		return []
 

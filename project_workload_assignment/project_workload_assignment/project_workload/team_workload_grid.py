@@ -322,7 +322,25 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		                'projects_count': 0, 'assignments_count': 0,
 		                'message': 'No assignments after group filter'
 		            }
-		
+
+		# Worker DocPerm: оставляем назначения только по видимым Worker.wuser.
+		from project_workload_assignment.project_workload_assignment.project_workload.context_loaders import (
+		    filter_assignments_by_permitted_workers,
+		)
+		perf_section_start = perf_start("Filter assignments by permitted Worker")
+		assignments_before_worker_filter = len(assignments)
+		assignments = filter_assignments_by_permitted_workers(assignments)
+		perf_end(
+		    "Filter assignments by permitted Worker",
+		    perf_section_start,
+		    "before=" + str(assignments_before_worker_filter) + ", after=" + str(len(assignments)),
+		)
+		if not assignments:
+		    return {
+		        'tree_data': [], 'periods': [], 'users_count': 0,
+		        'projects_count': 0, 'assignments_count': 0,
+		        'message': 'No assignments after worker permission filter',
+		    }
 		
 		frappe.log("Found " + str(len(assignments)) + " assignments")
 		
@@ -377,6 +395,11 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		users_list.sort()
 		projects_list = list(projects_set.keys())
 		projects_list.sort()
+		if user_totals_sql_paged:
+		    page_users = users_list
+		    total_users = len(users_list)
+		    has_more = False
+		    next_offset = None
 		perf_log("PAGING total_users=" + str(total_users) + ", returned_users=" + str(len(users_list)) + ", has_more=" + str(has_more) + ", next_offset=" + str(next_offset))
 		
 		# ========== 2–3. КОНТЕКСТ РАСЧЁТА (общие loaders) ==========
