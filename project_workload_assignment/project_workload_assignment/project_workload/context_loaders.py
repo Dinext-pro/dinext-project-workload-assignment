@@ -31,11 +31,12 @@ def _debug_loader(event: str, details: dict) -> None:
 
 
 def get_permitted_worker_users(candidate_users: list[str]) -> set[str]:
-	"""Worker.wuser, видимые текущему пользователю (frappe.get_all + DocPerm)."""
+	"""Worker.wuser, видимые текущему пользователю (get_list + DocType Permission)."""
 	if not candidate_users:
 		return set()
+	# get_all не применяет permission_query_conditions; get_list — применяет.
 	return set(
-		frappe.get_all(
+		frappe.get_list(
 			"Worker",
 			filters={"wuser": ["in", candidate_users]},
 			pluck="wuser",
@@ -82,7 +83,7 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 		.where(User.enabled == 1)
 	).run(as_dict=True)
 
-	workers_db = frappe.get_all(
+	workers_db = frappe.get_list(
 		"Worker",
 		filters={"wuser": ["in", users_list]},
 		fields=["wuser", "wholiday_list", "wtimesheet_template"],
@@ -109,7 +110,7 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 			"missing_qb_user_count": len(missing_qb_user),
 			"missing_qb_user_sample": missing_qb_user[:10],
 			"note": (
-				"permission_workers — frappe.get_all(Worker) с DocPerm; "
+				"permission_workers — frappe.get_list(Worker) с DocType Permission; "
 				"назначения должны быть отфильтрованы через filter_assignments_by_permitted_workers"
 			),
 		},
