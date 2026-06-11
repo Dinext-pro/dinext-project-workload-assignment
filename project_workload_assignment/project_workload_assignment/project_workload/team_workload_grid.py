@@ -15,6 +15,17 @@ from datetime import date, datetime
 
 import frappe
 
+from project_workload_assignment.project_workload_assignment.project_workload.types import (
+	AbsenceEntry,
+	HolidayEntry,
+	ProjectWorkloadInfo,
+	UserWorkloadInfo,
+)
+
+# Алиасы для обратной совместимости TypedDict в этом модуле.
+UserInfo = UserWorkloadInfo
+ProjectInfo = ProjectWorkloadInfo
+
 
 # ==================== TypedDict определения ====================
 
@@ -68,41 +79,6 @@ class UserDataSummary(TypedDict):
 	user_image: str | None
 	email: str
 	name: str
-
-
-class AbsenceEntry(TypedDict):
-	"""Запись отсутствия."""
-	from_date: date | str
-	to_date: date | str
-	type: str
-	alfrom_hours: float | None
-	alto_hours: float | None
-
-
-class HolidayEntry(TypedDict):
-	"""Запись праздника."""
-	date: str
-	description: str | None
-	weekly_off: bool | None
-
-
-class UserInfo(TypedDict):
-	"""Информация о пользователе."""
-	name: str
-	full_name: str
-	user_image: str | None
-	email: str
-	wholiday_list: str | None
-	wtimesheet_template: str | None
-	hours_on_date: float | None
-	tt_working_hours_on_date: str | None
-
-
-class ProjectInfo(TypedDict):
-	"""Информация о проекте."""
-	name: str
-	project_name: str
-	holiday_list: str | None
 
 
 class TreeDataUserRow(TypedDict, total=False):
@@ -403,200 +379,33 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		projects_list.sort()
 		perf_log("PAGING total_users=" + str(total_users) + ", returned_users=" + str(len(users_list)) + ", has_more=" + str(has_more) + ", next_offset=" + str(next_offset))
 		
-		# ========== 2. ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА ДАННЫХ ==========
-		
-		# 2.1 Данные пользователей
-		users_data = {}
-		if users_list:
-		    perf_section_start = perf_start("SQL users/workers/timesheet templates")
-		    User = frappe.qb.DocType("User")
-		    Worker = frappe.qb.DocType("Worker")
-		    TS = frappe.qb.DocType("Timesheet Template")
-		    users_db = (
-		        frappe.qb.from_(User)
-		        .left_join(Worker)
-		        .on(User.name == Worker.wuser)
-		        .left_join(TS)
-		        .on(Worker.wtimesheet_template == TS.name)
-		        .select(
-		            User.name,
-		            User.full_name,
-		            User.user_image,
-		            User.email,
-		            Worker.wholiday_list,
-		            Worker.wtimesheet_template,
-		            TS.hours_on_date,
-		            TS.tt_working_hours_on_date,
-		        )
-		        .where(User.name.isin(users_list))
-		        .where(User.enabled == 1)
-		    ).run(as_dict=True)
-		    perf_end("SQL users/workers/timesheet templates", perf_section_start, "users_filter=" + str(len(users_list)) + ", rows=" + str(len(users_db)))
-		    for u in users_db:
-		        users_data[u['name']] = u
-		
-		# 2.2 Данные проектов
-		projects_data = {}
-		if projects_list:
-		    perf_section_start = perf_start("SQL projects")
-		    projects_db = frappe.qb.get_query(
-		        "Project",
-		        fields=["name", "project_name", "holiday_list"],
-		        filters=[["name", "in", projects_list]],
-		    ).run(as_dict=True)
-		    perf_end("SQL projects", perf_section_start, "projects_filter=" + str(len(projects_list)) + ", rows=" + str(len(projects_db)))
-		    for p in projects_db:
-		        projects_data[p['name']] = p
-		
-		# ========== 3. ЗАГРУЗКА СПРАВОЧНИКОВ ==========
-		
-		# 3.1 Working Hours Override
-		working_hours_overrides = {}
-		working_hours_refs = {}
-		for user_data in users_data.values():
-		    if user_data.get('tt_working_hours_on_date'):
-		        working_hours_refs[user_data['tt_working_hours_on_date']] = True
-		
-		if working_hours_refs:
-		    ref_list = list(working_hours_refs.keys())
-		    perf_section_start = perf_start("SQL working hours overrides")
-		    overrides = frappe.qb.get_query(
-		        "Working Hours Table",
-		        fields=["parent as ref_name", "wht_date", "wht_hours"],
-		        filters=[
-		            ["parent", "in", ref_list],
-		            ["parentfield", "=", "hod_working_hours_table"],
-		            ["parenttype", "=", "Working Hours On Date"],
-		        ],
-		    ).run(as_dict=True)
-		    perf_end("SQL working hours overrides", perf_section_start, "refs=" + str(len(ref_list)) + ", rows=" + str(len(overrides)))
-		    for row in overrides:
-		        if row.ref_name not in working_hours_overrides:
-		            working_hours_overrides[row.ref_name] = {}
-		        if row.wht_date:
-		            working_hours_overrides[row.ref_name][str(row.wht_date)] = float(row.wht_hours or 0)
-		
-		# 3.2 Holiday Lists
-		holiday_lists_cache = {}
-		# ISS-2026-00865: дополнительный set-cache только для быстрого lookup;
-		# response по-прежнему использует списки holiday_lists_cache.
-		holiday_date_sets = {}
-		all_holiday_lists = {}
-		
-		# Собираем все holiday lists
-		for project in projects_data.values():
-		    if project.get('holiday_list'):
-		        all_holiday_lists[project['holiday_list']] = True
-		
-		for user in users_data.values():
-		    if user.get('wholiday_list'):
-		        all_holiday_lists[user['wholiday_list']] = True
-		
-		if all_holiday_lists:
-		    holiday_list = list(all_holiday_lists.keys())
-		    perf_section_start = perf_start("SQL holidays")
-		    holidays = frappe.qb.get_query(
-		        "Holiday",
-		        fields=["parent as list_name", "holiday_date", "description", "weekly_off"],
-		        filters=[
-		            ["parent", "in", holiday_list],
-		            ["parentfield", "=", "holidays"],
-		            ["parenttype", "=", "Holiday List"],
-		        ],
-		    ).run(as_dict=True)
-		    perf_end("SQL holidays", perf_section_start, "holiday_lists=" + str(len(holiday_list)) + ", rows=" + str(len(holidays)))
-		    for row in holidays:
-		        if row.list_name not in holiday_lists_cache:
-		            holiday_lists_cache[row.list_name] = []
-		            holiday_date_sets[row.list_name] = {}
-		
-		        holiday_item = {
-		            'date': str(row.holiday_date),
-		            'description': row.description,
-		            'weekly_off': row.weekly_off
-		        }
-		        holiday_lists_cache[row.list_name].append(holiday_item)
-		        holiday_date_sets[row.list_name][str(row.holiday_date)] = True
-		
-		# 3.3 Отсутствия
-		user_absences = {}
-		if users_list:
-		    today = frappe.utils.nowdate()
-		    perf_section_start = perf_start("SQL absences")
-		    absences = frappe.qb.get_query(
-		        "Application For Leave",
-		        fields=[
-		            "lauser",
-		            "alfrom_date",
-		            "alto_date",
-		            "altype_of_leave",
-		            "alfrom_hours",
-		            "alto_hours",
-		        ],
-		        filters=[
-		            ["lauser", "in", users_list],
-		            ["status", "=", "Согласовано"],
-		            ["alfrom_date", "is", "set"],
-		            ["alto_date", "is", "set"],
-		            ["alto_date", ">=", today],
-		        ],
-		    ).run(as_dict=True)
-		    perf_end("SQL absences", perf_section_start, "users=" + str(len(users_list)) + ", rows=" + str(len(absences)))
-		    for absence in absences:
-		        user_email = absence.lauser
-		        if user_email not in user_absences:
-		            user_absences[user_email] = []
-		
-		        absence_item = {
-		            'from_date': absence.alfrom_date,
-		            'to_date': absence.alto_date,
-		            'type': absence.altype_of_leave,
-		            'alfrom_hours': absence.alfrom_hours,
-		            'alto_hours': absence.alto_hours
-		        }
-		        user_absences[user_email].append(absence_item)
-		
-		# 3.4 Плановые часы (Project Work Efforts)
-		monthly_plan_cache = {}
-		# ISS-2026-00865: раньше здесь был N+1, отдельный SQL на каждую пару task+role.
-		# Для сохранения результата ключ cache остается тем же: task_role_year_month.
-		task_role_pairs = {}
-		tasks_set = {}
-		roles_set = {}
-		for assignment in assignments:
-		    if assignment.get('task') and assignment.get('role'):
-		        pair_key = assignment['task'] + "\n" + assignment['role']
-		        task_role_pairs[pair_key] = True
-		        tasks_set[assignment['task']] = True
-		        roles_set[assignment['role']] = True
-		
-		if task_role_pairs:
-		    task_list = list(tasks_set.keys())
-		    role_list = list(roles_set.keys())
-		    perf_section_start = perf_start("SQL project work efforts batch")
-		    PWE = frappe.qb.DocType("Project Work Efforts")
-		    PWEA = frappe.qb.DocType("Project Work Efforts Amount")
-		    plans = (
-		        frappe.qb.from_(PWE)
-		        .inner_join(PWEA)
-		        .on(PWEA.parent == PWE.name)
-		        .select(
-		            PWE.pwe_task.as_("task"),
-		            PWE.pwe_project_role.as_("role"),
-		            PWEA.pwea_year.as_("year"),
-		            PWEA.pwea_month.as_("month"),
-		            PWEA.pwea_plan.as_("plan_hours"),
-		        )
-		        .where(PWE.pwe_task.isin(task_list))
-		        .where(PWE.pwe_project_role.isin(role_list))
-		        .where(PWEA.pwea_plan > 0)
-		    ).run(as_dict=True)
-		    for plan in plans:
-		        key = plan['task'] + "_" + plan['role'] + "_" + str(plan['year']) + "_" + str(plan['month'])
-		        monthly_plan_cache[key] = float(plan['plan_hours'] or 0)
-		    perf_end("SQL project work efforts batch", perf_section_start, "task_roles=" + str(len(task_role_pairs)) + ", tasks=" + str(len(task_list)) + ", roles=" + str(len(role_list)) + ", rows=" + str(len(plans)) + ", cache=" + str(len(monthly_plan_cache)))
-		else:
-		    perf_log("SKIP SQL project work efforts batch | task_roles=0")
+		# ========== 2–3. КОНТЕКСТ РАСЧЁТА (общие loaders) ==========
+		from project_workload_assignment.project_workload_assignment.project_workload.context_loaders import (
+		    load_holiday_data,
+		    load_monthly_plan_cache,
+		    load_projects,
+		    load_user_absences,
+		    load_users_with_worker_context,
+		    load_working_hours_overrides,
+		)
+		from project_workload_assignment.project_workload_assignment.project_workload.workload_engine import (
+		    WorkloadContext,
+		)
+
+		perf_section_start = perf_start("Load workload context")
+		users_data = load_users_with_worker_context(users_list)
+		projects_data = load_projects(projects_list)
+		working_hours_overrides = load_working_hours_overrides(users_data)
+		holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
+		user_absences = load_user_absences(users_list)
+		monthly_plan_cache = load_monthly_plan_cache(assignments)
+		perf_end(
+		    "Load workload context",
+		    perf_section_start,
+		    "users=" + str(len(users_data))
+		    + ", projects=" + str(len(projects_data))
+		    + ", plans=" + str(len(monthly_plan_cache)),
+		)
 		
 		# ========== 4. ПЕРИОДЫ ==========
 		# periods уже сгенерированы в начале run (generate_periods_for_pwr_report); повторная генерация не нужна.
@@ -611,353 +420,97 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    date_to_period_key = {}
 		perf_end("Build date_to_period_key", perf_section_start, "dates=" + str(len(date_to_period_key)))
 		
-		# ========== 5. ПРЕДВАРИТЕЛЬНЫЕ ВЫЧИСЛЕНИЯ ==========
-		
-		# 5.1 Кэш рабочих часов пользователей по дням
+		# ========== 5–6. РАСЧЁТ НАГРУЗКИ (WorkloadContext) ==========
 		perf_section_start = perf_start("Precompute user daily hours")
-		user_daily_hours = {}
-		user_daily_hours_dates_count = 0
-		for user_email in users_list:
-		    user_data = users_data.get(user_email, {})
-		    base_hours = 8.0
-		    if user_data.get('hours_on_date'):
-		        base_hours = float(user_data['hours_on_date'])
-		
-		    working_hours_ref = user_data.get('tt_working_hours_on_date')
-		
-		    hours_dict = {}
-		    # Предвычисляем часы для всех дат во всех периодах
-		    for period in periods:
-		        if view_type == 'daily':
-		            date_str = period['date']
-		            hours_on_date = base_hours
-		
-		            if working_hours_ref and working_hours_ref in working_hours_overrides:
-		                override_dict = working_hours_overrides[working_hours_ref]
-		                if date_str in override_dict:
-		                    hours_on_date = override_dict[date_str]
-		
-		            hours_dict[date_str] = hours_on_date
-		            user_daily_hours_dates_count = user_daily_hours_dates_count + 1
-		        else:
-		            # Для недель/месяцев вычисляем все даты в диапазоне
-		            start_date = frappe.utils.getdate(period['start_date'])
-		            end_date = frappe.utils.getdate(period['end_date'])
-		            current_date = start_date
-		            while current_date <= end_date:
-		                date_str = str(current_date)
-		                hours_on_date = base_hours
-		
-		                if working_hours_ref and working_hours_ref in working_hours_overrides:
-		                    override_dict = working_hours_overrides[working_hours_ref]
-		                    if date_str in override_dict:
-		                        hours_on_date = override_dict[date_str]
-		
-		                hours_dict[date_str] = hours_on_date
-		                user_daily_hours_dates_count = user_daily_hours_dates_count + 1
-		                current_date = frappe.utils.add_days(current_date, 1)
-		
-		    user_daily_hours[user_email] = hours_dict
-		perf_end("Precompute user daily hours", perf_section_start, "users=" + str(len(users_list)) + ", date_entries=" + str(user_daily_hours_dates_count))
-		
-		# 5.2 Функция проверки рабочего дня (аналогичная оригинальной)
-		working_day_cache = {}
-		
-		def is_working_day_cached(date_str, user_email, project_name):
-		    """Кэшированная проверка рабочего дня по оригинальной логике"""
-		    cache_key = date_str + "_" + user_email + "_" + project_name
-		
-		    if cache_key in working_day_cache:
-		        return working_day_cache[cache_key]
-		
-		    # Проверка праздников проекта
-		    project_data = projects_data.get(project_name, {})
-		    project_holiday_list = project_data.get('holiday_list')
-		    if project_holiday_list and project_holiday_list in holiday_date_sets:
-		        if date_str in holiday_date_sets[project_holiday_list]:
-		            working_day_cache[cache_key] = False
-		            return False
-		
-		    # Проверка праздников пользователя
-		    user_data = users_data.get(user_email, {})
-		    user_holiday_list = user_data.get('wholiday_list')
-		    if user_holiday_list and user_holiday_list in holiday_date_sets:
-		        if date_str in holiday_date_sets[user_holiday_list]:
-		            working_day_cache[cache_key] = False
-		            return False
-		
-		    # Проверка отсутствий (оригинальная логика)
-		    if user_email in user_absences:
-		        user_hours_dict = user_daily_hours.get(user_email, {})
-		        user_hours = user_hours_dict.get(date_str, 8.0)
-		        target_date = frappe.utils.getdate(date_str)
-		
-		        user_absence_list = user_absences[user_email]
-		        for absence in user_absence_list:
-		            if not (absence['from_date'] and absence['to_date']):
-		                continue
-		
-		            from_date = frappe.utils.getdate(absence['from_date'])
-		            to_date = frappe.utils.getdate(absence['to_date'])
-		
-		            if from_date <= target_date and target_date <= to_date:
-		                absence_hours = 0.0
-		                if target_date == from_date and absence.get('alfrom_hours'):
-		                    absence_hours = float(absence['alfrom_hours'])
-		                elif target_date == to_date and absence.get('alto_hours'):
-		                    absence_hours = float(absence['alto_hours'])
-		                else:
-		                    absence_hours = user_hours
-		
-		                if absence_hours >= user_hours:
-		                    working_day_cache[cache_key] = False
-		                    return False
-		
-		    working_day_cache[cache_key] = True
-		    return True
-		
-		# 5.3 Функция получения часов отсутствия (оригинальная)
-		def get_absence_hours(date_str, user_email):
-		    """Получение часов отсутствия на конкретную дату по оригинальной логике"""
-		    if user_email not in user_absences:
-		        return 0.0
-		
-		    user_hours_dict = user_daily_hours.get(user_email, {})
-		    user_hours = user_hours_dict.get(date_str, 8.0)
-		    target_date = frappe.utils.getdate(date_str)
-		
-		    user_absence_list = user_absences[user_email]
-		    for absence in user_absence_list:
-		        if not (absence['from_date'] and absence['to_date']):
-		            continue
-		
-		        from_date = frappe.utils.getdate(absence['from_date'])
-		        to_date = frappe.utils.getdate(absence['to_date'])
-		
-		        if from_date <= target_date and target_date <= to_date:
-		            if target_date == from_date and absence.get('alfrom_hours'):
-		                return float(absence['alfrom_hours'])
-		            elif target_date == to_date and absence.get('alto_hours'):
-		                return float(absence['alto_hours'])
-		            else:
-		                return user_hours
-		
-		    return 0.0
-		
-		# ========== 6. РАСЧЕТ НАГРУЗКИ ПО ОРИГИНАЛЬНОЙ ЛОГИКЕ ==========
-		
-		frappe.log("Starting workload calculation with original logic...")
+		period_dates: set[str] = set()
+		for period in periods:
+		    if view_type == 'daily':
+		        period_dates.add(period['date'])
+		    else:
+		        start_date = frappe.utils.getdate(period['start_date'])
+		        end_date = frappe.utils.getdate(period['end_date'])
+		        current_date = start_date
+		        while current_date <= end_date:
+		            period_dates.add(str(current_date))
+		            current_date = frappe.utils.add_days(current_date, 1)
+
+		wl_ctx = WorkloadContext(
+		    users_data=users_data,
+		    projects_data=projects_data,
+		    working_hours_overrides=working_hours_overrides,
+		    holiday_date_sets=holiday_date_sets,
+		    user_absences=user_absences,
+		    monthly_plan_cache=monthly_plan_cache,
+		    holiday_lists_cache=holiday_lists_cache,
+		)
+		wl_ctx.preload_user_base_hours(users_list, period_dates)
+		user_daily_hours = wl_ctx.user_daily_hours
+		user_daily_hours_dates_count = sum(len(v) for v in user_daily_hours.values())
+		perf_end(
+		    "Precompute user daily hours",
+		    perf_section_start,
+		    "users=" + str(len(users_list)) + ", date_entries=" + str(user_daily_hours_dates_count),
+		)
+
+		frappe.log("Starting workload calculation with WorkloadContext...")
 		perf_section_start = perf_start("Calculate workload original logic")
 		start_time = frappe.utils.now_datetime()
-		
-		# Результаты: для user_totals считаем напрямую user -> period_key -> hours,
-		# для user_projects сохраняем детализацию user -> project -> period_key -> hours.
+
 		direct_user_totals = user_totals_sql_paged
-		results = {}
+		results: dict = {}
 		assignment_calculations = 0
-		workload_type_counts = {}
-		date_loop_iterations = 0
+		workload_type_counts: dict[str, int] = {}
 		period_lookup_iterations = 0
-		
-		def find_period_key(date_str):
+
+		def find_period_key(date_str: str) -> str | None:
 		    nonlocal period_lookup_iterations
-		    period_lookup_iterations = period_lookup_iterations + 1
+		    period_lookup_iterations += 1
 		    return date_to_period_key.get(date_str)
-		
-		month_working_day_iterations = 0
-		
-		# Глобальный кэш рабочих дней в месяце
-		month_working_days_cache = {}
-		
-		# ОПТИМИЗАЦИЯ: Предварительно группируем назначения по пользователям и проектам
-		assignments_by_user_project = {}
+
+		assignments_by_user_project: dict[str, dict[str, list]] = {}
 		for assignment in assignments:
 		    user_email = assignment['user']
 		    project_name = assignment['project_name']
-		
-		    if user_email not in assignments_by_user_project:
-		        assignments_by_user_project[user_email] = {}
-		
-		    if project_name not in assignments_by_user_project[user_email]:
-		        assignments_by_user_project[user_email][project_name] = []
-		
-		    assignments_by_user_project[user_email][project_name].append(assignment)
-		
-		# Обрабатываем каждую комбинацию пользователь-проект
-		user_emails = list(assignments_by_user_project.keys())
-		for user_email in user_emails:
-		    user_projects = assignments_by_user_project[user_email]
-		    project_names = list(user_projects.keys())
-		
-		    for project_name in project_names:
-		        user_assignments = user_projects[project_name]
-		
-		        # Инициализируем структуру результатов
+		    assignments_by_user_project.setdefault(user_email, {}).setdefault(project_name, []).append(assignment)
+
+		for user_email, user_projects in assignments_by_user_project.items():
+		    for project_name, user_assignments in user_projects.items():
 		        if user_email not in results:
 		            results[user_email] = {}
 		            if direct_user_totals:
 		                for p in periods:
 		                    results[user_email][p['key']] = 0.0
-		
+
 		        if not direct_user_totals and project_name not in results[user_email]:
 		            results[user_email][project_name] = {}
 		            for p in periods:
 		                results[user_email][project_name][p['key']] = 0.0
-		
-		        # Обрабатываем все назначения пользователя на этом проекте
+
 		        for assignment in user_assignments:
 		            workload_label = assignment.get('workload') or 'Unknown'
 		            workload_type_counts[workload_label] = workload_type_counts.get(workload_label, 0) + 1
-		            date_from = frappe.utils.getdate(assignment['date_from'])
-		            date_to = frappe.utils.getdate(assignment['date_to'])
-		
-		            # Тип 1: В рабочих часах — пропорционально available_hours дня (не равный делитель по числу дней).
-		            # Сумма = wl_value; праздники/полные отсутствия исключаются; укороченные дни — user_daily_hours.
-		            # ISS-2026-00926: та же формула в V3 (single_project_workload_tree), если трогаете расчёт.
-		            if assignment['workload'] == 'В рабочих часах':
-		                total_assignment_hours = float(assignment['wl_value'] or 0)
-		                date_available = {}
-		
-		                current_date = date_from
-		                while current_date <= date_to:
-		                    date_loop_iterations = date_loop_iterations + 1
-		                    date_str = str(current_date)
-		
-		                    if is_working_day_cached(date_str, user_email, project_name):
-		                        day_base_hours_dict = user_daily_hours.get(user_email, {})
-		                        day_base_hours = day_base_hours_dict.get(date_str, 8.0)
-		                        absence_hours = get_absence_hours(date_str, user_email)
-		                        available_hours = day_base_hours - absence_hours
-		                        if available_hours < 0:
-		                            available_hours = 0.0
-		                        if available_hours > 0:
-		                            date_available[date_str] = available_hours
-		                            assignment_calculations = assignment_calculations + 1
-		
-		                    current_date = frappe.utils.add_days(current_date, 1)
-		
-		                total_available = 0.0
-		                for available_hours in date_available.values():
-		                    total_available = total_available + available_hours
-		
-		                if total_available > 0:
-		                    for date_str, available_hours in date_available.items():
-		                        daily_load = total_assignment_hours * (available_hours / total_available)
-		                        period_key = find_period_key(date_str)
-		
-		                        if period_key:
-		                            if direct_user_totals:
-		                                current_value = results[user_email][period_key]
-		                                results[user_email][period_key] = current_value + daily_load
-		                            else:
-		                                current_value = results[user_email][project_name][period_key]
-		                                results[user_email][project_name][period_key] = current_value + daily_load
-		
-		            # Тип 2: В % от фонда рабочих часов (ОРИГИНАЛЬНАЯ ЛОГИКА)
-		            elif assignment['workload'] == 'В % от фонда рабочих часов':
-		                percentage_value = 0.0
-		                if assignment['wl_value']:
-		                    percentage_value = float(assignment['wl_value']) / 100  # Делим на 100 сразу
-		
-		                current_date = date_from
-		                while current_date <= date_to:
-		                    date_loop_iterations = date_loop_iterations + 1
-		                    date_str = str(current_date)
-		
-		                    if is_working_day_cached(date_str, user_email, project_name):
-		                        day_base_hours_dict = user_daily_hours.get(user_email, {})
-		                        day_base_hours = day_base_hours_dict.get(date_str, 8.0)
-		                        absence_hours = get_absence_hours(date_str, user_email)
-		                        available_hours = day_base_hours - absence_hours
-		                        if available_hours < 0:
-		                            available_hours = 0.0
-		
-		                        daily_load = percentage_value * available_hours
-		                        assignment_calculations = assignment_calculations + 1
-		
-		                        # ISS-2026-00865: быстрый lookup вместо вложенного перебора periods.
-		                        period_key = find_period_key(date_str)
-		
-		                        if period_key:
-		                            if direct_user_totals:
-		                                current_value = results[user_email][period_key]
-		                                results[user_email][period_key] = current_value + daily_load
-		                            else:
-		                                current_value = results[user_email][project_name][period_key]
-		                                results[user_email][project_name][period_key] = current_value + daily_load
-		
-		                    current_date = frappe.utils.add_days(current_date, 1)
-		
-		            # Тип 3: В % от трудоемкости задачи (ИСПРАВЛЕННАЯ PROD-ЛОГИКА)
-		            elif assignment['workload'] == 'В % от трудоемкости задачи':
-		                percentage_value = 0.0
-		                if assignment['wl_value']:
-		                    percentage_value = float(assignment['wl_value']) / 100  # Делим на 100 сразу
-		
-		                task = assignment['task']
-		                role = assignment['role']
-		
-		                # ISS-2026-00865 / ISS-2026-00586: prod-версия считает плановую
-		                # трудоемкость только по рабочим дням внутри диапазона назначения,
-		                # а не по всем рабочим дням календарного месяца.
-		                months_in_period = {}
-		                current_date = date_from
-		                while current_date <= date_to:
-		                    date_loop_iterations = date_loop_iterations + 1
-		                    year = current_date.year
-		                    month = current_date.month
-		                    month_key = str(year) + "_" + str(month)
-		
-		                    if month_key not in months_in_period:
-		                        months_in_period[month_key] = {
-		                            'year': year,
-		                            'month': month,
-		                            'working_days': 0,
-		                            'dates': []
-		                        }
-		
-		                    date_str = str(current_date)
-		                    months_in_period[month_key]['dates'].append(date_str)
-		
-		                    if is_working_day_cached(date_str, user_email, project_name):
-		                        months_in_period[month_key]['working_days'] = months_in_period[month_key]['working_days'] + 1
-		                        month_working_day_iterations = month_working_day_iterations + 1
-		
-		                    current_date = frappe.utils.add_days(current_date, 1)
-		
-		                for month_key, month_info in months_in_period.items():
-		                    year = month_info['year']
-		                    month = month_info['month']
-		                    plan_key = task + "_" + role + "_" + str(year) + "_" + str(month)
-		
-		                    if plan_key in monthly_plan_cache:
-		                        monthly_plan_hours = monthly_plan_cache[plan_key]
-		
-		                        if monthly_plan_hours > 0 and month_info['working_days'] > 0:
-		                            base_daily_hours = monthly_plan_hours / month_info['working_days']
-		
-		                            for date_str in month_info['dates']:
-		                                if is_working_day_cached(date_str, user_email, project_name):
-		                                    daily_load = percentage_value * base_daily_hours
-		
-		                                    # ISS-2026-00865: быстрый lookup вместо вложенного перебора periods.
-		                                    period_key = find_period_key(date_str)
-		
-		                                    if period_key:
-		                                        if direct_user_totals:
-		                                            current_value = results[user_email][period_key]
-		                                            results[user_email][period_key] = current_value + daily_load
-		                                        else:
-		                                            current_value = results[user_email][project_name][period_key]
-		                                            results[user_email][project_name][period_key] = current_value + daily_load
-		                                        assignment_calculations = assignment_calculations + 1
-		
+		            daily_loads = wl_ctx.compute_assignment_daily_hours(assignment)
+		            for date_str, daily_load in daily_loads.items():
+		                period_key = find_period_key(date_str)
+		                if not period_key:
+		                    continue
+		                assignment_calculations += 1
+		                if direct_user_totals:
+		                    results[user_email][period_key] += daily_load
+		                else:
+		                    results[user_email][project_name][period_key] += daily_load
 		end_time = frappe.utils.now_datetime()
-		time_diff = end_time - start_time
-		calculation_time = time_diff.total_seconds() * 1000
-		
+		calculation_time = (end_time - start_time).total_seconds() * 1000
 		frappe.log("Calculation completed in " + str(calculation_time) + " ms, " + str(assignment_calculations) + " date calculations")
-		perf_end("Calculate workload original logic", perf_section_start, "assignments=" + str(len(assignments)) + ", direct_user_totals=" + str(direct_user_totals) + ", workload_types=" + str(workload_type_counts) + ", date_loop_iterations=" + str(date_loop_iterations) + ", period_lookup_iterations=" + str(period_lookup_iterations) + ", month_working_day_iterations=" + str(month_working_day_iterations) + ", working_day_cache_size=" + str(len(working_day_cache)))
+		perf_end(
+		    "Calculate workload original logic",
+		    perf_section_start,
+		    "assignments=" + str(len(assignments))
+		    + ", direct_user_totals=" + str(direct_user_totals)
+		    + ", workload_types=" + str(workload_type_counts)
+		    + ", period_lookup_iterations=" + str(period_lookup_iterations)
+		    + ", working_day_cache_size=" + str(len(wl_ctx._working_day_cache)),
+		)
 		
 		# ========== 7. ФОРМИРОВАНИЕ TREE DATA ==========
 		
@@ -1104,7 +657,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        'calculation_time_ms': calculation_time,
 		        'assignments': len(assignments),
 		        'date_calculations': assignment_calculations,
-		        'working_day_cache_size': len(working_day_cache),
+		        'working_day_cache_size': len(wl_ctx._working_day_cache),
 		        'trace': PERF_TRACE
 		    }
 		}
