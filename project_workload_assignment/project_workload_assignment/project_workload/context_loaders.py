@@ -23,6 +23,51 @@ if TYPE_CHECKING:
 	)
 
 
+def _debug_loader(event: str, details: dict) -> None:
+	"""Отладочный лог загрузки контекста PWR (виден в worker/error log)."""
+	message = "[PWR context_loaders] " + event + " | " + frappe.as_json(details, indent=None)
+	frappe.log(message)
+	frappe.logger("project_workload").info(message)
+
+
+def get_permitted_worker_users(candidate_users: list[str]) -> set[str]:
+	"""Worker.wuser, видимые текущему пользователю (frappe.get_all + DocPerm)."""
+	if not candidate_users:
+		return set()
+	return set(
+		frappe.get_all(
+			"Worker",
+			filters={"wuser": ["in", candidate_users]},
+			pluck="wuser",
+		)
+	)
+
+
+def filter_assignments_by_permitted_workers(assignments: list[dict]) -> list[dict]:
+	"""Оставляет назначения только для Worker, доступных текущему пользователю."""
+	if not assignments:
+		return []
+
+	candidate_users = list({a.get("user") for a in assignments if a.get("user")})
+	permitted_users = get_permitted_worker_users(candidate_users)
+	filtered = [a for a in assignments if a.get("user") in permitted_users]
+	_debug_loader(
+		"filter_assignments_by_permitted_workers",
+		{
+			"session_user": frappe.session.user,
+			"roles": frappe.get_roles(frappe.session.user),
+			"assignments_before": len(assignments),
+			"assignments_after": len(filtered),
+			"candidate_users_count": len(candidate_users),
+			"permitted_workers_count": len(permitted_users),
+			"permitted_workers_sample": list(permitted_users)[:10],
+			"removed_users_count": len(candidate_users) - len(permitted_users),
+			"removed_users_sample": [u for u in candidate_users if u not in permitted_users][:10],
+		},
+	)
+	return filtered
+
+
 def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkloadInfo]:
 	"""User (qb) + Worker (frappe.get_all с permissions) + Timesheet Template."""
 	users_data: dict[str, UserWorkloadInfo] = {}
@@ -44,6 +89,32 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 	)
 	workers_by_user = {w["wuser"]: w for w in workers_db}
 
+	workers_loaded = [w["wuser"] for w in workers_db]
+	qb_users_loaded = [u["name"] for u in users_db]
+	missing_worker_for_users = [u for u in users_list if u not in workers_by_user]
+	missing_qb_user = [u for u in users_list if u not in qb_users_loaded]
+	_debug_loader(
+		"load_users_with_worker_context",
+		{
+			"session_user": frappe.session.user,
+			"roles": frappe.get_roles(frappe.session.user),
+			"requested_users_count": len(users_list),
+			"requested_users_sample": users_list[:10],
+			"qb_users_count": len(users_db),
+			"qb_users_sample": qb_users_loaded[:10],
+			"permission_workers_count": len(workers_db),
+			"permission_workers_sample": workers_loaded[:10],
+			"missing_worker_for_users_count": len(missing_worker_for_users),
+			"missing_worker_for_users_sample": missing_worker_for_users[:10],
+			"missing_qb_user_count": len(missing_qb_user),
+			"missing_qb_user_sample": missing_qb_user[:10],
+			"note": (
+				"permission_workers — frappe.get_all(Worker) с DocPerm; "
+				"назначения должны быть отфильтрованы через filter_assignments_by_permitted_workers"
+			),
+		},
+	)
+
 	template_names = list({
 		w["wtimesheet_template"] for w in workers_db if w.get("wtimesheet_template")
 	})
@@ -59,7 +130,9 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 			templates_by_name[template["name"]] = template
 
 	for user_row in users_db:
-		worker = workers_by_user.get(user_row["name"], {})
+		if user_row["name"] not in workers_by_user:
+			continue
+		worker = workers_by_user[user_row["name"]]
 		template = templates_by_name.get(worker.get("wtimesheet_template") or "")
 		users_data[user_row["name"]] = UserWorkloadInfo(
 			name=user_row["name"],
