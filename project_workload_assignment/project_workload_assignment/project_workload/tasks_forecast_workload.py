@@ -36,6 +36,7 @@ class TaskUserDetail(TypedDict):
 class TaskPeriodDetail(TypedDict):
 	"""Детали периода в задаче."""
 	forecast_hours: float
+	plan_hours: float
 	users: dict[str, TaskUserDetail]
 
 
@@ -318,7 +319,9 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             PWEA.pwea_month.as_('month'),
 
-            PWEA.pwea_expected.as_('forecast_hours')
+            PWEA.pwea_expected.as_('forecast_hours'),
+
+            PWEA.pwea_plan.as_('plan_hours')
 
         )
 
@@ -340,6 +343,8 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
     forecast_cache = {}
 
+    plan_cache = {}
+
     for row in pwe_list:
 
         if row.get('year') and row.get('month'):
@@ -350,9 +355,13 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             forecast_cache[key] = float(row.get('forecast_hours', 0))
 
+            plan_cache[key] = float(row.get('plan_hours', 0))
+
     
 
     debug_log(f"Forecast cache size: {len(forecast_cache)}")
+
+    debug_log(f"Plan cache size: {len(plan_cache)}")
 
     
 
@@ -840,9 +849,9 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
     
 
-    def calculate_effort_percentage_workload(assignment, period, forecast_hours):
+    def calculate_effort_percentage_workload(assignment, period, plan_hours):
 
-        if not forecast_hours or forecast_hours <= 0:
+        if not plan_hours or plan_hours <= 0:
 
             return 0
 
@@ -858,7 +867,7 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             return 0
 
-        base_daily = forecast_hours / working_days
+        base_daily = plan_hours / working_days
 
         return percentage * base_daily * working_days
 
@@ -894,6 +903,8 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             month = int(parts[-1])
 
+            plan_hours = plan_cache.get(key, 0)
+
             
 
             if task not in tasks_map:
@@ -928,13 +939,15 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
                 'forecast_hours': forecast_hours,
 
+                'plan_hours': plan_hours,
+
                 'users': {}
 
             }
 
             
 
-            debug_log(f"    Added forecast for {task}/{role}/{period_key}: +{forecast_hours}")
+            debug_log(f"    Added forecast for {task}/{role}/{period_key}: +{forecast_hours}, plan={plan_hours}")
 
     
 
@@ -1012,6 +1025,8 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             forecast_hours = forecast_cache.get(forecast_key, 0)
 
+            plan_hours = plan_cache.get(forecast_key, 0)
+
             
 
             if task not in tasks_map:
@@ -1068,6 +1083,8 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
                         'forecast_hours': forecast_hours,
 
+                        'plan_hours': plan_hours,
+
                         'users': {}
 
                     }
@@ -1078,9 +1095,9 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
                 if workload_type == 'В % от трудоемкости задачи':
 
-                    if forecast_hours > 0:
+                    if plan_hours > 0:
 
-                        assigned = calculate_effort_percentage_workload(assignment, period, forecast_hours)
+                        assigned = calculate_effort_percentage_workload(assignment, period, plan_hours)
 
                     else:
 
