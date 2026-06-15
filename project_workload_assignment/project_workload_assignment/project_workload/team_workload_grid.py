@@ -217,6 +217,9 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		page_users = []
 		has_more = False
 		next_offset = None
+		sql_paging_total_users = 0
+		sql_paging_has_more = False
+		sql_paging_next_offset = None
 		
 		# ISS-2026-00865: периоды и границы SQL — project_workload_assignment.project_workload.
 		early_period_start = perf_start("Generate periods early for SQL window")
@@ -261,6 +264,9 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    if offset + len(page_users) < total_users:
 		        has_more = True
 		        next_offset = offset + len(page_users)
+		    sql_paging_total_users = total_users
+		    sql_paging_has_more = has_more
+		    sql_paging_next_offset = next_offset
 		    perf_end(
 		        "SQL user_totals bundle",
 		        perf_section_start,
@@ -397,9 +403,9 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		projects_list.sort()
 		if user_totals_sql_paged:
 		    page_users = users_list
-		    total_users = len(users_list)
-		    has_more = False
-		    next_offset = None
+		    total_users = sql_paging_total_users
+		    has_more = sql_paging_has_more
+		    next_offset = sql_paging_next_offset
 		perf_log("PAGING total_users=" + str(total_users) + ", returned_users=" + str(len(users_list)) + ", has_more=" + str(has_more) + ", next_offset=" + str(next_offset))
 		
 		# ========== 2–3. КОНТЕКСТ РАСЧЁТА (общие loaders) ==========
