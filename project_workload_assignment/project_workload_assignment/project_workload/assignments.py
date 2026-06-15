@@ -25,6 +25,20 @@ class AssignmentRow(TypedDict):
 	project_name: str
 
 
+class FlatAssignmentRow(TypedDict):
+	"""Строка назначения для Flat Workload Report."""
+	name: str
+	user: str
+	task: str
+	role: str | None
+	date_from: date | str
+	date_to: date | str
+	workload: str | None
+	wl_value: float | None
+	project: str
+	task_subject: str | None
+
+
 class ProjectAssignmentRow(TypedDict):
 	"""Строка назначения из fetch_project_assignments_with_worker_context."""
 	task_id: str
@@ -65,6 +79,7 @@ def build_pwr_assignment_base_query(
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	task: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> tuple[Any, Any, Any]:
@@ -94,6 +109,8 @@ def build_pwr_assignment_base_query(
 		q = q.where(PWA.user == user)
 	if project:
 		q = q.where(Task.project == project)
+	if task:
+		q = q.where(PWA.task == task)
 
 	return q, PWA, Task
 
@@ -134,6 +151,40 @@ def fetch_pwr_report_assignments(
 	if restrict_users:
 		q = q.where(PWA.user.isin(list(restrict_users)))
 
+	return q.run(as_dict=True)
+
+
+def fetch_flat_report_assignments(
+	window_start: str | date,
+	window_end: str | date,
+	*,
+	user: str | None = None,
+	project: str | None = None,
+	task: str | None = None,
+	user_group_parent: str | None = None,
+) -> list[FlatAssignmentRow]:
+	"""Назначения для Flat Workload Report (PWA + Task, project + task_subject)."""
+	q, PWA, Task = build_pwr_assignment_base_query(
+		window_start,
+		window_end,
+		user=user,
+		project=project,
+		task=task,
+		user_group_parent=user_group_parent,
+		use_sql_user_group_join=bool(user_group_parent),
+	)
+	q = q.select(
+		PWA.name,
+		PWA.user,
+		PWA.task,
+		PWA.role,
+		PWA.date_from,
+		PWA.date_to,
+		PWA.workload,
+		PWA.wl_value,
+		Task.project.as_("project"),
+		Task.subject.as_("task_subject"),
+	)
 	return q.run(as_dict=True)
 
 
