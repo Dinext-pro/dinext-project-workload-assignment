@@ -20,7 +20,7 @@
   - Исторические Server Script (см. `.sandbox/local/server-script/api/`): **до этапа I** — `Get Projects Workload Data_Exp` (`get_projects_workload_data`); **ветка OLD** — `Get Projects Workload Data_Exp_OLD` (`get_projects_workload_data_old`, в SQL до сих пор `date_to >= CURDATE()`, не `nowdate()`); **до этапа II** — отключённые `PWR Legacy - … (Pre-Phase2)` (тот же `api_method`, что у тонких обёрток); **TC-10** фиксирует контракт уже перенесённого в Python V2 на фикстуре TC-01 (`fixtures/tc10_team_v2_golden.json`).
 - sync_required: `no` (логика в Python-приложении; sandbox/fixtures для прогона не обязательны)
 - run_targets:
-  - `project_workload_assignment.project_workload_assignment.tests.scenarios.iss_2026_00865_pwr_calc_accuracy.test_pwr_calc_accuracy` (**17** тестовых методов: TC-01…TC-10, TC-04b, TC-05b, TC-12…TC-15).
+  - `project_workload_assignment.project_workload_assignment.tests.scenarios.iss_2026_00865_pwr_calc_accuracy.test_pwr_calc_accuracy` (**18** тестовых методов: TC-01…TC-10, TC-04b, TC-05b, TC-12…TC-16).
   - **TC-11** — UI smoke вне `bench run-tests` (см. журнал). TC-10 — золотой JSON контракта Python V2; ручной A/B с `PWR Legacy` по-прежнему через переключение `disabled` (один `api_method` на активный скрипт).
 - Команда прогона (backend-контейнер):  
   `docker exec "dinext-frappe-local-backend-1" bench --site dev.dinext.localhost run-tests --app project_workload_assignment --module project_workload_assignment.project_workload_assignment.tests.scenarios.iss_2026_00865_pwr_calc_accuracy.test_pwr_calc_accuracy`
@@ -33,11 +33,11 @@
   - `Task.project`, интервал PWA `date_from` / `date_to`, тип нагрузки `workload` / `wl_value`.
   - `Project.holiday_list` и строки `Holiday` с `weekly_off`.
   - Шаблоны Worker / Timesheet Template / часы по дням (если заданы у пользователя) — в минимальном сценарии не трогаем; при расхождении с prod расширить фикстуру.
-  - `Application For Leave` (TC-09): статус «Согласовано», полный день; маркер в `alreasons` с префиксом сценария. На сайте должны импортироваться whitelisted-модули `dinext_projects.dinext_projects.permissions` и `dinext_projects.dinext_projects.model.workflow` (см. код в `apps/dinext_projects/.../dinext_projects/`).
+  - `Application For Leave` (TC-09): статус «Согласовано», полный день; маркер в `alreasons` с префиксом сценария. Вставка с `ignore_validate` и `frappe.flags.in_migrate = True` — обход workflow/Server Script на AFL. На сайте должны импортироваться whitelisted-модули `dinext_projects.dinext_projects.permissions` и `dinext_projects.dinext_projects.model.workflow` (см. код в `apps/dinext_projects/.../dinext_projects/`).
   - `User Group` (TC-14): фильтр `user_group` в V2; в тесте группа только с `Administrator`, второй пользователь сценария исключён.
-  - Для кейсов «без `holiday_list` на проекте» `data_setup` временно обнуляет `Worker.wholiday_list` у `Administrator` и восстанавливает значение в `reset_owned_data()`.
+  - Для кейсов «без effective holiday list» `data_setup` временно обнуляет **`Worker.wholiday_list`** у `Administrator` и **`Company.default_holiday_list`** у первой Company; оба значения восстанавливаются в `reset_owned_data()`. Кейсы с явным company fallback (TC-16) снимают только Worker HL, оставляя `Company.default_holiday_list`.
 - reset_scope:
-  - `Project`, `Task`, `Project Workload Assignment`, `Project Work Efforts` (по задачам сценария), `Holiday List`, `Project Role`, тестовый `User` `iss-2026-00865-pwr-2@example.com`, `User Group` и `Application For Leave` с префиксом сценария; при снятии флага сценария восстанавливается исходный `Worker.wholiday_list` у `Administrator` (если был сохранён).
+  - `Project`, `Task`, `Project Workload Assignment`, `Project Work Efforts` (по задачам сценария), `Holiday List`, `Project Role`, тестовый `User` `iss-2026-00865-pwr-2@example.com`, его `Worker`, `User Group` и `Application For Leave` с префиксом сценария; при снятии флага сценария восстанавливаются исходные `Worker.wholiday_list` у `Administrator` и `Company.default_holiday_list` (если были сохранены).
 
 ## Status Legend
 
@@ -48,8 +48,9 @@
 
 ## Известная гипотеза по багу «часы на выходные»
 
-- Если у **проекта не задан `holiday_list`** или в списке **нет** записей на календарные субботы/воскресенья, то в `team_workload_grid.is_working_day_cached` суббота и воскресенье остаются **рабочими днями** для знаменателя распределения «В рабочих часах» — часы попадают и в колонки выходных (daily).
-- В форме **одного проекта** у пользователя часто уже выбран проект с заполненным `holiday_list` (как в production), поэтому визуально V3 «корректен», а общий отчёт по команде с другим набором фильтров / без праздничного календаря — «размазывает» иначе.
+- Если у **проекта не задан `holiday_list`**, V2/V3 подставляют календарь по цепочке: `Project.holiday_list` → **`Company.default_holiday_list`** → `Worker.wholiday_list` (`context_loaders.resolve_project_holiday_list`). При наличии `Company.default_holiday_list` выходные **не** получают часы — это ожидаемое поведение продукта (TC-16).
+- Кейсы «полностью без календаря» (TC-01, TC-02b, TC-04, TC-15): в фикстуре снимаются и `Worker.wholiday_list`, и `Company.default_holiday_list` — тогда суббота/воскресенье остаются **рабочими** для знаменателя «В рабочих часах», часы попадают в колонки выходных (TC-02b).
+- Если у проекта задан `holiday_list` со строками `weekly_off=1`, выходные исключаются из распределения (TC-02).
 - Строки `Holiday` с `weekly_off=1` попадают в SQL и в `holiday_date_sets` в V2; дата из этого множества считается нерабочей так же, как «жёсткий» праздник. В V3 используется разбор `project_holidays_set` / `project_weekly_off_set` — при расхождении с V2 TC-02 должен подсветить расхождение на одних и тех же данных.
 - Референс по истории: см. `source_of_truth` (этап I vs II vs `Exp_OLD`); **TC-10** — регрессионный золотой контракт Python V2 на фикстуре TC-01, не полное JSON-равенство со старыми скриптами.
 
@@ -67,11 +68,11 @@
   - artifacts: `test_tc02_*`, `prepare_case_hours_with_weekend_holiday_list`
   - last_run: 2026-05-07 — `dev.dinext.localhost`, модуль PWR — OK
 
-- 🟢 TC-02b: Без `holiday_list` — на выходных **ожидается** ненулевая доля (контроль инварианта)
+- 🟢 TC-02b: Без effective HL — на выходных **ожидается** ненулевая доля (контроль инварианта)
   - surface: `Python` | actor: `business_user`
-  - artifacts: `test_tc02b_*`
-  - notes: документирует ожидаемое поведение без календаря выходных на проекте при снятом `Worker.wholiday_list` в фикстуре.
-  - last_run: 2026-05-07 — `dev.dinext.localhost`, модуль PWR — OK
+  - artifacts: `test_tc02b_*`, `prepare_case_hours_without_project_holiday_list`
+  - notes: фикстура снимает `Worker.wholiday_list` **и** `Company.default_holiday_list`; иначе company fallback даёт нулевые выходные и тест ложно падает.
+  - last_run: 2026-06-15 — `dev.dinext.localhost`, модуль PWR — OK (18/18)
 
 - 🟢 TC-03: Parity по **ежедневным** ячейкам V2 vs V3 в окне назначения
   - surface: `Python` | actor: `business_user`
@@ -79,10 +80,11 @@
   - assert: max |ячейка V2 − ячейка V3| по дням `WEEK_START…WEEK_END` &lt; 0.15 ч.
   - last_run: 2026-05-07 — `dev.dinext.localhost`, модуль PWR — OK
 
-- 🟢 TC-04: «В % от фонда рабочих часов» — V2 vs V3 (50%, неделя без HL; эталон ~28 ч, допуск ±0.75 ч)
+- 🟢 TC-04: «В % от фонда рабочих часов» — V2 vs V3 (50%, неделя без effective HL; эталон ~28 ч = 7×8×0.5, допуск ±0.75 ч)
   - surface: `Python` | actor: `business_user`
   - artifacts: `test_tc04_*`, `prepare_case_percent_fund_without_holiday_list`
-  - last_run: 2026-05-07 — `dev.dinext.localhost`, модуль PWR — OK
+  - notes: `_detach_company_default_holiday_list` + `_detach_admin_worker_holiday_list`.
+  - last_run: 2026-06-15 — `dev.dinext.localhost`, модуль PWR — OK (18/18)
 
 - 🟢 TC-04b: «В % от трудоемкости задачи» + `Project Work Efforts` (май 160 ч, 50% → ~80 ч; V2≈V3)
   - surface: `Python` | actor: `business_user`
@@ -98,9 +100,9 @@
 
 - 🟢 TC-05b: Два пользователя — сумма `user_totals` (limit=1, offset 0+1) = сумма пользователей в `full`
   - surface: `Python` | actor: `business_user`
-  - artifacts: `test_tc05b_*`, `prepare_case_two_users_hours_for_pagination`
-  - notes: создаётся второй User `iss-2026-00865-pwr-2@example.com`.
-  - last_run: 2026-05-07 — `dev.dinext.localhost`, модуль PWR — OK
+  - artifacts: `test_tc05b_*`, `prepare_case_two_users_hours_for_pagination`, `ensure_second_test_worker`
+  - notes: второй User + **Worker** (клон полей Administrator) — иначе `filter_assignments_by_permitted_workers` отфильтровывает второго пользователя.
+  - last_run: 2026-06-15 — `dev.dinext.localhost`, модуль PWR — OK (18/18)
 
 - 🟢 TC-06: Недельный `view_type=weekly`: `workload_total` пользователя ≈ 40 ч
   - surface: `Python` | actor: `business_user`
@@ -131,8 +133,8 @@
 - 🟢 TC-09: Согласованный полный день отпуска — на дату отпуска почти нет часов в daily; сумма по неделе ≈ 40; V2≈V3
   - surface: `Python` | actor: `business_user`
   - artifacts: `test_tc09_*`, `try_create_application_for_leave_tc09`
-  - notes: требуется `Application For Leave`, `Worker` у `Administrator`, хотя бы один `Type Of Leave`; иначе `skipTest`. Вставка с `ignore_validate`: read-only `status` и Server Script на AFL (напр. расчёт часов) несовместимы с обнулённым `Worker.wholiday_list` в том же сценарии PWR. Whitelisted-модули: `dinext_projects.dinext_projects.permissions`, `dinext_projects.dinext_projects.model.workflow`.
-  - last_run: 2026-05-07 — `dev.dinext.localhost`, модуль PWR — OK
+  - notes: требуется `Application For Leave`, `Worker` у `Administrator`, хотя бы один `Type Of Leave`; иначе `skipTest`. Вставка: `ignore_validate` + `frappe.flags.in_migrate = True` (обход workflow «Не определен исполнитель…»). Whitelisted-модули: `dinext_projects.dinext_projects.permissions`, `dinext_projects.dinext_projects.model.workflow`.
+  - last_run: 2026-06-15 — `dev.dinext.localhost`, модуль PWR — OK (18/18)
 
 - 🟢 TC-10: Золотой контракт ответа **Python V2** (`run_get_projects_workload_data_v2`) на фикстуре TC-01
   - surface: `Python` | actor: `business_user`
@@ -154,14 +156,20 @@
 - 🟢 TC-15: «В рабочих часах» 10 ч на 01.06–05.06 — дневные ячейки не зависят от `hours_on_date` (8 vs 4); weekly V2≈V3≈10 ч
   - surface: `Python` | actor: `business_user`
   - artifacts: `test_tc15_*`, `prepare_case_hours_on_date_invariant`, `set_admin_hours_on_date`
-  - notes: регрессия кейса Ivan (ISS-2026-00865); равномерное распределение по рабочим дням + полный `user_daily_hours` в V3 для weekly/monthly.
-  - last_run: 2026-06-01 — `dev.dinext.localhost`, TC-15 — OK
+  - notes: регрессия кейса Ivan (ISS-2026-00865); равномерное распределение по рабочим дням + полный `user_daily_hours` в V3 для weekly/monthly. Фикстура снимает Worker HL и Company default HL.
+  - last_run: 2026-06-15 — `dev.dinext.localhost`, модуль PWR — OK (18/18)
+
+- 🟢 TC-16: Company holiday fallback — Project без HL, `Company.default_holiday_list` активен: выходные ≈ 0, total ≈ 5×8×50% = 20 ч
+  - surface: `Python` | actor: `business_user`
+  - artifacts: `test_tc16_*`, `prepare_case_percent_fund_with_company_holiday_fallback`
+  - notes: явная регрессия `resolve_project_holiday_list` / `load_company_holiday_lists` (тег `v26.06.15-03`). Снимается только `Worker.wholiday_list`; при отсутствии `Company.default_holiday_list` — `skipTest`.
+  - last_run: 2026-06-15 — `dev.dinext.localhost`, модуль PWR — OK (18/18)
 
 ## Primary test artifacts
 
-- `test_pwr_calc_accuracy.py` — TC-01 … TC-10, TC-04b, TC-05b, TC-12, TC-13, TC-14, TC-15
+- `test_pwr_calc_accuracy.py` — TC-01 … TC-10, TC-04b, TC-05b, TC-12, TC-13, TC-14, TC-15, **TC-16**
 - `fixtures/tc10_team_v2_golden.json` — эталон TC-10
-- `data_setup.py` — reset и prepare-*
+- `data_setup.py` — reset, detach/restore HL, `ensure_second_test_worker`, prepare-*
 
 ## Журнал прогона `/test-it`
 
@@ -172,6 +180,7 @@
 | 2026-05-14 | agent | OK (16/16) | TC-10: `test_tc10_v2_response_contract_golden` + `fixtures/tc10_team_v2_golden.json`; уточнены линейки `Exp` / `Exp_OLD` / `PWR Legacy`; `bench run-tests` PWR на `dev.dinext.localhost`. |
 | 2026-05-14 | agent + Cursor Browser | OK (TC-11) | UI smoke `Projects Workload Report` на `http://dev.dinext.localhost:8080/app/projects-workload-report`: сетка, фильтры, смена Weekly/Daily/Monthly, refresh, «Показать еще 20». Детали в TC-11 `last_run`. |
 | 2026-06-01 | agent | OK (TC-15) | Fix: равномерное «В рабочих часах» + V3 `user_daily_hours` weekly/monthly; TC-09 по-прежнему ERROR (workflow AFL). |
+| 2026-06-15 | agent | OK (18/18) | После company fallback (`v26.06.15-03`): фикстуры detach Worker+Company HL; `ensure_second_test_worker`; TC-09 через `in_migrate`; новый **TC-16** (company fallback). `bench run-tests` PWR ~80 с на `dev.dinext.localhost`. Demodev acceptance ранее — PASS (weekly+quarter, paging, lazy load). |
 
 ## Side effects повторного прогона
 
