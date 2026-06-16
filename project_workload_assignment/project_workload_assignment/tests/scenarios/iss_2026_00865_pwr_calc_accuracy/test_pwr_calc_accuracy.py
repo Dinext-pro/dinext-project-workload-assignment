@@ -35,6 +35,7 @@ from .data_setup import (
 	prepare_case_hours_with_weekend_holiday_list,
 	prepare_case_hours_without_project_holiday_list,
 	prepare_case_percent_fund_without_holiday_list,
+	prepare_case_percent_fund_with_company_holiday_fallback,
 	prepare_case_percent_task_effort,
 	prepare_case_two_users_hours_for_pagination,
 	prepare_case_user_group_excludes_second_user,
@@ -324,6 +325,30 @@ class TestISS202600865PwrCalcAccuracy(FrappeTestCase):
 		self.assertAlmostEqual(t2, expected, delta=0.75, msg=f"V2 total={t2}, expected~{expected}")
 		self.assertAlmostEqual(t3, expected, delta=0.75, msg=f"V3 total={t3}, expected~{expected}")
 		self.assertAlmostEqual(t2, t3, delta=0.25, msg="V2 vs V3 parity % fund")
+
+	def test_tc16_company_holiday_fallback_excludes_weekends_from_fund(self):
+		"""Project без HL + Company.default_holiday_list: выходные без часов, фонд ≈ 5 рабочих дней × 8 × 50%."""
+		try:
+			ctx = prepare_case_percent_fund_with_company_holiday_fallback(50.0)
+		except Exception as exc:
+			self.skipTest(str(exc))
+		project_name = ctx["project"]
+		expected = 5.0 * 8.0 * 0.5
+		fd_v2 = {
+			"mode": "full",
+			"view_type": "daily",
+			"period_range": "quarter",
+			"project": project_name,
+		}
+		with patch.object(frappe.utils, "nowdate", return_value=ANCHOR_MONDAY):
+			frappe.set_user(BUSINESS_USER)
+			out_v2 = run_get_projects_workload_data_v2(fd_v2)
+		row_v2 = _find_team_v2_user_row(out_v2.get("tree_data") or [], BUSINESS_USER)
+		self.assertIsNotNone(row_v2)
+		wk_v2 = _sum_weekend_daily_hours(row_v2, out_v2.get("periods") or [])
+		self.assertLess(wk_v2, 0.15, msg="Company fallback: выходные без часов")
+		t2 = _parse_float_cell(row_v2.get("workload_total"))
+		self.assertAlmostEqual(t2, expected, delta=1.0, msg=f"V2 total={t2}, expected~{expected}")
 
 	def test_tc05_user_totals_matches_full_for_same_user(self):
 		"""mode=user_totals (первая страница) даёт тот же workload_total пользователя, что mode=full."""
