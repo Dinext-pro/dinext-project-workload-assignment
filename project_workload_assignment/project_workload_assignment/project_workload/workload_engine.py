@@ -108,7 +108,10 @@ class WorkloadContext:
 			return self._working_day_cache[cache_key]
 
 		project_data = self.projects_data.get(project_name, {})
-		project_holiday_list = project_data.get("holiday_list")
+		project_holiday_list = (
+			project_data.get("effective_holiday_list")
+			or project_data.get("holiday_list")
+		)
 		if project_holiday_list and project_holiday_list in self.holiday_date_sets:
 			if date_str in self.holiday_date_sets[project_holiday_list]:
 				self._working_day_cache[cache_key] = False

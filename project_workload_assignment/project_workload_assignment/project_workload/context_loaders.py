@@ -149,6 +149,36 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 	return users_data
 
 
+def load_company_holiday_lists(companies: set[str] | list[str]) -> dict[str, str]:
+	"""Company.name -> default_holiday_list для fallback календаря проекта."""
+	if not companies:
+		return {}
+	company_rows = frappe.qb.get_query(
+		"Company",
+		fields=["name", "default_holiday_list"],
+		filters=[["name", "in", list(companies)]],
+	).run(as_dict=True)
+	return {
+		row["name"]: row["default_holiday_list"]
+		for row in company_rows
+		if row.get("default_holiday_list")
+	}
+
+
+def resolve_project_holiday_list(
+	project_info: ProjectWorkloadInfo | dict,
+	company_holiday_lists: dict[str, str] | None = None,
+) -> str | None:
+	"""Project.holiday_list, иначе Company.default_holiday_list."""
+	holiday_list = project_info.get("holiday_list") if project_info else None
+	if holiday_list:
+		return holiday_list
+	company = project_info.get("company") if project_info else None
+	if company and company_holiday_lists:
+		return company_holiday_lists.get(company)
+	return None
+
+
 def load_projects(projects_list: list[str]) -> dict[str, ProjectWorkloadInfo]:
 	projects_data: dict[str, ProjectWorkloadInfo] = {}
 	if not projects_list:
@@ -156,15 +186,24 @@ def load_projects(projects_list: list[str]) -> dict[str, ProjectWorkloadInfo]:
 
 	projects_db = frappe.qb.get_query(
 		"Project",
-		fields=["name", "project_name", "holiday_list"],
+		fields=["name", "project_name", "holiday_list", "company"],
 		filters=[["name", "in", projects_list]],
 	).run(as_dict=True)
+	company_holiday_lists = load_company_holiday_lists({
+		row["company"] for row in projects_db if row.get("company")
+	})
 	for project_row in projects_db:
-		projects_data[project_row["name"]] = ProjectWorkloadInfo(
+		project_info = ProjectWorkloadInfo(
 			name=project_row["name"],
 			project_name=project_row.get("project_name"),
 			holiday_list=project_row.get("holiday_list"),
+			company=project_row.get("company"),
 		)
+		project_info["effective_holiday_list"] = resolve_project_holiday_list(
+			project_info,
+			company_holiday_lists,
+		)
+		projects_data[project_row["name"]] = project_info
 	return projects_data
 
 
@@ -226,8 +265,9 @@ def load_holiday_data(
 	all_holiday_lists: set[str] = set()
 
 	for project in projects_data.values():
-		if project.get("holiday_list"):
-			all_holiday_lists.add(project["holiday_list"])
+		effective_holiday_list = project.get("effective_holiday_list") or resolve_project_holiday_list(project)
+		if effective_holiday_list:
+			all_holiday_lists.add(effective_holiday_list)
 	for user in users_data.values():
 		if user.get("wholiday_list"):
 			all_holiday_lists.add(user["wholiday_list"])
