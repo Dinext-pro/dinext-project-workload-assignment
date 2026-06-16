@@ -40,6 +40,8 @@ class ProjectWorkloadInfo(TypedDict, total=False):
 	name: str
 	project_name: str | None
 	holiday_list: str | None
+	company: str | None
+	effective_holiday_list: str | None
 
 
 class TaskWorkloadInfo(TypedDict, total=False):

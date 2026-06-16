@@ -416,6 +416,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    load_user_absences,
 		    load_users_with_worker_context,
 		    load_working_hours_overrides,
+		    resolve_project_holiday_list,
 		)
 		from project_workload_assignment.project_workload_assignment.project_workload.workload_engine import (
 		    WorkloadContext,
@@ -651,7 +652,10 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            '_absences': user_absences.get(user_email, []),
 		            # ISS-2026-00865 #7: оба календаря в project-row; клиент объединяет для weekly/monthly %.
 		            '_userHolidays': holiday_lists_cache.get(user_info.get('wholiday_list', ''), []),
-		            '_projectHolidays': holiday_lists_cache.get(project_info.get('holiday_list', ''), [])
+		            '_projectHolidays': holiday_lists_cache.get(
+		                resolve_project_holiday_list(project_info) or '',
+		                [],
+		            ),
 		        }
 		
 		        project_total = 0.0

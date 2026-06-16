@@ -224,7 +224,7 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		# ========== 1. ОПТИМИЗИРОВАННОЕ ПОЛУЧЕНИЕ ДАННЫХ ПРОЕКТА ==========
 		
 		project_data = frappe.db.get_value('Project', project, 
-			['expected_start_date', 'expected_end_date', 'holiday_list'], as_dict=True)
+			['expected_start_date', 'expected_end_date', 'holiday_list', 'company'], as_dict=True)
 		
 		if not project_data:
 			return {
@@ -240,6 +240,10 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		project_start_date = project_data.expected_start_date or frappe.utils.nowdate()
 		project_end_date = project_data.expected_end_date or frappe.utils.add_days(project_start_date, 90)
 		project_holiday_list = project_data.holiday_list
+		if not project_holiday_list and project_data.company:
+			project_holiday_list = frappe.db.get_value(
+				"Company", project_data.company, "default_holiday_list"
+			)
 		
 		logger(f"Project dates - Start: {project_start_date}, End: {project_end_date}, Holiday List: {project_holiday_list}")
 		
