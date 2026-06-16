@@ -36,6 +36,7 @@ class TaskUserDetail(TypedDict):
 class TaskPeriodDetail(TypedDict):
 	"""Детали периода в задаче."""
 	forecast_hours: float
+	plan_hours: float
 	users: dict[str, TaskUserDetail]
 
 
@@ -318,7 +319,9 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             PWEA.pwea_month.as_('month'),
 
-            PWEA.pwea_expected.as_('forecast_hours')
+            PWEA.pwea_expected.as_('forecast_hours'),
+
+            PWEA.pwea_plan.as_('plan_hours')
 
         )
 
@@ -340,6 +343,8 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
     forecast_cache = {}
 
+    plan_cache = {}
+
     for row in pwe_list:
 
         if row.get('year') and row.get('month'):
@@ -350,53 +355,11 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             forecast_cache[key] = float(row.get('forecast_hours', 0))
 
+            plan_cache[key] = float(row.get('plan_hours', 0))
+
     
 
     debug_log(f"Forecast cache size: {len(forecast_cache)}")
-
-    
-
-    plan_cache = {}
-
-    plan_query = (
-
-        frappe.qb.from_(PWE)
-
-        .left_join(PWEA)
-
-        .on(PWEA.parent == PWE.name)
-
-        .select(
-
-            PWE.pwe_task.as_('task'),
-
-            PWE.pwe_project_role.as_('role'),
-
-            PWEA.pwea_year.as_('year'),
-
-            PWEA.pwea_month.as_('month'),
-
-            PWEA.pwea_plan.as_('plan_hours')
-
-        )
-
-        .where(PWE.pwe_project == project)
-
-        .where(PWEA.pwea_plan.isnotnull())
-
-        .where(PWEA.pwea_plan > 0)
-
-    )
-
-    for row in plan_query.run(as_dict=True):
-
-        if row.get('year') and row.get('month'):
-
-            month = int(row.get('month'))
-
-            key = f"{row.get('task')}_{row.get('role')}_{row.get('year')}_{month}"
-
-            plan_cache[key] = float(row.get('plan_hours', 0))
 
     debug_log(f"Plan cache size: {len(plan_cache)}")
 
@@ -940,6 +903,8 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             month = int(parts[-1])
 
+            plan_hours = plan_cache.get(key, 0)
+
             
 
             if task not in tasks_map:
@@ -974,13 +939,15 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
                 'forecast_hours': forecast_hours,
 
+                'plan_hours': plan_hours,
+
                 'users': {}
 
             }
 
             
 
-            debug_log(f"    Added forecast for {task}/{role}/{period_key}: +{forecast_hours}")
+            debug_log(f"    Added forecast for {task}/{role}/{period_key}: +{forecast_hours}, plan={plan_hours}")
 
     
 
@@ -1058,6 +1025,8 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
             forecast_hours = forecast_cache.get(forecast_key, 0)
 
+            plan_hours = plan_cache.get(forecast_key, 0)
+
             
 
             if task not in tasks_map:
@@ -1114,6 +1083,8 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
 
                         'forecast_hours': forecast_hours,
 
+                        'plan_hours': plan_hours,
+
                         'users': {}
 
                     }
@@ -1123,8 +1094,6 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
                 # Для типа "В % от трудоемкости задачи"
 
                 if workload_type == 'В % от трудоемкости задачи':
-
-                    plan_hours = plan_cache.get(forecast_key, 0)
 
                     if plan_hours > 0:
 
