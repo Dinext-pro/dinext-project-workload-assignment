@@ -25,6 +25,20 @@ class AssignmentRow(TypedDict):
 	project_name: str
 
 
+class FlatAssignmentRow(TypedDict):
+	"""Строка назначения для Flat Workload Report."""
+	name: str
+	user: str
+	task: str
+	role: str | None
+	date_from: date | str
+	date_to: date | str
+	workload: str | None
+	wl_value: float | None
+	project: str
+	task_subject: str | None
+
+
 class ProjectAssignmentRow(TypedDict):
 	"""Строка назначения из fetch_project_assignments_with_worker_context."""
 	task_id: str
@@ -65,6 +79,8 @@ def build_pwr_assignment_base_query(
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
+	task: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> tuple[Any, Any, Any]:
@@ -81,6 +97,11 @@ def build_pwr_assignment_base_query(
 		UGM = frappe.qb.DocType("User Group Member")
 		q = q.inner_join(UGM).on((UGM.parent == user_group_parent) & (UGM.user == PWA.user))
 
+	if project_portfolio:
+		Project = frappe.qb.DocType("Project")
+		q = q.inner_join(Project).on(Task.project == Project.name)
+		q = q.where(Project.custom_project_portfolio == project_portfolio)
+
 	q = (
 		q.where(PWA.user.isnotnull())
 		.where(PWA.task.isnotnull())
@@ -94,6 +115,8 @@ def build_pwr_assignment_base_query(
 		q = q.where(PWA.user == user)
 	if project:
 		q = q.where(Task.project == project)
+	if task:
+		q = q.where(PWA.task == task)
 
 	return q, PWA, Task
 
@@ -104,6 +127,7 @@ def fetch_pwr_report_assignments(
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 	restrict_users: list[str] | None = None,
@@ -114,6 +138,7 @@ def fetch_pwr_report_assignments(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -137,12 +162,47 @@ def fetch_pwr_report_assignments(
 	return q.run(as_dict=True)
 
 
+def fetch_flat_report_assignments(
+	window_start: str | date,
+	window_end: str | date,
+	*,
+	user: str | None = None,
+	project: str | None = None,
+	task: str | None = None,
+	user_group_parent: str | None = None,
+) -> list[FlatAssignmentRow]:
+	"""Назначения для Flat Workload Report (PWA + Task, project + task_subject)."""
+	q, PWA, Task = build_pwr_assignment_base_query(
+		window_start,
+		window_end,
+		user=user,
+		project=project,
+		task=task,
+		user_group_parent=user_group_parent,
+		use_sql_user_group_join=bool(user_group_parent),
+	)
+	q = q.select(
+		PWA.name,
+		PWA.user,
+		PWA.task,
+		PWA.role,
+		PWA.date_from,
+		PWA.date_to,
+		PWA.workload,
+		PWA.wl_value,
+		Task.project.as_("project"),
+		Task.subject.as_("task_subject"),
+	)
+	return q.run(as_dict=True)
+
+
 def count_pwr_report_distinct_users(
 	window_start: str | date,
 	window_end: str | date,
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> int:
@@ -151,6 +211,7 @@ def count_pwr_report_distinct_users(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -168,6 +229,7 @@ def fetch_pwr_report_user_page(
 	offset: int,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> list[str]:
@@ -176,6 +238,7 @@ def fetch_pwr_report_user_page(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -203,6 +266,7 @@ def fetch_pwr_user_totals_bundle(
 	*,
 	user: str | None = None,
 	project: str | None = None,
+	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 ) -> UserTotalsBundle:
@@ -214,6 +278,7 @@ def fetch_pwr_user_totals_bundle(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -224,6 +289,7 @@ def fetch_pwr_user_totals_bundle(
 		offset=off,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 	)
@@ -234,6 +300,7 @@ def fetch_pwr_user_totals_bundle(
 		window_end,
 		user=user,
 		project=project,
+		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 		restrict_users=page_users,
