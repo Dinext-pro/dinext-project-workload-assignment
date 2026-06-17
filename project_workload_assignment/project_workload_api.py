@@ -31,6 +31,13 @@ from project_workload_assignment.project_workload_assignment.project_workload.te
 	TeamWorkloadResponse,
 	ErrorTeamWorkloadResponse,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.chart_aggregates import (
+	run_get_team_workload_charts,
+	run_get_project_workload_charts,
+	ChartResponse,
+	TeamChartFormDict,
+	ProjectChartFormDict,
+)
 from project_workload_assignment.project_workload_assignment.project_workload.forecast_from_work_efforts import (
 	run_add_forecast_from_work_efforts,
 )
@@ -74,6 +81,27 @@ class TasksForecastFormInput(TypedDict, total=False):
 	view_options: Literal['Только факт', 'Только прогноз', 'Прогноз и факт']
 
 
+class TeamChartFormInput(TypedDict, total=False):
+	"""Входные параметры для сводного графика PWR (ISS-2026-00002)."""
+	user: str | None
+	project: str | None
+	project_portfolio: str | None
+	user_group: str | None
+	view_type: Literal['daily', 'weekly', 'monthly']
+	period_range: Literal['quarter', 'half_year', 'year']
+	worker_wtype: str | None
+	load_utilization: bool | str | int
+
+
+class ProjectChartFormInput(TypedDict, total=False):
+	"""Входные параметры для графика вкладки «Загрузка» проекта."""
+	project: str
+	view_type: Literal['daily', 'weekly', 'monthly']
+	date_from: str | None
+	date_to: str | None
+	worker_wtype: str | None
+
+
 @frappe.whitelist()
 def pwr_run_team_workload_grid() -> TeamWorkloadResponse | ErrorTeamWorkloadResponse:
 	"""Отчёт загрузки команды (Projects Workload Report). API method: get_projects_workload_data_v2."""
@@ -93,6 +121,20 @@ def pwr_run_tasks_forecast_workload() -> TasksForecastResponse | ErrorTasksRespo
 	"""Прогноз PWE и факт PWA по задачам проекта. API method: get_tasks_forecast_and_workload_v2."""
 	form_input: TasksForecastFormInput = frappe.form_dict
 	return run_get_tasks_forecast_and_workload(form_input)
+
+
+@frappe.whitelist()
+def pwr_run_team_workload_charts() -> ChartResponse:
+	"""Сводный график Projects Workload Report (ISS-2026-00002)."""
+	form_input: TeamChartFormInput = frappe.form_dict
+	return run_get_team_workload_charts(form_input)
+
+
+@frappe.whitelist()
+def pwr_run_project_workload_charts() -> ChartResponse:
+	"""Сводный график вкладки «Загрузка» проекта (ISS-2026-00002)."""
+	form_input: ProjectChartFormInput = frappe.form_dict
+	return run_get_project_workload_charts(form_input)
 
 
 @frappe.whitelist()

@@ -31,6 +31,7 @@ class UserWorkloadInfo(TypedDict, total=False):
 	email: str | None
 	wholiday_list: str | None
 	wtimesheet_template: str | None
+	wtype: str | None
 	hours_on_date: float | None
 	tt_working_hours_on_date: str | None
 
