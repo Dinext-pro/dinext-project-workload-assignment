@@ -86,7 +86,7 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 	workers_db = frappe.get_list(
 		"Worker",
 		filters={"wuser": ["in", users_list]},
-		fields=["wuser", "wholiday_list", "wtimesheet_template"],
+		fields=["wuser", "wholiday_list", "wtimesheet_template", "wtype"],
 	)
 	workers_by_user = {w["wuser"]: w for w in workers_db}
 
@@ -142,11 +142,24 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 			email=user_row.get("email"),
 			wholiday_list=worker.get("wholiday_list"),
 			wtimesheet_template=worker.get("wtimesheet_template"),
+			wtype=worker.get("wtype"),
 			hours_on_date=template.get("hours_on_date") if template else None,
 			tt_working_hours_on_date=template.get("tt_working_hours_on_date") if template else None,
 		)
 
 	return users_data
+
+
+def load_worker_wtypes(users_list: list[str]) -> dict[str, str]:
+	"""Worker.wtype (Employee/Supplier) по email пользователя."""
+	if not users_list:
+		return {}
+	rows = frappe.get_list(
+		"Worker",
+		filters={"wuser": ["in", users_list]},
+		fields=["wuser", "wtype"],
+	)
+	return {row["wuser"]: row.get("wtype") or "" for row in rows if row.get("wuser")}
 
 
 def load_company_holiday_lists(companies: set[str] | list[str]) -> dict[str, str]:

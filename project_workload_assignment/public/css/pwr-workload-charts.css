@@ -1,0 +1,42 @@
+.pwr-workload-charts-root {
+	margin-bottom: 8px;
+	flex: 0 0 auto;
+	width: 100%;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 0 6px;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__title {
+	font-weight: 600;
+}
+
+.pwr-workload-charts-root .pwr-chart-filters {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: auto;
+	flex-wrap: wrap;
+}
+
+.pwr-workload-charts-root .pwr-chart-filters .form-group {
+	margin-bottom: 0;
+}
+
+.pwr-workload-charts-root .pwr-chart-loading {
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+	padding: 8px 0;
+}
+
+/* Утечки ECharts dataZoom slider в body (SPA-навигация без dispose). */
+body > .ec-extension {
+	display: none !important;
+	pointer-events: none !important;
+	height: 0 !important;
+	overflow: hidden !important;
+}
