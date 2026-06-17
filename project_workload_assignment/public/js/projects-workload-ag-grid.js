@@ -37,7 +37,7 @@
                 document.head.appendChild(script);
             }).then(() => {
                 if (!window.DinextAgGrid || typeof window.DinextAgGrid.ensure !== "function") {
-                    throw new Error("DinextAgGrid bootstrap не загрузился");
+                    throw new Error(__("DinextAgGrid bootstrap failed to load"));
                 }
             });
         }
@@ -606,7 +606,7 @@
                 animateRows: false,
                 ensureDomOrder: false,
                 loadingOverlayComponentParams: {
-                    loadingMessage: options.freezeMessage || __("Идет загрузка данных...")
+                    loadingMessage: options.freezeMessage || __("Loading data...")
                 },
                 getRowId: params => params.data && params.data._agRowId ? params.data._agRowId : getRowId(params.data, 0, this),
                 getRowClass: params => params.data && params.data.level ? `level-${params.data.level}` : "",

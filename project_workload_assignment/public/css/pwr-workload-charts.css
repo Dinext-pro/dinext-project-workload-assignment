@@ -27,6 +27,10 @@
 	margin-bottom: 0;
 }
 
+.pwr-workload-charts-root .pwr-chart-filters .pwr-chart-utilization-btn {
+	margin-left: 8px;
+}
+
 .pwr-workload-charts-root .pwr-chart-loading {
 	font-size: var(--text-sm);
 	color: var(--text-muted);

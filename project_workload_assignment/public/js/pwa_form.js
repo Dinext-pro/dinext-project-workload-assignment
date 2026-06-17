@@ -67,8 +67,8 @@ function reload( frm ) {
 
 function open_pwa( frm, task ) {
     if ( frm.is_dirty() ) {
-        frappe.warn(__('Подтвердите'),
-            __('Изменения данных будут сохранены. Продолжить?'),
+        frappe.warn(__('Confirm'),
+            __('Changes will be saved. Continue?'),
             () => {
                 frm.save( null, ()=> start_pwa( frm, task ) );
             },

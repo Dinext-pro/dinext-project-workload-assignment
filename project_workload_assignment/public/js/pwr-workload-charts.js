@@ -345,7 +345,7 @@ frappe.provide("project_workload_assignment.charts");
 
 		if (options.showUtilizationButton) {
 			$(
-				`<button type="button" class="btn btn-xs btn-default" style="margin-left:8px;">${__(
+				`<button type="button" class="btn btn-xs btn-default pwr-chart-utilization-btn">${__(
 					"Load utilization"
 				)}</button>`
 			)

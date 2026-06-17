@@ -33,12 +33,12 @@ def execute(filters=None):
 	filters = filters or {}
 
 	columns = [
-		{"fieldname": "user_name", "label": _("Пользователь"), "fieldtype": "Data", "width": 200},
-		{"fieldname": "role", "label": _("Роль"), "fieldtype": "Data", "width": 150},
-		{"fieldname": "project_name", "label": _("Проект"), "fieldtype": "Data", "width": 200},
-		{"fieldname": "task", "label": _("Задача"), "fieldtype": "Data", "width": 200},
-		{"fieldname": "date", "label": _("Дата"), "fieldtype": "Date", "width": 100},
-		{"fieldname": "hours", "label": _("Часы"), "fieldtype": "Float", "precision": 2, "width": 100},
+		{"fieldname": "user_name", "label": _("User"), "fieldtype": "Data", "width": 200},
+		{"fieldname": "role", "label": _("Role"), "fieldtype": "Data", "width": 150},
+		{"fieldname": "project_name", "label": _("Project"), "fieldtype": "Data", "width": 200},
+		{"fieldname": "task", "label": _("Task"), "fieldtype": "Data", "width": 200},
+		{"fieldname": "date", "label": _("Date"), "fieldtype": "Date", "width": 100},
+		{"fieldname": "hours", "label": _("Hours"), "fieldtype": "Float", "precision": 2, "width": 100},
 		{"fieldname": "fte", "label": _("FTE"), "fieldtype": "Float", "precision": 4, "width": 80},
 	]
 

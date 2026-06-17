@@ -1,5 +1,9 @@
 let _pwa_starting = false;
 
+const PWR_WORKLOAD_IN_WORKING_HOURS = __("In working hours");
+const PWR_WORKLOAD_PERCENT_FUND = __("As % of working hours fund");
+const PWR_WORKLOAD_PERCENT_TASK = __("As % of task work efforts");
+
 function ensure_task_dates(task) {
     if (task.exp_start_date && task.exp_end_date) {
         return Promise.resolve(task);
@@ -114,7 +118,7 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
                     task_dates: true,
                     date_from: getMaxToDate( task.exp_start_date ),
                     date_to: getMaxToDate( task.exp_end_date ),
-                    workload: __('В % от трудоемкости задачи'),
+                    workload: PWR_WORKLOAD_PERCENT_TASK,
                     wl_value: 100,
                     acc_separately: true
                 } );                                
@@ -134,12 +138,12 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     let project_users = getProjectTeamUsersSync( task.project );
     
     const d = new frappe.ui.Dialog({
-        title: __('Назначение загрузки'),
+        title: __('Workload assignment'),
         size: 'extra-large',
         fields: [
             {fieldtype: 'Section Break'},
             {
-                label: __('Пользователь'), 
+                label: __('User'), 
                 fieldname: 'user_search', 
                 fieldtype: 'Link', 
                 options: 'User',
@@ -173,7 +177,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
             {
                 fieldtype: 'Button', 
                 fieldname: 'user_all', 
-                label: " " + __('Назначить всю команду'),
+                label: " " + __('Assign entire team'),
                 icon: 'users',
                 click: () => {
                     let new_users = project_users.filter( user => !pwas.some( pwa => !pwa.__isRemove && pwa.user == user ) )
@@ -195,12 +199,12 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                             );
                         } );
                     } else {
-                        frappe.show_alert(__("Назначены все возможные исполнители"), 5);
+                        frappe.show_alert(__("All possible assignees are already assigned"), 5);
                     }
                 },
                 btn_size: 'sm' // xs, sm, lg
             },
-            {fieldtype: 'Section Break', label: __('Трудозатраты'), collapsible: 1},
+            {fieldtype: 'Section Break', label: __('Work efforts'), collapsible: 1},
             {
                 fieldname: 'pwe_rows',
                 fieldtype: 'Table',
@@ -210,7 +214,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 fields: get_pwe_fields(),
                 data: pwes
             },
-            {fieldtype: 'Section Break', label: __('Загрузка') },
+            {fieldtype: 'Section Break', label: __('Workload') },
             {
                 //label: __('Назначения'),
                 fieldname: 'pwa_rows',
@@ -229,7 +233,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 },
             },
         ],
-        primary_action_label: __('Сохранить'),
+        primary_action_label: __('Save'),
         primary_action: async (values) => {
             await submit_pwa_and_todo(pwas || []);
             d.hide();
@@ -237,7 +241,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 cbfunc( pwas || [] );
             }            
             },
-        secondary_action_label: __("Отменить"),
+        secondary_action_label: __("Cancel without saving"),
         secondary_action: async (values) => { d.hide(); },
         });
     
@@ -270,7 +274,7 @@ const formatUserDisplay = (val, field, options, doc) => {
 }
 
 const formatWLValue = (val, field, options, doc) => {
-    return val + " " +  ( ( doc.workload == __("В рабочих часах") ) ? __("ч.") : "%" );
+    return val + " " +  ( ( doc.workload == PWR_WORKLOAD_IN_WORKING_HOURS ) ? __("h") : "%" );
 }
 
 function getPWAGrid(me) {
@@ -280,7 +284,7 @@ function getPWAGrid(me) {
 function get_pwa_fields( task ) {
     return [
           {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
-          {fieldname: 'role', label: __('Роль'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 2, reqd: 1,
+          {fieldname: 'role', label: __('Role'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 2, reqd: 1,
             get_query: (doc, cdt, cdn) =>  {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
@@ -288,7 +292,7 @@ function get_pwa_fields( task ) {
                 checkWorkload( getChangedRow( getPWAGrid( this ), "role" ) );
             }
           },            
-          {fieldname: 'task_dates', label: __('Даты задачи'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
+          {fieldname: 'task_dates', label: __('Task dates'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
             onchange: function (e) { 
                 let docname = $(e.target).closest(".grid-row").data("name");
                 let row = getPWAGrid( this ).get_row(docname);
@@ -307,23 +311,23 @@ function get_pwa_fields( task ) {
                 row.refresh();
             },
           },
-          {fieldname: 'date_from', label: __('Дата с'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+          {fieldname: 'date_from', label: __('From date'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
             get_status: function(me) {
                 return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
             }
           },
-          {fieldname: 'date_to', label: __('Дата по'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
+          {fieldname: 'date_to', label: __('To date'), fieldtype: 'Date', in_list_view: 1, columns: 1, reqd: 1, read_only_depends_on: "task_dates",
             get_status: function(me) {
                 return me.grid_row.on_grid_fields_dict.task_dates.get_value() ? "Read" : "Write";
             }
           },
-          {fieldname: 'workload', label: __('Загрузка'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
-            options: '\n' + __('В рабочих часах') + '\n' + __('В % от фонда рабочих часов') + '\n' + __('В % от трудоемкости задачи'),            
+          {fieldname: 'workload', label: __('Workload'), fieldtype: 'Select', in_list_view: 1, columns: 2, reqd: 1,
+            options: '\n' + PWR_WORKLOAD_IN_WORKING_HOURS + '\n' + PWR_WORKLOAD_PERCENT_FUND + '\n' + PWR_WORKLOAD_PERCENT_TASK,            
             onchange: function(e) { 
                 checkWorkload( getChangedRow( getPWAGrid( this ), "workload" ) );
             },
           },
-          {fieldname: 'wl_value', label: __('Величина'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
+          {fieldname: 'wl_value', label: __('Amount'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
           /*{fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},/* */
         ];
 }
@@ -346,7 +350,7 @@ function checkWorkload( row ) {
 
         clearHighlights( row );
         
-        if ( value == __('В % от трудоемкости задачи') ) {
+        if ( value == PWR_WORKLOAD_PERCENT_TASK ) {
             let task = row.get_field("task_dates").df.task;
             let role = row.get_field("role").get_value();
 
@@ -379,10 +383,10 @@ function checkPWEforRow( task, role, row ) {
                         return;
                     }
                 }
-                highlightRole( row, __("Не определены трудозатраты для роли: ") + role );
+                highlightRole( row, __("Work efforts are not defined for role: {0}", [role]) );
             })
         } else {
-            highlightRole( row, __("Не определены трудозатраты для роли: ") + role );
+            highlightRole( row, __("Work efforts are not defined for role: {0}", [role]) );
         }
     })
 }
@@ -411,11 +415,11 @@ function clearHighlights( row ) {
 
 function get_pwe_fields() {
     return [
-            { label: __('Роль'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
-            { label: __("План"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
-            { label: __("Факт"), fieldname: 'total_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+            { label: __('Role'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
+            { label: __("Plan"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+            { label: __("Actual"), fieldname: 'total_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
             { label: __("%"), fieldname: 'completion_percentage', fieldtype: 'Percent', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
-            { label: __("Учтены трудозатраты от"), fieldname: 'users', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 4 }
+            { label: __("Work efforts accounted from"), fieldname: 'users', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 4 }
         ];
 }
 
@@ -426,5 +430,5 @@ async function submit_pwa_and_todo(rows) {
     freeze: true,
   });
 
-  frappe.show_alert({message: __('Данные сохранены'), indicator: 'green'});
+  frappe.show_alert({message: __('Data saved'), indicator: 'green'});
 }
