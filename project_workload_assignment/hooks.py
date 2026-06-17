@@ -68,6 +68,7 @@ app_include_js = "/assets/project_workload_assignment/js/pwa_dialog.js"
 doctype_js = {
                 "Task":"public/js/pwa_form.js"
                 ,"Issue":"public/js/pwa_form.js"
+                ,"Project":["public/js/pwr-pl-forecast-from-we.js"]
             }
 
 # doctype_list_js = {

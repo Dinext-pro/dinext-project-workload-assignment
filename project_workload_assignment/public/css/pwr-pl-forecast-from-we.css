@@ -1,0 +1,26 @@
+.pwr-pl-forecast-tasks-datatable-container {
+	width: 100%;
+	overflow: auto;
+	border: 1px solid #d1d8dd;
+	border-radius: 4px;
+}
+
+.pwr-pl-forecast-info-box {
+	margin-top: 10px;
+	padding: 8px 10px;
+	background: var(--bg-light-gray);
+	border-radius: 4px;
+	font-size: 12px;
+}
+
+.pwr-pl-forecast-info-box .fa-info-circle {
+	margin-right: 5px;
+}
+
+.pwr-pl-forecast-assigned-hours {
+	color: #e67e22;
+}
+
+.pwr-pl-forecast-row-no-data {
+	background-color: #f8f9fa;
+}

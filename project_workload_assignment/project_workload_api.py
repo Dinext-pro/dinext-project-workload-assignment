@@ -5,10 +5,11 @@ ISS-2026-00865: расчёт PWR/PWE/прогноза — только здес�
 Server Script на сайте — тонкие обёртки (`frappe.call` на методы ниже), без копии ядра в `script`.
 ISS-2026-00926: новый DinextAgGrid UI не меняет эти entrypoints; не возвращать логику в dinext_common.
 
-Три точки входа (whitelist → api_method Server Script → модуль ядра):
+Четыре точки входа (whitelist → api_method Server Script → модуль ядра):
 - pwr_run_team_workload_grid → get_projects_workload_data_v2 → team_workload_grid.run_get_projects_workload_data_v2
 - pwr_run_project_workload_tree → get_project_workload_data → single_project_workload_tree.run_get_project_workload_data
 - pwr_run_tasks_forecast_workload → get_tasks_forecast_and_workload_v2 → tasks_forecast_workload.run_get_tasks_forecast_and_workload
+- pwr_run_add_forecast_from_work_efforts → add_forecast_from_work_efforts → forecast_from_work_efforts.run_add_forecast_from_work_efforts
 """
 
 from typing import TypedDict, Literal, TYPE_CHECKING
@@ -29,6 +30,9 @@ from project_workload_assignment.project_workload_assignment.project_workload.te
 	run_get_projects_workload_data_v2,
 	TeamWorkloadResponse,
 	ErrorTeamWorkloadResponse,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.forecast_from_work_efforts import (
+	run_add_forecast_from_work_efforts,
 )
 
 
@@ -89,3 +93,9 @@ def pwr_run_tasks_forecast_workload() -> TasksForecastResponse | ErrorTasksRespo
 	"""Прогноз PWE и факт PWA по задачам проекта. API method: get_tasks_forecast_and_workload_v2."""
 	form_input: TasksForecastFormInput = frappe.form_dict
 	return run_get_tasks_forecast_and_workload(form_input)
+
+
+@frappe.whitelist()
+def pwr_run_add_forecast_from_work_efforts():
+	"""Add P&L forecast from work efforts. API method: add_forecast_from_work_efforts."""
+	return run_add_forecast_from_work_efforts(frappe.form_dict)
