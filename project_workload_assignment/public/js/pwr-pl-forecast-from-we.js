@@ -456,8 +456,12 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 				reloadForecastBudgetView(frm);
 
 			} else if (r.message && r.message.needs_confirmation) {
+				const isUnderload = r.message.total_pwa_hours < r.message.forecast_hours;
+				const confirmMessage = isUnderload
+					? __("Forecast exceeds workload. Recalculate forecast based on virtual project team member data?")
+					: __("Workload exceeds forecast. Recalculate forecast based on current forecast values?");
 				frappe.confirm(
-					__("Overload detected. Recalculate forecast based on current workload?"),
+					confirmMessage,
 					() => {
 						add_forecast_to_budget(frm, selectedTasks, tasksDetails, true, forecastType, incomeAccount);
 					},
