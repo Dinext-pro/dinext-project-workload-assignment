@@ -76,6 +76,18 @@
                 --projects-workload-ag-header-main-color: var(--text-color);
                 --projects-workload-ag-header-sub-color: var(--text-color);
             }
+            .projects_workload_report .projects-workload-ag-grid {
+                height: 100%;
+                min-height: 0;
+                max-height: none;
+                margin: 0;
+            }
+            .project_workload_container .project-workload-ag-grid {
+                height: 100%;
+                min-height: 0;
+                max-height: none;
+                margin: 0;
+            }
             .projects-workload-ag-grid .ag-pinned-left-header {
                 --ag-header-column-resize-handle-display: block;
             }
@@ -439,6 +451,13 @@
         return visibleRows;
     }
 
+    function periodColumnSignature(columns) {
+        return (columns || [])
+            .map(column => column && column.id)
+            .filter(id => id && id !== "participant" && String(id).indexOf("workload_") === 0)
+            .join("\u0001");
+    }
+
     function getParticipantColumnWidth(table, column, isParticipant) {
         if (!isParticipant) {
             return Number(column.width) || 50;
@@ -633,8 +652,11 @@
         }
 
         refresh(rows, columns) {
+            const prevPeriodSignature = periodColumnSignature(this.columns);
             this.rows = rows || [];
-            this.columns = columns || this.columns || [];
+            if (columns != null) {
+                this.columns = columns;
+            }
             this.rows.forEach((row, index) => {
                 if (row) {
                     delete row._agRowId;
@@ -646,6 +668,21 @@
             this.setGridOption("columnDefs", columnDefs);
             this.renderRows({ forceFull: true });
             this.applyParticipantColumnWidth();
+
+            const periodsChanged =
+                columns != null && periodColumnSignature(this.columns) !== prevPeriodSignature;
+            const shouldReloadChart = periodsChanged || this._chartReloadAfterRefresh;
+            this._chartReloadAfterRefresh = false;
+
+            if (
+                shouldReloadChart &&
+                cur_frm &&
+                (cur_frm.doctype === "Projects Workload Report" || cur_frm.doctype === "Project")
+            ) {
+                requestAnimationFrame(() => {
+                    $(document).trigger("pwr-workload-chart-reload", [cur_frm]);
+                });
+            }
         }
 
         findRowByIndexOrKey(rowIndexOrKey) {
@@ -989,6 +1026,7 @@
 
         freeze(message) {
             this.loading = true;
+            this._chartReloadAfterRefresh = true;
             if (this.api && typeof this.api.setGridOption === "function") {
                 this.api.setGridOption("loading", true);
             }
