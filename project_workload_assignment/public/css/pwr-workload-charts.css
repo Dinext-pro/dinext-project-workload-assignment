@@ -1,34 +1,203 @@
 .pwr-workload-charts-root {
-	margin-bottom: 8px;
+	--pwr-chart-plot-height: 200px;
+	--pwr-yaxis-gutter-width: 50px;
+	margin-bottom: 0;
 	flex: 0 0 auto;
 	width: 100%;
+	height: fit-content;
 }
 
-.pwr-workload-charts-root .dinext-chart-panel__header {
+.pwr-workload-charts-root .dinext-chart-panel--ag-grid-aligned .dinext-chart-panel__body {
+	padding: 0;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel--ag-grid-aligned {
+	height: fit-content;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__sync-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) var(--pwr-yaxis-gutter-width, 50px) minmax(0, 1fr);
+	grid-template-rows: var(--pwr-chart-plot-height, 200px);
+	width: 100%;
+	min-width: 0;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__gutter-chrome {
+	grid-column: 1;
+	grid-row: 1;
 	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 4px 0 6px;
+	flex-direction: column;
+	min-width: 0;
+	padding: 8px 8px 8px 10px;
+	box-sizing: border-box;
+	overflow: hidden;
 }
 
-.pwr-workload-charts-root .dinext-chart-panel__title {
-	font-weight: 600;
+.pwr-workload-charts-root .dinext-chart-panel__gutter-head {
+	display: none !important;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__gutter-filters {
+	min-width: 0;
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	margin: 0;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__gutter-yaxis {
+	grid-column: 2;
+	grid-row: 1;
+	box-sizing: border-box;
+	width: var(--pwr-yaxis-gutter-width, 50px);
+	min-width: var(--pwr-yaxis-gutter-width, 50px);
+	max-width: var(--pwr-yaxis-gutter-width, 50px);
+	padding: 0;
+	border-right: 1px solid var(--border-color, #d1d8dd);
+	position: relative;
+	height: var(--pwr-chart-plot-height, 200px);
+	min-height: var(--pwr-chart-plot-height, 200px);
+	max-height: var(--pwr-chart-plot-height, 200px);
+	overflow: hidden;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__viewport {
+	grid-column: 3;
+	grid-row: 1;
+	min-width: 0;
+	height: var(--pwr-chart-plot-height, 200px);
+	max-height: var(--pwr-chart-plot-height, 200px);
+	overflow: hidden;
+	position: relative;
+	padding: 0;
+	margin: 0;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__chart-track {
+	will-change: transform;
+	margin: 0;
+	padding: 0;
+}
+
+.pwr-workload-charts-root .dinext-chart-panel__chart {
+	height: var(--pwr-chart-plot-height, 200px);
+	min-height: var(--pwr-chart-plot-height, 200px);
+	max-height: var(--pwr-chart-plot-height, 200px);
+	margin: 0;
+	padding: 0;
 }
 
 .pwr-workload-charts-root .pwr-chart-filters {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
 	gap: 8px;
-	margin-left: auto;
-	flex-wrap: wrap;
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
 }
 
-.pwr-workload-charts-root .pwr-chart-filters .form-group {
-	margin-bottom: 0;
+.pwr-workload-charts-root .pwr-chart-filter-field {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 3px;
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
 }
 
-.pwr-workload-charts-root .pwr-chart-filters .pwr-chart-utilization-btn {
-	margin-left: 8px;
+.pwr-workload-charts-root .pwr-chart-filter-field--action {
+	margin-top: auto;
+	padding-top: 2px;
+}
+
+.pwr-workload-charts-root .pwr-chart-filter-label {
+	display: block;
+	margin: 0;
+	padding: 0;
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--text-muted, #8d99a6);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pwr-workload-charts-root .pwr-chart-worker-wtype {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 2px 20px 2px 6px;
+	min-height: 24px;
+	height: 24px;
+	font-size: 11px;
+	line-height: 1.2;
+	border-radius: var(--border-radius-sm, 4px);
+	background-color: var(--control-bg, var(--fg-color, #fff));
+	color: var(--text-color);
+	border: 1px solid var(--border-color, #d1d8dd);
+	appearance: auto;
+}
+
+.pwr-workload-charts-root .pwr-chart-utilization-btn {
+	width: 100%;
+	max-width: 100%;
+	margin: 0;
+	padding: 2px 6px;
+	min-height: 24px;
+	height: 24px;
+	font-size: 11px;
+	line-height: 1.2;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	text-align: center;
+}
+
+.pwr-workload-charts-root .pwr-chart-yaxis-name {
+	position: absolute;
+	left: 50%;
+	font-size: 10px;
+	color: var(--text-muted);
+	line-height: 1;
+	pointer-events: none;
+	transform-origin: center center;
+	white-space: nowrap;
+}
+
+.pwr-workload-charts-root .pwr-chart-yaxis-ticks {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	overflow: hidden;
+}
+
+.pwr-workload-charts-root .pwr-chart-yaxis-tick {
+	position: absolute;
+	left: 0;
+	right: 0;
+	transform: translateY(-50%);
+	font-size: 10px;
+	color: var(--text-muted);
+	line-height: 1;
+	text-align: right;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: clip;
+	padding-right: 2px;
 }
 
 .pwr-workload-charts-root .pwr-chart-loading {
@@ -37,10 +206,32 @@
 	padding: 8px 0;
 }
 
-/* Утечки ECharts dataZoom slider в body (SPA-навигация без dispose). */
-body > .ec-extension {
-	display: none !important;
-	pointer-events: none !important;
-	height: 0 !important;
-	overflow: hidden !important;
+.filter-buttons .pwr-chart-visibility-toggle {
+	min-width: 28px;
+}
+
+.projects_workload_report .projects-workload-table,
+.projects_workload_report .projects-workload-ag-grid {
+	box-sizing: border-box;
+}
+
+.projects_workload_report .projects-workload-ag-grid {
+	width: calc(100% - 4px) !important;
+	height: 100% !important;
+	min-height: 0 !important;
+	max-height: none !important;
+	margin: 0 !important;
+}
+
+.project_workload_container .project-workload-table,
+.project_workload_container .project-workload-ag-grid {
+	box-sizing: border-box;
+}
+
+.project_workload_container .project-workload-ag-grid {
+	width: calc(100% - 4px) !important;
+	height: 100% !important;
+	min-height: 0 !important;
+	max-height: none !important;
+	margin: 0 !important;
 }

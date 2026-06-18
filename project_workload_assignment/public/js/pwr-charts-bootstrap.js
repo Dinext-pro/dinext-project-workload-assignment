@@ -1,9 +1,10 @@
 /* ISS-2026-00002: bootstrap — единственная точка входа; отключение графиков одной константой. */
 (function () {
-	/** Включить графики: window.DINEXT_PWR_CHARTS_ENABLED = true до загрузки bootstrap */
-	if (window.DINEXT_PWR_CHARTS_ENABLED !== true) {
+	/** Отключить графики: window.DINEXT_PWR_CHARTS_ENABLED = false до загрузки bootstrap */
+	if (window.DINEXT_PWR_CHARTS_ENABLED === false) {
 		return;
 	}
+	window.DINEXT_PWR_CHARTS_ENABLED = true;
 
 	frappe.provide("project_workload_assignment.charts");
 
@@ -35,9 +36,6 @@
 			}
 		);
 	}
-
-	// Ранняя очистка утечек dataZoom от предыдущих сессий SPA.
-	$("body > .ec-extension").remove();
 
 	if (project_workload_assignment.charts && project_workload_assignment.charts.boot) {
 		project_workload_assignment.charts.boot();
