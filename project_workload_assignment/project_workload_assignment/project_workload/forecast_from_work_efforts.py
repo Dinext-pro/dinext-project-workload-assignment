@@ -296,17 +296,23 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 		total_type3_load = sum(u.get('original_hours', 0) for u in type3_users)
 		total_other_load = sum(u.get('original_hours', 0) for u in other_users)
 
-		if forecast_hours < total_type3_load:
-			new_forecast = total_type3_load
-		else:
-			new_forecast = forecast_hours
+		# Считаем строго на основании PWE
+		new_forecast = forecast_hours
 
-		remaining_forecast = max(0, new_forecast - total_type3_load)
-
+		# Распределяем между type3 пропорционально, но не больше original
 		new_loads = {}
-		for u in type3_users:
-			new_loads[u.get('user')] = u.get('original_hours', 0)
+		remaining_forecast = new_forecast
 
+		for u in type3_users:
+			if total_type3_load > 0:
+				ratio = u.get('original_hours', 0) / total_type3_load
+				allocated = min(new_forecast * ratio, u.get('original_hours', 0))
+			else:
+				allocated = 0
+			new_loads[u.get('user')] = allocated
+			remaining_forecast -= allocated
+
+		# Остаток распределяем между остальными пропорционально
 		if total_other_load > 0 and remaining_forecast > 0:
 			for u in other_users:
 				ratio = u.get('original_hours', 0) / total_other_load
@@ -316,6 +322,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				new_loads[u.get('user')] = 0
 
 		return new_forecast, new_loads
+
 
 	# ========== 8. РАССЧИТЫВАЕМ СУММЫ И ЗАПИСЫВАЕМ В БЮДЖЕТ ==========
 	_debug_log("STEP 8: Calculating amounts and saving to budget")

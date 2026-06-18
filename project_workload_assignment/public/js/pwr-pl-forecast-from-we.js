@@ -457,8 +457,10 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 
 			} else if (r.message && r.message.needs_confirmation) {
 				frappe.ui.unfreeze();
-				let confirmMessage = r.message.message ||
-					__("Workload mismatch detected. Recalculate forecast based on current workload?");
+				const isUnderload = r.message.total_pwa_hours < r.message.forecast_hours;
+				const confirmMessage = r.message.message || (isUnderload
+					? __("Forecast exceeds workload. Recalculate forecast based on virtual project team member data?")
+					: __("Workload exceeds forecast. Recalculate forecast based on current forecast values?"));
 				frappe.confirm(
 					confirmMessage,
 					() => {
