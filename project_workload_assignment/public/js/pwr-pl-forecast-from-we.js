@@ -456,8 +456,11 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 				reloadForecastBudgetView(frm);
 
 			} else if (r.message && r.message.needs_confirmation) {
+				frappe.ui.unfreeze();
+				let confirmMessage = r.message.message ||
+					__("Workload mismatch detected. Recalculate forecast based on current workload?");
 				frappe.confirm(
-					__("Overload detected. Recalculate forecast based on current workload?"),
+					confirmMessage,
 					() => {
 						add_forecast_to_budget(frm, selectedTasks, tasksDetails, true, forecastType, incomeAccount);
 					},
@@ -466,12 +469,15 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 					}
 				);
 			} else if (r.message && r.message.error) {
+				frappe.ui.unfreeze();
 				frappe.msgprint(__("Error: {0}", [r.message.error]));
 			} else {
+				frappe.ui.unfreeze();
 				frappe.msgprint(__("Unknown error"));
 			}
 		},
 		error: function(err) {
+			frappe.ui.unfreeze();
 			console.error("AJAX Error:", err);
 			frappe.msgprint(__("Error adding forecast"));
 		}
