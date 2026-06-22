@@ -50,7 +50,6 @@ fixtures = [
 app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
 app_include_js = [
 	"/assets/project_workload_assignment/js/pwa_dialog.js",
-	"/assets/project_workload_assignment/js/pwr-charts-bootstrap.js",
 ]
 
 # include js, css files in header of web template
