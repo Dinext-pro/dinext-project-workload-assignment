@@ -456,7 +456,7 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 				reloadForecastBudgetView(frm);
 
 			} else if (r.message && r.message.needs_confirmation) {
-				frappe.ui.unfreeze();
+				frappe.dom.unfreeze();
 				const isUnderload = r.message.total_pwa_hours < r.message.forecast_hours;
 				const confirmMessage = r.message.message || (isUnderload
 					? __("Forecast exceeds workload. Recalculate forecast based on virtual project team member data?")
@@ -471,15 +471,15 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 					}
 				);
 			} else if (r.message && r.message.error) {
-				frappe.ui.unfreeze();
+				frappe.dom.unfreeze();
 				frappe.msgprint(__("Error: {0}", [r.message.error]));
 			} else {
-				frappe.ui.unfreeze();
+				frappe.dom.unfreeze();
 				frappe.msgprint(__("Unknown error"));
 			}
 		},
 		error: function(err) {
-			frappe.ui.unfreeze();
+			frappe.dom.unfreeze();
 			console.error("AJAX Error:", err);
 			frappe.msgprint(__("Error adding forecast"));
 		}
