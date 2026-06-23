@@ -1,8 +1,9 @@
 let _pwa_starting = false;
 
-const PWR_WORKLOAD_IN_WORKING_HOURS = __("In working hours");
-const PWR_WORKLOAD_PERCENT_FUND = __("As % of working hours fund");
-const PWR_WORKLOAD_PERCENT_TASK = __("As % of task work efforts");
+// Canonical DB values (types.py / Project Workload Assignment.workload options) — not translated.
+const PWR_WORKLOAD_IN_WORKING_HOURS = "В рабочих часах";
+const PWR_WORKLOAD_PERCENT_FUND = "В % от фонда рабочих часов";
+const PWR_WORKLOAD_PERCENT_TASK = "В % от трудоемкости задачи";
 
 function ensure_task_dates(task) {
     if (task.exp_start_date && task.exp_end_date) {
