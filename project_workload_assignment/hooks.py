@@ -71,7 +71,10 @@ doctype_js = {
                 "Task":"public/js/pwa_form.js"
                 ,"Issue":"public/js/pwa_form.js"
                 ,"Projects Workload Report":"public/js/pwr-charts-bootstrap.js"
-                ,"Project":["public/js/pwr-pl-forecast-from-we.js"]
+                ,"Project":[
+                    "public/js/pwr-charts-bootstrap.js",
+                    "public/js/pwr-pl-forecast-from-we.js",
+                ]
             }
 
 # doctype_list_js = {
