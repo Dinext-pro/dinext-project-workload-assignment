@@ -24,6 +24,7 @@
 		frappe.require(
 			[
 				"/assets/dinext_common/js/charts/dinext-charts-core.js",
+				"/assets/project_workload_assignment/js/pwr-plan-fact-cell.js",
 				"/assets/project_workload_assignment/js/pwr-workload-charts.js",
 			],
 			() => {

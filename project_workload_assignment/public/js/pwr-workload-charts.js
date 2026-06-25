@@ -65,6 +65,119 @@ frappe.provide("project_workload_assignment.charts");
 		return { from, to };
 	}
 
+	function getPeriodRangeMonths() {
+		const periodRange = readPwrGlobal("currentPeriodRange", "quarter");
+		if (periodRange === "half_year") {
+			return 6;
+		}
+		if (periodRange === "year") {
+			return 12;
+		}
+		return 3;
+	}
+
+	function resetTeamPeriodAnchorToToday() {
+		const today = frappe.datetime.get_today();
+		setTeamPeriodAnchor(today);
+		return today;
+	}
+
+	function getTeamPeriodAnchor() {
+		const anchor = readPwrGlobal("pwrPeriodAnchorDate", null);
+		if (anchor) {
+			return anchor;
+		}
+		return resetTeamPeriodAnchorToToday();
+	}
+
+	function setTeamPeriodAnchor(dateStr) {
+		window.pwrPeriodAnchorDate = dateStr;
+	}
+
+	function isShowFactEnabled(state) {
+		return !!(state && state.showFact);
+	}
+
+	function syncShowFactGlobal(state) {
+		window.pwrShowFact = !!(state && state.showFact);
+	}
+
+	function sumSeries(a, b) {
+		const left = a || [];
+		const right = b || [];
+		const len = Math.max(left.length, right.length);
+		const out = [];
+		for (let i = 0; i < len; i += 1) {
+			out.push((parseFloat(left[i]) || 0) + (parseFloat(right[i]) || 0));
+		}
+		return out;
+	}
+
+	function formatPeriodAnchorLabel(frm) {
+		if (frm.doctype === "Projects Workload Report") {
+			return frappe.datetime.str_to_user(getTeamPeriodAnchor());
+		}
+		const { from, to } = getProjectDateRange();
+		return `${frappe.datetime.str_to_user(from)} — ${frappe.datetime.str_to_user(to)}`;
+	}
+
+	function shiftWorkloadPeriod(frm, deltaSteps) {
+		if (!frm) {
+			return;
+		}
+		const state = ensureState(frm);
+		state._controlsReady = false;
+		const shiftMonths = getPeriodRangeMonths() * (deltaSteps || 0);
+		if (!shiftMonths) {
+			return;
+		}
+
+		if (frm.doctype === "Projects Workload Report") {
+			setTeamPeriodAnchor(
+				frappe.datetime.add_months(getTeamPeriodAnchor(), shiftMonths)
+			);
+		} else {
+			const { from, to } = getProjectDateRange();
+			window.displayDateFrom = frappe.datetime.add_months(from, shiftMonths);
+			window.displayDateTo = frappe.datetime.add_months(to, shiftMonths);
+			if (typeof displayDateFrom !== "undefined") {
+				displayDateFrom = window.displayDateFrom;
+			}
+			if (typeof displayDateTo !== "undefined") {
+				displayDateTo = window.displayDateTo;
+			}
+		}
+		triggerWorkloadDataReload(frm);
+	}
+
+	function triggerWorkloadDataReload(frm) {
+		frm = resolveActiveWorkloadFrm(frm);
+		if (!frm) {
+			return;
+		}
+		const state = ensureState(frm);
+		syncShowFactGlobal(state);
+		$(document).trigger("pwr-workload-data-reload", [
+			frm,
+			{
+				showFact: !!state.showFact,
+				periodAnchor: getTeamPeriodAnchor(),
+				periodRangeMonths: getPeriodRangeMonths(),
+			},
+		]);
+
+		if (frm.doctype === "Projects Workload Report") {
+			requestTeamChartReload(frm);
+			return;
+		}
+		requestProjectChartReload(frm);
+	}
+
+	function triggerShowFactReload(frm, state) {
+		syncShowFactGlobal(state);
+		triggerWorkloadDataReload(frm);
+	}
+
 	function getChartContextKey(frm, state) {
 		if (!frm) {
 			return "";
@@ -73,8 +186,10 @@ frappe.provide("project_workload_assignment.charts");
 			return [
 				getTeamViewType(),
 				getTeamPeriodRange(),
+				getTeamPeriodAnchor(),
 				state.workerWtype || "",
 				state.loadUtilization ? "1" : "0",
+				state.showFact ? "1" : "0",
 				frm.doc.user || "",
 				frm.doc.project || "",
 				frm.doc.project_portfolio || "",
@@ -82,7 +197,13 @@ frappe.provide("project_workload_assignment.charts");
 			].join("|");
 		}
 		const { from, to } = getProjectDateRange();
-		return [getProjectViewType(), from, to, state.workerWtype || ""].join("|");
+		return [
+			getProjectViewType(),
+			from,
+			to,
+			state.workerWtype || "",
+			state.showFact ? "1" : "0",
+		].join("|");
 	}
 
 	function parseTeamChartContext(contextKey) {
@@ -90,6 +211,7 @@ frappe.provide("project_workload_assignment.charts");
 		return {
 			viewType: parts[0],
 			periodRange: parts[1],
+			periodAnchor: parts[2],
 		};
 	}
 
@@ -381,41 +503,60 @@ frappe.provide("project_workload_assignment.charts");
 		return Math.round($pinned.outerWidth() || 0);
 	}
 
-	function measureGridPeriodAreaWidth(gridTable, $centerContainer, $centerViewport) {
-		const viewportEl = $centerViewport && $centerViewport.get(0);
-		const containerEl = $centerContainer && $centerContainer.get(0);
-		if (viewportEl && viewportEl.scrollWidth > 0) {
-			return Math.round(viewportEl.scrollWidth);
+	function sumGridPeriodColumnWidths(gridTable) {
+		if (!gridTable || !gridTable.api) {
+			return 0;
 		}
-		if (containerEl && containerEl.scrollWidth > 0) {
-			return Math.round(containerEl.scrollWidth);
+		const getColumns =
+			gridTable.api.getAllGridColumns || gridTable.api.getColumns || null;
+		if (!getColumns) {
+			return 0;
 		}
-		const containerW = Math.round(($centerContainer && $centerContainer.outerWidth()) || 0);
-		if (containerW > 0) {
-			return containerW;
-		}
-		if (gridTable && gridTable.api) {
-			const getColumns =
-				gridTable.api.getAllGridColumns || gridTable.api.getColumns || null;
-			const columns = getColumns ? getColumns.call(gridTable.api) : [];
-			let total = 0;
-			let count = 0;
-			(columns || []).forEach((column) => {
-				const colId =
-					typeof column.getColId === "function" ? column.getColId() : column.colId;
-				if (!isPeriodColumnId(colId)) {
-					return;
-				}
-				const width =
-					typeof column.getActualWidth === "function" ? column.getActualWidth() : 0;
-				if (Number.isFinite(width) && width > 0) {
-					total += width;
-					count += 1;
-				}
-			});
-			if (count > 0) {
-				return Math.round(total);
+		const columns = getColumns.call(gridTable.api) || [];
+		let total = 0;
+		let count = 0;
+		(columns || []).forEach((column) => {
+			const colId =
+				typeof column.getColId === "function" ? column.getColId() : column.colId;
+			if (!isPeriodColumnId(colId)) {
+				return;
 			}
+			const width =
+				typeof column.getActualWidth === "function" ? column.getActualWidth() : 0;
+			if (Number.isFinite(width) && width > 0) {
+				total += width;
+				count += 1;
+			}
+		});
+		return count > 0 ? Math.round(total) : 0;
+	}
+
+	function measureGridPeriodAreaWidth(gridTable, $centerContainer, $centerViewport) {
+		const containerEl = $centerContainer && $centerContainer.get(0);
+		if (containerEl) {
+			const containerW = Math.round(
+				containerEl.getBoundingClientRect().width ||
+					containerEl.offsetWidth ||
+					containerEl.scrollWidth ||
+					0
+			);
+			if (containerW > 0) {
+				return containerW;
+			}
+		}
+
+		const fromColumns = sumGridPeriodColumnWidths(gridTable);
+		if (fromColumns > 0) {
+			return fromColumns;
+		}
+
+		const viewportEl = $centerViewport && $centerViewport.get(0);
+		if (
+			viewportEl &&
+			viewportEl.scrollWidth > viewportEl.clientWidth &&
+			viewportEl.scrollWidth > 0
+		) {
+			return Math.round(viewportEl.scrollWidth);
 		}
 		return 0;
 	}
@@ -453,7 +594,7 @@ frappe.provide("project_workload_assignment.charts");
 		if (!colWidth) {
 			return viewport || 320;
 		}
-		return Math.max(Math.round(periods * colWidth), viewport);
+		return Math.round(periods * colWidth);
 	}
 
 	function attachWheelSync(targets, handler) {
@@ -595,109 +736,146 @@ frappe.provide("project_workload_assignment.charts");
 	function buildTeamChartOption(data, viewType) {
 		const periods = data.periods || [];
 		const series = data.series || {};
+		const meta = data.meta || {};
 		const labels = periodLabels(periods, viewType);
 		const employee = (series.workload_forecast_hours_by_wtype || {}).Employee || [];
 		const supplier = (series.workload_forecast_hours_by_wtype || {}).Supplier || [];
+		const actualEmp = (series.actual_hours_by_wtype || {}).Employee || [];
+		const actualSup = (series.actual_hours_by_wtype || {}).Supplier || [];
+		const actualTotal = sumSeries(actualEmp, actualSup);
+		const showFact = !!meta.actual_loaded;
+
+		const chartSeries = [
+			{
+				name: __("Capacity"),
+				type: "line",
+				smooth: true,
+				showSymbol: false,
+				z: 1,
+				areaStyle: { opacity: 0.12, color: "rgba(120,120,120,0.25)" },
+				lineStyle: { opacity: 0.35, width: 1 },
+				data: series.capacity_hours || [],
+			},
+			{
+				name: __("Utilization plan"),
+				type: "line",
+				smooth: true,
+				showSymbol: false,
+				z: 2,
+				areaStyle: { opacity: 0.12 },
+				data: series.utilization_plan_hours || [],
+			},
+			{
+				name: __("Employee forecast"),
+				type: "bar",
+				stack: "workload",
+				z: 3,
+				data: employee,
+			},
+			{
+				name: __("Supplier forecast"),
+				type: "bar",
+				stack: "workload",
+				z: 3,
+				data: supplier,
+			},
+			{
+				name: __("Utilization forecast"),
+				type: "scatter",
+				z: 4,
+				data: (series.utilization_forecast_hours || []).map((v, i) => [i, v]),
+			},
+		];
+
+		if (showFact) {
+			chartSeries.push({
+				name: __("Actual workload"),
+				type: "line",
+				smooth: true,
+				showSymbol: false,
+				z: 5,
+				lineStyle: { color: "#1976d2", width: 2 },
+				areaStyle: { opacity: 0.2, color: "rgba(33, 150, 243, 0.35)" },
+				data: actualTotal,
+			});
+		}
 
 		return {
 			tooltip: { trigger: "axis" },
 			grid: buildSyncedGrid(),
 			xAxis: buildSyncedXAxis(labels),
 			yAxis: buildSyncedYAxis(),
-			series: [
-				{
-					name: __("Capacity"),
-					type: "line",
-					smooth: true,
-					showSymbol: false,
-					areaStyle: { opacity: 0.15 },
-					data: series.capacity_hours || [],
-				},
-				{
-					name: __("Utilization plan"),
-					type: "line",
-					smooth: true,
-					showSymbol: false,
-					areaStyle: { opacity: 0.12 },
-					data: series.utilization_plan_hours || [],
-				},
-				{
-					name: __("Employee forecast"),
-					type: "bar",
-					stack: "workload",
-					data: employee,
-				},
-				{
-					name: __("Supplier forecast"),
-					type: "bar",
-					stack: "workload",
-					data: supplier,
-				},
-				{
-					name: __("Utilization forecast"),
-					type: "scatter",
-					data: (series.utilization_forecast_hours || []).map((v, i) => [i, v]),
-				},
-			],
+			series: chartSeries,
 		};
 	}
 
 	function buildProjectChartOption(data, viewType) {
 		const periods = data.periods || [];
 		const series = data.series || {};
+		const meta = data.meta || {};
 		const labels = periodLabels(periods, viewType);
 		const forecastEmp = (series.workload_forecast_hours_by_wtype || {}).Employee || [];
 		const forecastSup = (series.workload_forecast_hours_by_wtype || {}).Supplier || [];
 		const actualEmp = (series.actual_hours_by_wtype || {}).Employee || [];
 		const actualSup = (series.actual_hours_by_wtype || {}).Supplier || [];
+		const actualTotal = sumSeries(actualEmp, actualSup);
+		const showFact = !!meta.actual_loaded;
+
+		const chartSeries = [
+			{
+				name: __("Team capacity"),
+				type: "line",
+				smooth: true,
+				showSymbol: false,
+				z: 1,
+				areaStyle: { opacity: 0.1 },
+				lineStyle: { opacity: 0.35, width: 1 },
+				data: series.team_capacity_hours || [],
+			},
+			{
+				name: __("Project plan"),
+				type: "line",
+				smooth: true,
+				showSymbol: false,
+				z: 2,
+				areaStyle: { opacity: 0.15 },
+				data: series.project_plan_hours || [],
+			},
+			{
+				name: __("Employee forecast"),
+				type: "bar",
+				stack: "forecast",
+				z: 3,
+				data: forecastEmp,
+			},
+			{
+				name: __("Supplier forecast"),
+				type: "bar",
+				stack: "forecast",
+				z: 3,
+				data: forecastSup,
+			},
+		];
+
+		if (showFact) {
+			chartSeries.push({
+				name: __("Actual workload"),
+				type: "line",
+				smooth: true,
+				showSymbol: false,
+				z: 5,
+				lineStyle: { color: "#1976d2", width: 2 },
+				areaStyle: { opacity: 0.2, color: "rgba(33, 150, 243, 0.35)" },
+				data: actualTotal,
+			});
+		}
 
 		return {
 			tooltip: { trigger: "axis" },
 			grid: buildSyncedGrid(),
 			xAxis: buildSyncedXAxis(labels),
 			yAxis: buildSyncedYAxis(),
-			series: [
-				{
-					name: __("Project plan"),
-					type: "line",
-					smooth: true,
-					showSymbol: false,
-					areaStyle: { opacity: 0.15 },
-					data: series.project_plan_hours || [],
-				},
-				{
-					name: __("Team capacity"),
-					type: "line",
-					smooth: true,
-					showSymbol: false,
-					areaStyle: { opacity: 0.12 },
-					data: series.team_capacity_hours || [],
-				},
-				{
-					name: __("Employee forecast"),
-					type: "bar",
-					stack: "forecast",
-					data: forecastEmp,
-				},
-				{
-					name: __("Supplier forecast"),
-					type: "bar",
-					stack: "forecast",
-					data: forecastSup,
-				},
-				{
-					name: __("Employee actual"),
-					type: "bar",
-					stack: "actual",
-					data: actualEmp,
-				},
-				{
-					name: __("Supplier actual"),
-					type: "bar",
-					stack: "actual",
-					data: actualSup,
-				},
-			],
+			series: chartSeries,
 		};
 	}
 
@@ -706,6 +884,7 @@ frappe.provide("project_workload_assignment.charts");
 			stateByForm.set(frm, {
 				workerWtype: "",
 				loadUtilization: false,
+				showFact: !!readPwrGlobal("pwrShowFact", false),
 				chartVisible: true,
 				$visibilityToggle: null,
 				chart: null,
@@ -956,6 +1135,44 @@ frappe.provide("project_workload_assignment.charts");
 			reloadFn();
 		});
 
+		const periodLabel = formatPeriodAnchorLabel(
+			options.frm || (typeof cur_frm !== "undefined" ? cur_frm : null)
+		);
+		const $periodNav = $(`
+			<div class="pwr-chart-filter-field pwr-chart-period-nav">
+				<button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-prev" title="${frappe.utils.escape_html(
+					__("Previous month")
+				)}">&lt;</button>
+				<span class="pwr-chart-period-label" title="${frappe.utils.escape_html(periodLabel)}">${frappe.utils.escape_html(
+					periodLabel
+				)}</span>
+				<button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-next" title="${frappe.utils.escape_html(
+					__("Next month")
+				)}">&gt;</button>
+			</div>
+		`).appendTo($filters);
+		$periodNav.find(".pwr-chart-period-prev").on("click", () => {
+			shiftWorkloadPeriod(options.frm, -1);
+		});
+		$periodNav.find(".pwr-chart-period-next").on("click", () => {
+			shiftWorkloadPeriod(options.frm, 1);
+		});
+
+		const showFactLabel = __("Show actual");
+		const $showFactField = $(`
+			<div class="pwr-chart-filter-field pwr-chart-show-fact-field">
+				<label>
+					<input type="checkbox" class="pwr-chart-show-fact" />
+					<span>${frappe.utils.escape_html(showFactLabel)}</span>
+				</label>
+			</div>
+		`).appendTo($filters);
+		$showFactField.find(".pwr-chart-show-fact").prop("checked", !!state.showFact);
+		$showFactField.find(".pwr-chart-show-fact").on("change", function () {
+			state.showFact = !!this.checked;
+			triggerShowFactReload(options.frm, state);
+		});
+
 		if (options.showUtilizationButton) {
 			const utilizationLabel = __("Load utilization");
 			$(
@@ -1020,7 +1237,7 @@ frappe.provide("project_workload_assignment.charts");
 				$centerContainer,
 				$centerViewport
 			);
-			if (!gutterW || !scrollW) {
+			if (!gutterW) {
 				return;
 			}
 			const scrollLeft = $centerViewport.scrollLeft() || 0;
@@ -1037,18 +1254,22 @@ frappe.provide("project_workload_assignment.charts");
 			if (viewportW > 0) {
 				$viewport.css({ maxWidth: viewportW });
 			}
+			if (!scrollW) {
+				return;
+			}
 			const chartSynced = isChartLayoutSynced(frm, state, gridTable);
-			const chartPeriods =
-				getChartCategoryCount(state) || state.loadedPeriodCount || 0;
-			const chartW = chartSynced
-				? scrollW
-				: computeChartCanvasWidth(
-						chartPeriods,
-						gridTable,
-						$centerContainer,
-						$centerViewport,
-						viewportW
-					);
+			let chartW = scrollW;
+			if (!chartW) {
+				const chartPeriods =
+					getChartCategoryCount(state) || state.loadedPeriodCount || 0;
+				chartW = computeChartCanvasWidth(
+					chartPeriods,
+					gridTable,
+					$centerContainer,
+					$centerViewport,
+					viewportW
+				);
+			}
 			const trackW = Math.max(scrollW || 0, chartW || 0);
 			if (trackW > 0) {
 				$track.css({ width: trackW });
@@ -1102,7 +1323,7 @@ frappe.provide("project_workload_assignment.charts");
 		const gridListeners = [];
 		if (gridApi && typeof gridApi.addEventListener === "function") {
 			const onGridLayout = () => scheduleLayout();
-			["firstDataRendered", "gridColumnsChanged", "columnResized"].forEach((eventName) => {
+			["firstDataRendered", "gridReady", "gridColumnsChanged", "columnResized", "modelUpdated"].forEach((eventName) => {
 				gridApi.addEventListener(eventName, onGridLayout);
 				gridListeners.push({ eventName, handler: onGridLayout });
 			});
@@ -1161,27 +1382,29 @@ frappe.provide("project_workload_assignment.charts");
 						const viewportW =
 							Math.round((panel.$viewport && panel.$viewport.outerWidth()) || 0) ||
 							320;
-						const mountW = computeChartCanvasWidth(
-							periodCount,
-							gridTable,
-							elements && elements.$centerContainer,
-							elements && elements.$centerViewport,
-							viewportW
-						);
+						const scrollW = elements
+							? measureGridPeriodAreaWidth(
+									gridTable,
+									elements.$centerContainer,
+									elements.$centerViewport
+								)
+							: 0;
+						const mountW =
+							scrollW ||
+							computeChartCanvasWidth(
+								periodCount,
+								gridTable,
+								elements && elements.$centerContainer,
+								elements && elements.$centerViewport,
+								viewportW
+							);
 						if (panel.$chartTrack && panel.$chartTrack.length) {
-							const scrollW = elements
-								? measureGridPeriodAreaWidth(
-										gridTable,
-										elements.$centerContainer,
-										elements.$centerViewport
-									)
-								: 0;
 							panel.$chartTrack.css({ width: Math.max(scrollW || 0, mountW) });
 						}
 						panel.$chartEl.css({ width: mountW, height: CHART_HEIGHT });
 						state.chart = DinextCharts.mount(panel.$chartEl, option);
 						state.loadedPeriodCount = periodCount;
-						state.resizeCleanup = DinextCharts.bindResize(state.chart, panel.$chartEl);
+						state.resizeCleanup = null;
 						state.loadedContextKey = contextKey;
 
 						const yAxisName = __("Hours");
@@ -1219,7 +1442,8 @@ frappe.provide("project_workload_assignment.charts");
 	}
 
 	function fetchTeamChartData(frm, state, panel, $section, token, contextKey) {
-		const { viewType, periodRange } = parseTeamChartContext(contextKey);
+		const { viewType, periodRange, periodAnchor } = parseTeamChartContext(contextKey);
+		syncShowFactGlobal(state);
 		showChartLoading(panel);
 
 		frappe.call({
@@ -1231,8 +1455,10 @@ frappe.provide("project_workload_assignment.charts");
 				user_group: frm.doc.user_group || "",
 				view_type: viewType,
 				period_range: periodRange,
+				period_anchor_date: periodAnchor || getTeamPeriodAnchor(),
 				worker_wtype: state.workerWtype || "",
 				load_utilization: state.loadUtilization ? 1 : 0,
+				load_actual: state.showFact ? 1 : 0,
 			},
 			callback(r) {
 				if (token !== state.loadToken) {
@@ -1274,6 +1500,7 @@ frappe.provide("project_workload_assignment.charts");
 	function fetchProjectChartData(frm, state, panel, $wrapper, token, contextKey) {
 		const viewType = getProjectViewType();
 		const { from, to } = getProjectDateRange();
+		syncShowFactGlobal(state);
 		showChartLoading(panel);
 
 		frappe.call({
@@ -1284,6 +1511,7 @@ frappe.provide("project_workload_assignment.charts");
 				date_from: from,
 				date_to: to,
 				worker_wtype: state.workerWtype || "",
+				load_actual: state.showFact ? 1 : 0,
 			},
 			callback(r) {
 				if (token !== state.loadToken) {
@@ -1346,6 +1574,7 @@ frappe.provide("project_workload_assignment.charts");
 				const panel = ensureChartPanel($anchor, state, __("Team workload summary"));
 				ensurePanelControls(panel, state, () => requestTeamChartReload(frm), {
 					showUtilizationButton: true,
+					frm,
 				});
 				ensureChartVisibilityToggle(frm, state);
 				applyChartHeights(panel);
@@ -1384,6 +1613,7 @@ frappe.provide("project_workload_assignment.charts");
 				const panel = ensureChartPanel($mountAnchor, state, __("Project workload summary"));
 				ensurePanelControls(panel, state, () => requestProjectChartReload(frm), {
 					showUtilizationButton: false,
+					frm,
 				});
 				ensureChartVisibilityToggle(frm, state);
 				applyChartHeights(panel);
@@ -1524,4 +1754,20 @@ frappe.provide("project_workload_assignment.charts");
 	project_workload_assignment.charts.syncGridViewportHeight =
 		syncWorkloadGridViewportHeight;
 	project_workload_assignment.charts.getOccupiedHeight = getChartOccupiedHeight;
+	project_workload_assignment.charts.isShowFactEnabled = function (frm) {
+		if (frm) {
+			const state = stateByForm.get(frm);
+			if (state) {
+				return !!state.showFact;
+			}
+		}
+		return !!window.pwrShowFact;
+	};
+	project_workload_assignment.charts.getTeamPeriodAnchor = getTeamPeriodAnchor;
+	project_workload_assignment.charts.shiftWorkloadPeriod = shiftWorkloadPeriod;
+	project_workload_assignment.charts.getPeriodRangeMonths = getPeriodRangeMonths;
+	project_workload_assignment.charts.resetTeamPeriodAnchorToToday =
+		resetTeamPeriodAnchorToToday;
+	project_workload_assignment.charts.triggerWorkloadDataReload =
+		triggerWorkloadDataReload;
 })();

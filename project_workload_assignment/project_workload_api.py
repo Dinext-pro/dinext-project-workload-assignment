@@ -52,6 +52,8 @@ class TeamWorkloadFormInput(TypedDict, total=False):
 	user_group: str | None
 	view_type: Literal['daily', 'weekly', 'monthly']
 	period_range: Literal['quarter', 'half_year', 'year']
+	period_anchor_date: str | None
+	load_actual: bool | str | int
 	mode: Literal['full', 'user_totals', 'user_projects']
 	detail_user: str | None
 	limit: str | int
@@ -65,6 +67,7 @@ class ProjectWorkloadFormInput(TypedDict, total=False):
 	date_from: str | None
 	date_to: str | None
 	no_agg: bool | str | int
+	load_actual: bool | str | int
 
 
 class ForecastPeriodInput(TypedDict, total=False):
@@ -89,8 +92,10 @@ class TeamChartFormInput(TypedDict, total=False):
 	user_group: str | None
 	view_type: Literal['daily', 'weekly', 'monthly']
 	period_range: Literal['quarter', 'half_year', 'year']
+	period_anchor_date: str | None
 	worker_wtype: str | None
 	load_utilization: bool | str | int
+	load_actual: bool | str | int
 
 
 class ProjectChartFormInput(TypedDict, total=False):
@@ -100,6 +105,7 @@ class ProjectChartFormInput(TypedDict, total=False):
 	date_from: str | None
 	date_to: str | None
 	worker_wtype: str | None
+	load_actual: bool | str | int
 
 
 @frappe.whitelist()

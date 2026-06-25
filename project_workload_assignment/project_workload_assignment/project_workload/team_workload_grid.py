@@ -37,6 +37,8 @@ class TeamWorkloadFormDict(TypedDict, total=False):
 	user_group: str | None
 	view_type: Literal['daily', 'weekly', 'monthly']
 	period_range: Literal['quarter', 'half_year', 'year']
+	period_anchor_date: str | None
+	load_actual: bool | str | int
 	mode: Literal['full', 'user_totals', 'user_projects']
 	detail_user: str | None
 	limit: int | str
@@ -153,6 +155,18 @@ class ErrorTeamWorkloadResponse(TypedDict):
 	message: str
 
 
+def _parse_bool_form_value(value, default: bool = False) -> bool:
+	if value is None:
+		return default
+	if isinstance(value, bool):
+		return value
+	if isinstance(value, (int, float)):
+		return bool(value)
+	if isinstance(value, str):
+		return value.strip().lower() in {"1", "true", "yes", "on"}
+	return default
+
+
 def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWorkloadResponse | ErrorTeamWorkloadResponse:
 	"""fd — dict или объект с .get как frappe._dict."""
 	if fd is None:
@@ -186,6 +200,8 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		user_group = fd.get('user_group')
 		view_type = fd.get('view_type', 'daily')
 		period_range = fd.get('period_range', 'quarter')
+		period_anchor_date = fd.get('period_anchor_date')
+		load_actual = _parse_bool_form_value(fd.get('load_actual'), default=False)
 		mode = fd.get('mode', 'full')
 		detail_user = fd.get('detail_user')
 		
@@ -230,7 +246,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    compute_assignment_sql_lower_bound,
 		    get_visible_window,
 		)
-		periods = generate_periods_for_pwr_report(view_type, period_range)
+		periods = generate_periods_for_pwr_report(view_type, period_range, period_anchor_date)
 		display_start_win, display_end_win = get_visible_window(periods, view_type)
 		assignment_lower_dt = compute_assignment_sql_lower_bound(display_start_win)
 		assignment_date_to_lower_bound = frappe.utils.getdate(assignment_lower_dt)
@@ -546,6 +562,20 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    + ", working_day_cache_size=" + str(len(wl_ctx._working_day_cache)),
 		)
 		
+		actual_results = {}
+		if load_actual:
+		    from project_workload_assignment.project_workload_assignment.project_workload.utp_actual import (
+		        apply_actual_fields_to_row,
+		        compute_team_actual_hours,
+		    )
+
+		    actual_results = compute_team_actual_hours(
+		        assignments,
+		        periods,
+		        view_type,
+		        direct_user_totals=direct_user_totals,
+		    )
+		
 		# ========== 7. ФОРМИРОВАНИЕ TREE DATA ==========
 		
 		perf_section_start = perf_start("Build tree_data response")
@@ -625,6 +655,15 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        user_total_sum = user_total_sum + hours
 		
 		    user_row['workload_total'] = "%.1f" % user_total_sum
+		    if load_actual:
+		        if direct_user_totals:
+		            apply_actual_fields_to_row(user_row, periods, actual_results.get(user_email, {}))
+		        else:
+		            merged_actual = {}
+		            for project_name in project_names_result:
+		                for pk, hours in (actual_results.get(user_email, {}).get(project_name, {}) or {}).items():
+		                    merged_actual[pk] = merged_actual.get(pk, 0.0) + hours
+		            apply_actual_fields_to_row(user_row, periods, merged_actual)
 		    if return_user_rows:
 		        tree_data.append(user_row)
 		
@@ -670,6 +709,12 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            project_total = project_total + hours
 		
 		        project_row['workload_total'] = "%.1f" % project_total
+		        if load_actual:
+		            apply_actual_fields_to_row(
+		                project_row,
+		                periods,
+		                (actual_results.get(user_email, {}) or {}).get(project_name, {}),
+		            )
 		        tree_data.append(project_row)
 		perf_end("Build tree_data response", perf_section_start, "mode=" + str(mode) + ", users=" + str(len(user_emails_result)) + ", rows=" + str(len(tree_data)))
 		perf_end("TOTAL get_projects_workload_data_v2", PERF_TOTAL_START, "mode=" + str(mode) + ", tree_rows=" + str(len(tree_data)) + ", periods=" + str(len(periods)) + ", assignments=" + str(len(assignments)))

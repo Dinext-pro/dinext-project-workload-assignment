@@ -651,7 +651,15 @@
             this.container.classList.toggle("projects-workload-ag-grid-dark", isDark);
         }
 
-        refresh(rows, columns) {
+        refresh(rows, columns, options) {
+            const opts = options || {};
+            if (opts.rowHeight) {
+                this.rowHeight = opts.rowHeight;
+                this.setGridOption("rowHeight", opts.rowHeight);
+                if (this.api && typeof this.api.resetRowHeights === "function") {
+                    this.api.resetRowHeights();
+                }
+            }
             const prevPeriodSignature = periodColumnSignature(this.columns);
             this.rows = rows || [];
             if (columns != null) {

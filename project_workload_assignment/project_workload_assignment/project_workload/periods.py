@@ -55,11 +55,18 @@ def build_date_to_period_key(periods: list[PWRPeriod], view_type: str) -> dict[s
 	return result
 
 
-def generate_periods_for_pwr_report(view_type: str, period_range: str) -> list[PWRPeriod]:
-	"""Сетка периодов для отчёта PWR V2 (как в Server Script Get Projects Workload Data_Exp_V2)."""
+def generate_periods_for_pwr_report(
+	view_type: str,
+	period_range: str,
+	anchor_date: str | date | None = None,
+) -> list[PWRPeriod]:
+	"""Сетка периодов для отчёта PWR V2 (как в Server Script Get Projects Workload Data_Exp_V2).
+
+	ISS-2026-00709: optional ``anchor_date`` — начало окна (навигация по месяцам).
+	"""
 	periods: list[PWRPeriod] = []
-	today = frappe.utils.nowdate()
-	current_date_obj = frappe.utils.getdate(today)
+	anchor = anchor_date or frappe.utils.nowdate()
+	current_date_obj = frappe.utils.getdate(anchor)
 
 	if view_type == 'daily':
 		days_count = 90
@@ -68,7 +75,7 @@ def generate_periods_for_pwr_report(view_type: str, period_range: str) -> list[P
 		elif period_range == 'year':
 			days_count = 365
 		for i in range(days_count):
-			date_str = frappe.utils.add_days(today, i)
+			date_str = frappe.utils.add_days(anchor, i)
 			date_obj = frappe.utils.getdate(date_str)
 			periods.append(
 				PWRPeriodDaily(
@@ -86,7 +93,7 @@ def generate_periods_for_pwr_report(view_type: str, period_range: str) -> list[P
 			weeks_count = 26
 		elif period_range == 'year':
 			weeks_count = 52
-		week_start = frappe.utils.add_days(today, -current_date_obj.weekday())
+		week_start = frappe.utils.add_days(anchor, -current_date_obj.weekday())
 		for i in range(weeks_count):
 			week_start_date = frappe.utils.add_days(week_start, i * 7)
 			week_end_date = frappe.utils.add_days(week_start_date, 6)

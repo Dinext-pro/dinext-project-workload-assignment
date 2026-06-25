@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import Literal, TypedDict
 
 import frappe
-from frappe.query_builder.functions import IfNull, Sum
 from frappe.utils import flt, getdate
 
 from project_workload_assignment.project_workload_assignment.project_workload.periods import (
@@ -24,7 +23,6 @@ from project_workload_assignment.project_workload_assignment.project_workload.wo
 )
 
 WORKER_WTYPES = ("Employee", "Supplier")
-UTP_STATUS_APPROVED = "Согласовано"
 
 
 class ChartSeries(TypedDict, total=False):
@@ -40,6 +38,7 @@ class ChartSeries(TypedDict, total=False):
 class ChartMeta(TypedDict, total=False):
 	worker_wtype_filter: str
 	utilization_loaded: bool
+	actual_loaded: bool
 	users_in_scope: int
 	project: str
 
@@ -59,8 +58,10 @@ class TeamChartFormDict(TypedDict, total=False):
 	user_group: str | None
 	view_type: Literal["daily", "weekly", "monthly"]
 	period_range: Literal["quarter", "half_year", "year"]
+	period_anchor_date: str | None
 	worker_wtype: str | None
 	load_utilization: bool | str | int
+	load_actual: bool | str | int
 
 
 class ProjectChartFormDict(TypedDict, total=False):
@@ -69,6 +70,7 @@ class ProjectChartFormDict(TypedDict, total=False):
 	date_from: str | None
 	date_to: str | None
 	worker_wtype: str | None
+	load_actual: bool | str | int
 
 
 def _parse_bool(value, default: bool = False) -> bool:
@@ -165,8 +167,9 @@ def _fetch_team_assignments(fd: TeamChartFormDict) -> list[dict]:
 	project = fd.get("project")
 	project_portfolio = fd.get("project_portfolio")
 	user_group = fd.get("user_group")
+	period_anchor_date = fd.get("period_anchor_date")
 
-	periods = generate_periods_for_pwr_report(view_type, period_range)
+	periods = generate_periods_for_pwr_report(view_type, period_range, period_anchor_date)
 	display_start, display_end = get_visible_window(periods, view_type)
 	assignment_lower = compute_assignment_sql_lower_bound(display_start)
 	window_start = getdate(assignment_lower)
@@ -335,49 +338,6 @@ def _load_project_plan_series(
 	return series
 
 
-def _load_utp_hours_by_wtype(
-	project: str,
-	date_from: str,
-	date_to: str,
-	wtypes_map: dict[str, str],
-	users_data: dict,
-	period_count: int,
-	date_to_period_key: dict[str, str],
-	period_index: dict[str, int],
-	worker_wtype_filter: str | None,
-) -> dict[str, list[float]]:
-	series = _zero_wtype_series(period_count)
-	utp = frappe.qb.DocType("User Timesheet Position")
-	detail = frappe.qb.DocType("User Timesheet Position Details")
-	rows = (
-		frappe.qb.from_(utp)
-		.inner_join(detail)
-		.on(detail.parent == utp.name)
-		.select(utp.user, detail.date, Sum(IfNull(detail.hours, 0)).as_("hours"))
-		.where(utp.project == project)
-		.where(utp.status == UTP_STATUS_APPROVED)
-		.where(IfNull(utp.document_type, "") == "Task")
-		.where(detail.date.between(date_from, date_to))
-		.groupby(utp.user, detail.date)
-	).run(as_dict=True)
-
-	for row in rows:
-		user_email = row.get("user")
-		if not user_email:
-			continue
-		wtype = _resolve_wtype(user_email, users_data, wtypes_map)
-		if worker_wtype_filter and wtype != worker_wtype_filter:
-			continue
-		date_str = str(row.get("date"))
-		hours = flt(row.get("hours"))
-		period_key = date_to_period_key.get(date_str)
-		if period_key is None:
-			continue
-		idx = period_index.get(period_key)
-		if idx is None:
-			continue
-		series[wtype][idx] += hours
-	return series
 
 
 def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
@@ -387,10 +347,12 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 	try:
 		view_type = fd.get("view_type", "daily")
 		period_range = fd.get("period_range", "quarter")
+		period_anchor_date = fd.get("period_anchor_date")
 		worker_wtype_filter = _normalize_worker_wtype_filter(fd.get("worker_wtype"))
 		load_utilization = _parse_bool(fd.get("load_utilization"))
+		load_actual = _parse_bool(fd.get("load_actual"))
 
-		periods = generate_periods_for_pwr_report(view_type, period_range)
+		periods = generate_periods_for_pwr_report(view_type, period_range, period_anchor_date)
 		period_index = {p["key"]: i for i, p in enumerate(periods)}
 		date_to_period_key = build_date_to_period_key(periods, view_type)
 
@@ -407,6 +369,7 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 				meta=ChartMeta(
 					worker_wtype_filter=worker_wtype_filter or "all",
 					utilization_loaded=load_utilization,
+					actual_loaded=load_actual,
 					users_in_scope=0,
 				),
 				message="No assignments found",
@@ -445,17 +408,37 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 			# Фаза 2: загрузка утилизации — пока пустые серии, контракт зарезервирован.
 			pass
 
+		actual_by_wtype = _zero_wtype_series(len(periods))
+		if load_actual:
+			from project_workload_assignment.project_workload_assignment.project_workload.utp_actual import (
+				load_team_utp_hours_by_wtype,
+			)
+
+			actual_by_wtype = load_team_utp_hours_by_wtype(
+				assignments,
+				periods,
+				view_type,
+				wtypes_map,
+				users_data,
+				worker_wtype_filter,
+			)
+
+		series = ChartSeries(
+			capacity_hours=capacity,
+			utilization_plan_hours=util_plan,
+			utilization_forecast_hours=util_forecast,
+			workload_forecast_hours_by_wtype=workload_by_wtype,
+		)
+		if load_actual:
+			series["actual_hours_by_wtype"] = actual_by_wtype
+
 		return ChartResponse(
 			periods=periods,
-			series=ChartSeries(
-				capacity_hours=capacity,
-				utilization_plan_hours=util_plan,
-				utilization_forecast_hours=util_forecast,
-				workload_forecast_hours_by_wtype=workload_by_wtype,
-			),
+			series=series,
 			meta=ChartMeta(
 				worker_wtype_filter=worker_wtype_filter or "all",
 				utilization_loaded=load_utilization,
+				actual_loaded=load_actual,
 				users_in_scope=len(users_in_scope),
 			),
 		)
@@ -483,6 +466,7 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		date_from = fd.get("date_from") or frappe.utils.nowdate()
 		date_to = fd.get("date_to") or frappe.utils.add_months(date_from, 1)
 		worker_wtype_filter = _normalize_worker_wtype_filter(fd.get("worker_wtype"))
+		load_actual = _parse_bool(fd.get("load_actual"))
 
 		project_row = frappe.db.get_value(
 			"Project",
@@ -555,29 +539,40 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 			date_to_period_key,
 			period_index,
 		)
-		actual_by_wtype = _load_utp_hours_by_wtype(
-			project,
-			str(date_from),
-			str(date_to),
-			wtypes_map,
-			users_data,
-			len(periods),
-			date_to_period_key,
-			period_index,
-			worker_wtype_filter,
+		actual_by_wtype = _zero_wtype_series(len(periods))
+		if load_actual:
+			from project_workload_assignment.project_workload_assignment.project_workload.utp_actual import (
+				load_utp_hours_by_wtype,
+			)
+
+			actual_by_wtype = load_utp_hours_by_wtype(
+				project,
+				str(date_from),
+				str(date_to),
+				wtypes_map,
+				users_data,
+				len(periods),
+				date_to_period_key,
+				period_index,
+				worker_wtype_filter,
+				users=users_in_scope,
+			)
+
+		series = ChartSeries(
+			project_plan_hours=project_plan,
+			team_capacity_hours=team_capacity,
+			workload_forecast_hours_by_wtype=workload_by_wtype,
 		)
+		if load_actual:
+			series["actual_hours_by_wtype"] = actual_by_wtype
 
 		return ChartResponse(
 			periods=periods,
-			series=ChartSeries(
-				project_plan_hours=project_plan,
-				team_capacity_hours=team_capacity,
-				workload_forecast_hours_by_wtype=workload_by_wtype,
-				actual_hours_by_wtype=actual_by_wtype,
-			),
+			series=series,
 			meta=ChartMeta(
 				worker_wtype_filter=worker_wtype_filter or "all",
 				utilization_loaded=False,
+				actual_loaded=load_actual,
 				users_in_scope=len(users_in_scope),
 				project=project,
 			),
