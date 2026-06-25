@@ -40,6 +40,7 @@ class FormDict(TypedDict, total=False):
 	date_from: str | date | None
 	date_to: str | date | None
 	no_agg: bool | str | int
+	load_actual: bool | str | int
 
 
 class UserData(TypedDict):
@@ -290,6 +291,7 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		date_from = fd.get('date_from')
 		date_to = fd.get('date_to')
 		no_agg = _parse_bool_form_value(fd.get('no_agg'), default=False)
+		load_actual = _parse_bool_form_value(fd.get('load_actual'), default=False)
 		
 		logger(f"Project: {project}, View Type: {view_type}, Period: {date_from} to {date_to}")
 		
@@ -928,6 +930,12 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 				task_total_hours = task_total_hours + hours
 		
 			task_row['workload_total'] = f"{task_total_hours:.1f}"
+			if load_actual:
+				apply_actual_fields_to_row(
+					task_row,
+					periods,
+					(actual_by_user_task.get(user_email, {}) or {}).get(task_id, {}),
+				)
 			tree_data.append(task_row)
 			logger(f"Добавлена задача: {task_info['task_subject']} (indent: {indent_level}, expandable: {len(children_with_load) > 0}, прямая загрузка: {task_info['has_direct_load']})")
 		
@@ -937,6 +945,21 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 					add_task_to_tree(child_id, role, user_email, user_row_data, indent_level + 1, parent_role_row)
 		
 		# Основной цикл по пользователям
+		actual_by_user: dict[str, dict[str, float]] = {}
+		actual_by_user_task: dict[str, dict[str, dict[str, float]]] = {}
+		if load_actual:
+			from project_workload_assignment.project_workload_assignment.project_workload.utp_actual import (
+				apply_actual_fields_to_row,
+				compute_project_actual_hours,
+			)
+
+			actual_by_user, actual_by_user_task = compute_project_actual_hours(
+				project,
+				periods,
+				view_type,
+				users_list,
+			)
+
 		for user_email in users_list:
 			user_info = users_data[user_email]
 			user_roles = results.get(user_email, {})
@@ -967,6 +990,8 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 				user_total_hours = user_total_hours + period_hours
 		
 			user_row['workload_total'] = f"{user_total_hours:.1f}"
+			if load_actual:
+				apply_actual_fields_to_row(user_row, periods, actual_by_user.get(user_email, {}))
 			tree_data.append(user_row)
 			logger(f"Добавлен пользователь: {user_email}")
 			roles_added_for_user = 0
@@ -1015,6 +1040,12 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 					role_total_hours = role_total_hours + hours
 		
 				role_row['workload_total'] = f"{role_total_hours:.1f}"
+				if load_actual:
+					role_actual: dict[str, float] = {}
+					for task_id in tasks_with_assignments:
+						for pk, hours in (actual_by_user_task.get(user_email, {}).get(task_id, {}) or {}).items():
+							role_actual[pk] = role_actual.get(pk, 0.0) + hours
+					apply_actual_fields_to_row(role_row, periods, role_actual)
 				tree_data.append(role_row)
 				role_row_index = len(tree_data) - 1
 				logger(f"Добавлена роль: {role}")

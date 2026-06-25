@@ -14,10 +14,12 @@ from project_workload_assignment.project_workload_assignment.project_workload.ch
 	_normalize_worker_wtype_filter,
 	_zero_series,
 	_zero_wtype_series,
+	run_get_project_workload_charts,
 	run_get_team_workload_charts,
 )
 from project_workload_assignment.project_workload_assignment.project_workload.periods import (
 	generate_periods_for_project_window,
+	generate_periods_for_pwr_report,
 )
 
 
@@ -56,10 +58,44 @@ class TestChartAggregates(FrappeTestCase):
 		self.assertEqual(len(periods), 3)
 		self.assertEqual(periods[0]["date"], "2026-06-01")
 
-	def test_whitelist_team_charts_entrypoint(self):
+	def test_generate_periods_for_pwr_report_anchor(self):
+		periods = generate_periods_for_pwr_report("daily", "quarter", "2026-01-15")
+		self.assertEqual(len(periods), 90)
+		self.assertEqual(periods[0]["date"], "2026-01-15")
+
+	def test_team_charts_load_actual_flag(self):
+		result = run_get_team_workload_charts(
+			{
+				"view_type": "weekly",
+				"period_range": "quarter",
+				"period_anchor_date": "2026-01-15",
+				"load_actual": 0,
+			}
+		)
+		self.assertIn("periods", result)
+		self.assertFalse(result.get("meta", {}).get("actual_loaded"))
+
 		frappe.form_dict = frappe._dict(
 			{"view_type": "monthly", "period_range": "quarter", "worker_wtype": ""}
 		)
 		result = pwr_run_team_workload_charts()
 		self.assertIn("periods", result)
 		self.assertFalse(result.get("error"))
+
+	def test_project_charts_load_actual_flag(self):
+		project = frappe.db.get_value("Project", {}, "name")
+		if not project:
+			self.skipTest("No Project on site")
+
+		result = run_get_project_workload_charts(
+			{
+				"project": project,
+				"view_type": "weekly",
+				"date_from": "2026-03-01",
+				"date_to": "2026-06-30",
+				"load_actual": 1,
+			}
+		)
+		self.assertFalse(result.get("error"), result.get("error"))
+		self.assertTrue(result.get("meta", {}).get("actual_loaded"))
+		self.assertIn("actual_hours_by_wtype", result.get("series") or {})

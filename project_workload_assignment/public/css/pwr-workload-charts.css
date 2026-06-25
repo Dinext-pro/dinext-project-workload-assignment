@@ -235,3 +235,134 @@
 	max-height: none !important;
 	margin: 0 !important;
 }
+
+/* ISS-2026-00709: план + факт в ячейках и навигация периода */
+.pwr-plan-fact-cell {
+	position: relative;
+	height: 54px !important;
+	min-height: 54px !important;
+}
+
+.pwr-plan-fact-indicators {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 42%;
+	display: flex;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.pwr-indicator-slot {
+	flex: 1 1 50%;
+	position: relative;
+	height: 100%;
+	display: flex;
+	align-items: flex-end;
+	overflow: hidden;
+}
+
+.pwr-indicator-slot .projects-workload-visualization,
+.pwr-indicator-slot .project-workload-visualization {
+	position: relative;
+	width: 100%;
+	bottom: auto;
+	left: auto;
+	right: auto;
+}
+
+.pwr-plan-fact-cell .pwr-plan-fill {
+	z-index: 1;
+}
+
+.pwr-plan-fact-cell .pwr-actual-fill {
+	background: rgba(33, 150, 243, 0.45) !important;
+	border-top: none !important;
+	z-index: 2;
+}
+
+.pwr-plan-fact-cell .pwr-plan-fact-content {
+	position: relative;
+	z-index: 3;
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 2px !important;
+	padding: 1px 0 0 !important;
+	height: 58%;
+	box-sizing: border-box;
+}
+
+.pwr-plan-fact-cell .pwr-plan-fact-row {
+	display: flex;
+	align-items: baseline;
+	justify-content: center;
+	gap: 3px;
+	width: 100%;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.pwr-plan-fact-cell .pwr-plan-fact-row--plan .workload-hours {
+	font-size: 9px !important;
+}
+
+.pwr-plan-fact-cell .pwr-plan-fact-row--plan .projects-workload-percentage,
+.pwr-plan-fact-cell .pwr-plan-fact-row--plan .project-workload-percentage {
+	font-size: 7px !important;
+	margin-top: 0 !important;
+}
+
+.pwr-plan-fact-cell .pwr-plan-fact-row--actual .pwr-actual-hours {
+	color: #1565c0;
+	font-size: 9px !important;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.pwr-plan-fact-cell .pwr-plan-fact-row--actual .pwr-actual-pct {
+	color: #1565c0;
+	font-size: 7px !important;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.pwr-plan-fact-cell .pwr-actual-hours.zero-load,
+.pwr-plan-fact-cell .pwr-actual-pct.zero-load {
+	color: var(--gray-500, #888) !important;
+}
+
+.pwr-workload-charts-root .pwr-chart-period-nav {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.pwr-workload-charts-root .pwr-chart-period-nav-btn {
+	min-width: 24px;
+	padding: 2px 6px;
+}
+
+.pwr-workload-charts-root .pwr-chart-period-label {
+	font-size: 11px;
+	color: var(--text-muted);
+	white-space: nowrap;
+	max-width: 140px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pwr-workload-charts-root .pwr-chart-show-fact-field {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 24px;
+	font-size: 11px;
+	white-space: nowrap;
+}
+
+.pwr-workload-charts-root .pwr-chart-show-fact-field input {
+	margin: 0;
+}
