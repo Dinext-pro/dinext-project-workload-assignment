@@ -9,6 +9,7 @@ frappe.provide("project_workload_assignment.charts");
 
 	const CHART_LAYOUT_VERSION = "filters-above-chart-v1";
 	const Y_AXIS_GUTTER_PX = 50;
+	const DEFAULT_PARTICIPANT_GUTTER_PX = 220;
 	const RELOAD_DEBOUNCE_MS = 80;
 	const TABLE_WAIT_MS = 300;
 	const TABLE_WAIT_ATTEMPTS = 40;
@@ -94,12 +95,28 @@ frappe.provide("project_workload_assignment.charts");
 		window.pwrPeriodAnchorDate = dateStr;
 	}
 
+	function getWorkerWtype(state) {
+		return (state && state.workerWtype) || "";
+	}
+
 	function isShowFactEnabled(state) {
+		if (typeof window !== "undefined" && window.pwrShowFact != null) {
+			return !!window.pwrShowFact;
+		}
 		return !!(state && state.showFact);
 	}
 
 	function syncShowFactGlobal(state) {
-		window.pwrShowFact = !!(state && state.showFact);
+		window.pwrShowFact = isShowFactEnabled(state);
+	}
+
+	function syncGlobalsFromState(state) {
+		syncShowFactGlobal(state);
+		window.pwrPeriodAnchorDate = getTeamPeriodAnchor();
+	}
+
+	function syncStateFromGlobals(state) {
+		state.showFact = !!readPwrGlobal("pwrShowFact", false);
 	}
 
 	function sumSeries(a, b) {
@@ -127,7 +144,7 @@ frappe.provide("project_workload_assignment.charts");
 		}
 		const state = ensureState(frm);
 		state._controlsReady = false;
-		const shiftMonths = getPeriodRangeMonths() * (deltaSteps || 0);
+		const shiftMonths = deltaSteps || 0;
 		if (!shiftMonths) {
 			return;
 		}
@@ -150,21 +167,38 @@ frappe.provide("project_workload_assignment.charts");
 		triggerWorkloadDataReload(frm);
 	}
 
+	function setShowFact(frm, value) {
+		frm = resolveActiveWorkloadFrm(frm);
+		window.pwrShowFact = !!value;
+		const state = ensureState(frm);
+		state.showFact = !!value;
+		triggerShowFactReload(frm, state);
+	}
+
+	function getShowFact(frm) {
+		return isShowFactEnabled(frm ? ensureState(frm) : null);
+	}
+
 	function triggerWorkloadDataReload(frm) {
 		frm = resolveActiveWorkloadFrm(frm);
 		if (!frm) {
 			return;
 		}
 		const state = ensureState(frm);
-		syncShowFactGlobal(state);
-		$(document).trigger("pwr-workload-data-reload", [
-			frm,
-			{
-				showFact: !!state.showFact,
-				periodAnchor: getTeamPeriodAnchor(),
-				periodRangeMonths: getPeriodRangeMonths(),
-			},
-		]);
+		syncStateFromGlobals(state);
+		syncGlobalsFromState(state);
+		const reloadMeta = {
+			showFact: isShowFactEnabled(state),
+		};
+		if (frm.doctype === "Projects Workload Report") {
+			reloadMeta.periodAnchor = getTeamPeriodAnchor();
+			reloadMeta.periodRangeMonths = getPeriodRangeMonths();
+		} else {
+			const { from, to } = getProjectDateRange();
+			reloadMeta.periodAnchor = from;
+			reloadMeta.periodAnchorTo = to;
+		}
+		$(document).trigger("pwr-workload-data-reload", [frm, reloadMeta]);
 
 		if (frm.doctype === "Projects Workload Report") {
 			requestTeamChartReload(frm);
@@ -187,9 +221,9 @@ frappe.provide("project_workload_assignment.charts");
 				getTeamViewType(),
 				getTeamPeriodRange(),
 				getTeamPeriodAnchor(),
-				state.workerWtype || "",
+				getWorkerWtype(state),
 				state.loadUtilization ? "1" : "0",
-				state.showFact ? "1" : "0",
+				isShowFactEnabled(state) ? "1" : "0",
 				frm.doc.user || "",
 				frm.doc.project || "",
 				frm.doc.project_portfolio || "",
@@ -201,8 +235,8 @@ frappe.provide("project_workload_assignment.charts");
 			getProjectViewType(),
 			from,
 			to,
-			state.workerWtype || "",
-			state.showFact ? "1" : "0",
+			getWorkerWtype(state),
+			isShowFactEnabled(state) ? "1" : "0",
 		].join("|");
 	}
 
@@ -490,13 +524,22 @@ frappe.provide("project_workload_assignment.charts");
 		return gridPeriods === chartPeriods;
 	}
 
-	function measurePinnedGutterWidth(gridTable, $pinned) {
+	function measurePinnedGutterWidth(gridTable, $pinned, $grid) {
 		if (gridTable && gridTable.api && typeof gridTable.api.getColumn === "function") {
 			const col = gridTable.api.getColumn("participant");
 			if (col && typeof col.getActualWidth === "function") {
 				const width = col.getActualWidth();
 				if (Number.isFinite(width) && width > 0) {
 					return Math.round(width);
+				}
+			}
+		}
+		if ($grid && $grid.length) {
+			const $pinnedHeader = $grid.find(".ag-pinned-left-header").first();
+			if ($pinnedHeader.length) {
+				const headerW = Math.round($pinnedHeader.outerWidth() || 0);
+				if (headerW > 0) {
+					return headerW;
 				}
 			}
 		}
@@ -631,6 +674,26 @@ frappe.provide("project_workload_assignment.charts");
 			}
 		}
 		return targets;
+	}
+
+	function formatChartLegendValue(value) {
+		if (Array.isArray(value)) {
+			const raw = value[value.length - 1];
+			const n = Number(raw);
+			return Number.isFinite(n) ? n.toFixed(1) : raw;
+		}
+		const n = Number(value);
+		if (!Number.isFinite(n)) {
+			return value;
+		}
+		return n.toFixed(1);
+	}
+
+	function buildAxisTooltip() {
+		return {
+			trigger: "axis",
+			valueFormatter: (value) => formatChartLegendValue(value),
+		};
 	}
 
 	function buildSyncedGrid() {
@@ -801,7 +864,7 @@ frappe.provide("project_workload_assignment.charts");
 		}
 
 		return {
-			tooltip: { trigger: "axis" },
+			tooltip: buildAxisTooltip(),
 			grid: buildSyncedGrid(),
 			xAxis: buildSyncedXAxis(labels),
 			yAxis: buildSyncedYAxis(),
@@ -871,7 +934,7 @@ frappe.provide("project_workload_assignment.charts");
 		}
 
 		return {
-			tooltip: { trigger: "axis" },
+			tooltip: buildAxisTooltip(),
 			grid: buildSyncedGrid(),
 			xAxis: buildSyncedXAxis(labels),
 			yAxis: buildSyncedYAxis(),
@@ -898,7 +961,9 @@ frappe.provide("project_workload_assignment.charts");
 				_reloadTimer: null,
 			});
 		}
-		return stateByForm.get(frm);
+		const state = stateByForm.get(frm);
+		syncStateFromGlobals(state);
+		return state;
 	}
 
 	function getChartToolbarButtons(frm) {
@@ -1112,74 +1177,33 @@ frappe.provide("project_workload_assignment.charts");
 		}
 
 		const $filters = $('<div class="pwr-chart-filters"></div>').appendTo(panel.$gutterFilters);
-		const workerTypeLabel = __("Worker type");
-		const allWorkersLabel = __("All");
 
+		const workerTypeLabel = __("Worker type");
 		const $workerField = $(`
-			<div class="pwr-chart-filter-field">
-				<label class="pwr-chart-filter-label">${frappe.utils.escape_html(workerTypeLabel)}</label>
-				<select class="form-control input-xs pwr-chart-worker-wtype" title="${frappe.utils.escape_html(
+			<div class="pwr-chart-filter-field pwr-chart-filter-field--select">
+				<select class="form-control input-sm pwr-chart-worker-wtype" title="${frappe.utils.escape_html(
 					workerTypeLabel
 				)}">
-					<option value="">${frappe.utils.escape_html(allWorkersLabel)}</option>
+					<option value="">${frappe.utils.escape_html(__("All"))}</option>
 					<option value="Employee">${frappe.utils.escape_html(__("Employee"))}</option>
 					<option value="Supplier">${frappe.utils.escape_html(__("Supplier"))}</option>
 				</select>
 			</div>
 		`).appendTo($filters);
-
-		const $workerSelect = $workerField.find(".pwr-chart-worker-wtype");
+		const $workerSelect = $workerField.find("select");
 		$workerSelect.val(state.workerWtype || "");
-		$workerSelect.on("change", () => {
-			state.workerWtype = $workerSelect.val() || "";
+		$workerSelect.on("change", function () {
+			state.workerWtype = $(this).val() || "";
 			reloadFn();
 		});
 
-		const periodLabel = formatPeriodAnchorLabel(
-			options.frm || (typeof cur_frm !== "undefined" ? cur_frm : null)
-		);
-		const $periodNav = $(`
-			<div class="pwr-chart-filter-field pwr-chart-period-nav">
-				<button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-prev" title="${frappe.utils.escape_html(
-					__("Previous month")
-				)}">&lt;</button>
-				<span class="pwr-chart-period-label" title="${frappe.utils.escape_html(periodLabel)}">${frappe.utils.escape_html(
-					periodLabel
-				)}</span>
-				<button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-next" title="${frappe.utils.escape_html(
-					__("Next month")
-				)}">&gt;</button>
-			</div>
-		`).appendTo($filters);
-		$periodNav.find(".pwr-chart-period-prev").on("click", () => {
-			shiftWorkloadPeriod(options.frm, -1);
-		});
-		$periodNav.find(".pwr-chart-period-next").on("click", () => {
-			shiftWorkloadPeriod(options.frm, 1);
-		});
-
-		const showFactLabel = __("Show actual");
-		const $showFactField = $(`
-			<div class="pwr-chart-filter-field pwr-chart-show-fact-field">
-				<label>
-					<input type="checkbox" class="pwr-chart-show-fact" />
-					<span>${frappe.utils.escape_html(showFactLabel)}</span>
-				</label>
-			</div>
-		`).appendTo($filters);
-		$showFactField.find(".pwr-chart-show-fact").prop("checked", !!state.showFact);
-		$showFactField.find(".pwr-chart-show-fact").on("change", function () {
-			state.showFact = !!this.checked;
-			triggerShowFactReload(options.frm, state);
-		});
-
 		if (options.showUtilizationButton) {
-			const utilizationLabel = __("Load utilization");
+			const utilizationLabel = __("Add utilization");
 			$(
 				`<div class="pwr-chart-filter-field pwr-chart-filter-field--action">
 					<button type="button" class="btn btn-xs btn-default pwr-chart-utilization-btn" title="${frappe.utils.escape_html(
 						utilizationLabel
-					)}">${frappe.utils.escape_html(__("Util."))}</button>
+					)}">${frappe.utils.escape_html(utilizationLabel)}</button>
 				</div>`
 			)
 				.appendTo($filters)
@@ -1217,7 +1241,7 @@ frappe.provide("project_workload_assignment.charts");
 			return;
 		}
 
-		const { $pinned, $centerViewport, $centerContainer } = elements;
+		const { $pinned, $centerViewport, $centerContainer, $grid } = elements;
 		const gridTable = getWorkloadGridTable(frm);
 		const $syncGrid = panel.$syncGrid;
 		const $viewport = panel.$viewport;
@@ -1230,26 +1254,44 @@ frappe.provide("project_workload_assignment.charts");
 
 		let layoutTimer = null;
 		const applyLayout = () => {
-			const gutterW = measurePinnedGutterWidth(gridTable, $pinned);
+			let gutterW = measurePinnedGutterWidth(gridTable, $pinned, $grid);
+			if (!gutterW && state._lastGutterWidth) {
+				gutterW = state._lastGutterWidth;
+			}
+			if (!gutterW) {
+				gutterW = DEFAULT_PARTICIPANT_GUTTER_PX;
+			}
+			state._lastGutterWidth = gutterW;
+
 			const viewportW = Math.round($centerViewport.outerWidth() || 0);
 			const scrollW = measureGridPeriodAreaWidth(
 				gridTable,
 				$centerContainer,
 				$centerViewport
 			);
-			if (!gutterW) {
-				return;
-			}
 			const scrollLeft = $centerViewport.scrollLeft() || 0;
 			const filtersW = Math.max(0, gutterW - Y_AXIS_GUTTER_PX);
 
-			if (gutterW > 0) {
-				$syncGrid.css({
-					gridTemplateColumns: `${filtersW}px ${Y_AXIS_GUTTER_PX}px minmax(0, 1fr)`,
+			$syncGrid.css({
+				gridTemplateColumns: `${filtersW}px ${Y_AXIS_GUTTER_PX}px minmax(0, 1fr)`,
+			});
+			if (panel.$root && panel.$root.length) {
+				panel.$root.css("--pwr-yaxis-gutter-width", `${Y_AXIS_GUTTER_PX}px`);
+				panel.$root.css("--pwr-filters-gutter-width", `${filtersW}px`);
+			}
+			if (panel.$gutterChrome && panel.$gutterChrome.length) {
+				panel.$gutterChrome.css({
+					width: filtersW,
+					maxWidth: filtersW,
+					minWidth: filtersW,
 				});
-				if (panel.$root && panel.$root.length) {
-					panel.$root.css("--pwr-yaxis-gutter-width", `${Y_AXIS_GUTTER_PX}px`);
-				}
+			}
+			if (panel.$gutterFilters && panel.$gutterFilters.length) {
+				panel.$gutterFilters.css({
+					width: "100%",
+					maxWidth: filtersW,
+					minWidth: 0,
+				});
 			}
 			if (viewportW > 0) {
 				$viewport.css({ maxWidth: viewportW });
@@ -1456,9 +1498,9 @@ frappe.provide("project_workload_assignment.charts");
 				view_type: viewType,
 				period_range: periodRange,
 				period_anchor_date: periodAnchor || getTeamPeriodAnchor(),
-				worker_wtype: state.workerWtype || "",
+				worker_wtype: getWorkerWtype(state),
 				load_utilization: state.loadUtilization ? 1 : 0,
-				load_actual: state.showFact ? 1 : 0,
+				load_actual: isShowFactEnabled(state) ? 1 : 0,
 			},
 			callback(r) {
 				if (token !== state.loadToken) {
@@ -1510,8 +1552,8 @@ frappe.provide("project_workload_assignment.charts");
 				view_type: viewType,
 				date_from: from,
 				date_to: to,
-				worker_wtype: state.workerWtype || "",
-				load_actual: state.showFact ? 1 : 0,
+				worker_wtype: getWorkerWtype(state),
+				load_actual: isShowFactEnabled(state) ? 1 : 0,
 			},
 			callback(r) {
 				if (token !== state.loadToken) {
@@ -1754,16 +1796,14 @@ frappe.provide("project_workload_assignment.charts");
 	project_workload_assignment.charts.syncGridViewportHeight =
 		syncWorkloadGridViewportHeight;
 	project_workload_assignment.charts.getOccupiedHeight = getChartOccupiedHeight;
-	project_workload_assignment.charts.isShowFactEnabled = function (frm) {
-		if (frm) {
-			const state = stateByForm.get(frm);
-			if (state) {
-				return !!state.showFact;
-			}
-		}
-		return !!window.pwrShowFact;
-	};
+	project_workload_assignment.charts.isShowFactEnabled = getShowFact;
+	project_workload_assignment.charts.getShowFact = getShowFact;
+	project_workload_assignment.charts.setShowFact = setShowFact;
+	project_workload_assignment.charts.getPeriodAnchorLabel = formatPeriodAnchorLabel;
+	project_workload_assignment.charts.formatPeriodAnchorLabel = formatPeriodAnchorLabel;
+	project_workload_assignment.charts.syncGlobals = syncGlobalsFromState;
 	project_workload_assignment.charts.getTeamPeriodAnchor = getTeamPeriodAnchor;
+	project_workload_assignment.charts.shiftPeriod = shiftWorkloadPeriod;
 	project_workload_assignment.charts.shiftWorkloadPeriod = shiftWorkloadPeriod;
 	project_workload_assignment.charts.getPeriodRangeMonths = getPeriodRangeMonths;
 	project_workload_assignment.charts.resetTeamPeriodAnchorToToday =

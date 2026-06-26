@@ -63,6 +63,33 @@ class TestChartAggregates(FrappeTestCase):
 		self.assertEqual(len(periods), 90)
 		self.assertEqual(periods[0]["date"], "2026-01-15")
 
+	def test_team_charts_load_utilization_flag(self):
+		result = run_get_team_workload_charts(
+			{
+				"view_type": "weekly",
+				"period_range": "quarter",
+				"period_anchor_date": "2026-01-15",
+				"load_utilization": 1,
+			}
+		)
+		self.assertIn("periods", result)
+		self.assertFalse(result.get("error"), result.get("error"))
+		self.assertTrue(result.get("meta", {}).get("utilization_loaded"))
+		series = result.get("series") or {}
+		period_count = len(result["periods"])
+		self.assertEqual(len(series.get("utilization_plan_hours") or []), period_count)
+		self.assertEqual(len(series.get("utilization_forecast_hours") or []), period_count)
+		if period_count and series.get("workload_forecast_hours_by_wtype"):
+			employee = series["workload_forecast_hours_by_wtype"].get("Employee") or []
+			supplier = series["workload_forecast_hours_by_wtype"].get("Supplier") or []
+			forecast = series.get("utilization_forecast_hours") or []
+			for idx in range(period_count):
+				self.assertAlmostEqual(
+					forecast[idx],
+					(employee[idx] if idx < len(employee) else 0.0)
+					+ (supplier[idx] if idx < len(supplier) else 0.0),
+				)
+
 	def test_team_charts_load_actual_flag(self):
 		result = run_get_team_workload_charts(
 			{
