@@ -162,6 +162,12 @@
             .projects-workload-ag-grid .ag-pinned-left-cols-container {
                 border-right: 1px solid var(--border-color) !important;
             }
+            .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-center-cols-container .ag-cell {
+                border-right: 1px solid var(--border-color) !important;
+            }
+            .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-header-viewport .ag-header-cell {
+                border-right: 1px solid var(--border-color) !important;
+            }
             .projects-workload-ag-grid[data-loading-message]::after {
                 content: attr(data-loading-message);
                 position: absolute;
@@ -641,6 +647,7 @@
             };
 
             this.api = window.agGrid.createGrid(this.container, this.gridOptions);
+            this.syncShowFactClass();
             this.renderRows();
         }
 
@@ -651,8 +658,17 @@
             this.container.classList.toggle("projects-workload-ag-grid-dark", isDark);
         }
 
+        syncShowFactClass(showFact) {
+            const enabled =
+                showFact != null
+                    ? !!showFact
+                    : !!(typeof window !== "undefined" && window.pwrShowFact);
+            this.container.classList.toggle("projects-workload-ag-grid--show-fact", enabled);
+        }
+
         refresh(rows, columns, options) {
             const opts = options || {};
+            this.syncShowFactClass(opts.showFact);
             if (opts.rowHeight) {
                 this.rowHeight = opts.rowHeight;
                 this.setGridOption("rowHeight", opts.rowHeight);

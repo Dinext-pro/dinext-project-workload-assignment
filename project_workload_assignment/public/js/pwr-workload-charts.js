@@ -170,6 +170,9 @@ frappe.provide("project_workload_assignment.charts");
 	function setShowFact(frm, value) {
 		frm = resolveActiveWorkloadFrm(frm);
 		window.pwrShowFact = !!value;
+		document.querySelectorAll(".projects-workload-ag-grid").forEach(el => {
+			el.classList.toggle("projects-workload-ag-grid--show-fact", !!value);
+		});
 		const state = ensureState(frm);
 		state.showFact = !!value;
 		triggerShowFactReload(frm, state);

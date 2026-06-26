@@ -246,6 +246,16 @@
 	min-height: 54px !important;
 }
 
+.projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-center-cols-container .ag-cell,
+.project-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-center-cols-container .ag-cell {
+	border-right: 1px solid var(--border-color) !important;
+}
+
+.projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-header-viewport .ag-header-cell,
+.project-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-header-viewport .ag-header-cell {
+	border-right: 1px solid var(--border-color) !important;
+}
+
 .pwr-plan-fact-indicators {
 	position: absolute;
 	left: 0;
