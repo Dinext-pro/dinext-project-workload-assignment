@@ -162,6 +162,46 @@ def load_worker_wtypes(users_list: list[str]) -> dict[str, str]:
 	return {row["wuser"]: row.get("wtype") or "" for row in rows if row.get("wuser")}
 
 
+def load_worker_utilization_tables(
+	users_list: list[str],
+) -> dict[str, list[dict[str, str | float]]]:
+	"""Worker.utilization (Worker Utilization Table) по email пользователя."""
+	if not users_list:
+		return {}
+
+	workers = frappe.get_list(
+		"Worker",
+		filters={"wuser": ["in", users_list]},
+		fields=["name", "wuser"],
+	)
+	if not workers:
+		return {}
+
+	worker_by_name = {row["name"]: row["wuser"] for row in workers if row.get("name")}
+	util_rows = frappe.qb.get_query(
+		"Worker Utilization Table",
+		fields=["parent", "util_valid_from", "utilization"],
+		filters=[
+			["parent", "in", list(worker_by_name.keys())],
+			["parenttype", "=", "Worker"],
+			["parentfield", "=", "utilization"],
+		],
+	).run(as_dict=True)
+
+	result: dict[str, list[dict[str, str | float]]] = {}
+	for row in util_rows:
+		user_email = worker_by_name.get(row.parent)
+		if not user_email:
+			continue
+		result.setdefault(user_email, []).append(
+			{
+				"util_valid_from": str(row.util_valid_from) if row.util_valid_from else "",
+				"utilization": float(row.utilization or 0),
+			}
+		)
+	return result
+
+
 def load_company_holiday_lists(companies: set[str] | list[str]) -> dict[str, str]:
 	"""Company.name -> default_holiday_list для fallback календаря проекта."""
 	if not companies:

@@ -88,13 +88,21 @@ frappe.provide("project_workload_assignment.planFactCell");
 					</div>
 				</div>
 				<div class="${prefix}-content pwr-plan-fact-content">
-					<div class="pwr-plan-fact-row pwr-plan-fact-row--plan">
-						<span class="${planTextClass}">${formatHours(planHours)}</span>
-						<span class="${prefix}-percentage ${planPctClass}">${percentage}%</span>
+					<div class="pwr-plan-fact-row pwr-plan-fact-row--hours">
+						<div class="pwr-plan-fact-col pwr-plan-fact-col--plan">
+							<span class="${planTextClass}">${formatHours(planHours)}</span>
+						</div>
+						<div class="pwr-plan-fact-col pwr-plan-fact-col--actual">
+							<span class="${actualTextClass}">${formatHours(actualHours)}</span>
+						</div>
 					</div>
-					<div class="pwr-plan-fact-row pwr-plan-fact-row--actual">
-						<span class="${actualTextClass}">${formatHours(actualHours)}</span>
-						<span class="${prefix}-percentage ${actualPctClass}">${actualPct}%</span>
+					<div class="pwr-plan-fact-row pwr-plan-fact-row--pct">
+						<div class="pwr-plan-fact-col pwr-plan-fact-col--plan">
+							<span class="${prefix}-percentage ${planPctClass}">${percentage}%</span>
+						</div>
+						<div class="pwr-plan-fact-col pwr-plan-fact-col--actual">
+							<span class="${prefix}-percentage ${actualPctClass}">${actualPct}%</span>
+						</div>
 					</div>
 				</div>
 			</div>
