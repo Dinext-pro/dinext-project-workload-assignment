@@ -88,6 +88,12 @@
                 max-height: none;
                 margin: 0;
             }
+            .project_workload_container .project-workload-ag-grid .ag-cell {
+                height: 100%;
+            }
+            .project_workload_container .project-workload-ag-grid .ag-row {
+                align-items: stretch;
+            }
             .projects-workload-ag-grid .ag-pinned-left-header {
                 --ag-header-column-resize-handle-display: block;
             }
@@ -116,6 +122,7 @@
             .projects-workload-ag-grid .ag-row {
                 border: none !important;
                 background: transparent !important;
+                align-items: stretch;
             }
             .projects-workload-ag-grid .ag-cell {
                 padding: 0 !important;
@@ -123,14 +130,28 @@
                 line-height: normal;
                 border: none !important;
                 overflow: hidden !important;
+                height: 100%;
             }
             .projects-workload-ag-grid .ag-cell-wrapper,
             .projects-workload-ag-grid .ag-cell-value {
                 width: 100%;
                 height: 100%;
+                min-height: 100%;
                 padding: 0 !important;
                 margin: 0 !important;
                 display: block;
+                position: relative;
+            }
+            .projects-workload-ag-grid .ag-cell-value > .projects-workload-cell,
+            .projects-workload-ag-grid .ag-cell-value > .project-workload-cell {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
             }
             .projects-workload-ag-grid .ag-header-cell-label {
                 justify-content: center;
@@ -730,6 +751,23 @@
             });
         }
 
+        syncContentHeight() {
+            if (!this.container.classList.contains("project-workload-ag-grid")) {
+                return;
+            }
+            const visibleCount = Array.isArray(this._visibleRowIdList)
+                ? this._visibleRowIdList.length
+                : 0;
+            const headerH = this.gridOptions.headerHeight || 70;
+            const rowH = this.rowHeight || 40;
+            const height = headerH + Math.max(visibleCount, 1) * rowH + 2;
+            this.container.style.height = `${height}px`;
+            const tableWrap = this.container.closest(".project-workload-table");
+            if (tableWrap) {
+                tableWrap.style.height = `${height}px`;
+            }
+        }
+
         refresh(rows, columns, options) {
             const opts = options || {};
             this.syncShowFactClass(opts.showFact);
@@ -932,11 +970,13 @@
                     this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
                     this.refreshParticipantCells();
                     this.scheduleToggleDomSync();
+                    this.syncContentHeight();
                     return;
                 }
 
                 this._visibleRowIdList = nextIdList;
                 this.scheduleToggleDomSync();
+                this.syncContentHeight();
                 return;
             }
 
@@ -945,6 +985,7 @@
             this.bodyScrollable = this.container.querySelector(".ag-body-viewport");
             this.refreshParticipantCells();
             this.scheduleToggleDomSync();
+            this.syncContentHeight();
         }
 
         syncToggleDomByRowKey(rowKey, expanded) {

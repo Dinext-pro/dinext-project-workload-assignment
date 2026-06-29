@@ -292,6 +292,15 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		date_to = fd.get('date_to')
 		no_agg = _parse_bool_form_value(fd.get('no_agg'), default=False)
 		load_actual = _parse_bool_form_value(fd.get('load_actual'), default=False)
+		from project_workload_assignment.project_workload_assignment.project_workload.worker_wtype_helpers import (
+			filter_users_by_wtype,
+			normalize_worker_wtype_filter,
+		)
+		from project_workload_assignment.project_workload_assignment.project_workload.context_loaders import (
+			load_worker_wtypes,
+		)
+
+		worker_wtype_filter = normalize_worker_wtype_filter(fd.get('worker_wtype'))
 		
 		logger(f"Project: {project}, View Type: {view_type}, Period: {date_from} to {date_to}")
 		
@@ -431,6 +440,17 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 			unique_tasks.add(task_id)
 		
 		users_list = list(users_data.keys())
+		if worker_wtype_filter:
+			wtypes_map = load_worker_wtypes(users_list)
+			filtered_users = set(
+				filter_users_by_wtype(users_list, worker_wtype_filter, users_data, wtypes_map)
+			)
+			users_list = [user_email for user_email in users_list if user_email in filtered_users]
+			assignments_by_user_role_task = {
+				user_email: roles
+				for user_email, roles in assignments_by_user_role_task.items()
+				if user_email in filtered_users
+			}
 		logger(f"Группировка завершена. Пользователей: {len(users_list)}, задач: {len(unique_tasks)}")
 		
 		# ========== 4.5 ПОЛУЧЕНИЕ ДЕРЕВА ЗАДАЧ ПРОЕКТА (через frappe.qb) ==========

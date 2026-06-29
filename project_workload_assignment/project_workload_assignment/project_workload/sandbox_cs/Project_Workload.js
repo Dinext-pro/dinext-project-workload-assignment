@@ -12,7 +12,7 @@
 
 //ВАРИАНТ С ВЛОЖЕННЫМИ ЗАДАЧАМИ
 // ========== КОНФИГУРАЦИЯ И ПЕРЕМЕННЫЕ ==========
-const WL_DEBUG = false;
+var WL_DEBUG = typeof WL_DEBUG !== "undefined" ? WL_DEBUG : false;
 
 let isProjectWorkloadLoading = false;
 let projectWorkloadLoadTimeout = null;
@@ -183,7 +183,7 @@ function createPwrWorkerTypeFilter(container) {
 }
 
 function createPwrShowFactFilter(container) {
-    const showFactLabel = __("Show actual");
+    const showFactLabel = __("Show fact");
     const $field = $(`
         <div class="pwr-filter-field pwr-filter-show-fact">
             <label>
@@ -940,7 +940,8 @@ async function get_project_workload_data(frm, forceRefresh = false) {
                     view_type: currentViewType,  // daily, weekly, monthly
                     date_from: displayDateFrom,
                     date_to: displayDateTo,
-                    load_actual: getPwrLoadActualFlag()
+                    load_actual: getPwrLoadActualFlag(),
+                    worker_wtype: window.pwrWorkerWtype || ''
                 },
                 //freeze: true,
                 freeze_message: __('Получение данных загрузки проекта...')

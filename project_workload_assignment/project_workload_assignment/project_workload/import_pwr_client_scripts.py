@@ -31,8 +31,39 @@ DISABLE_ON_IMPORT = {
 	"Projects Workload Report_V6",
 	"Projects_Workload_Report_Style_V4",
 	"Project_Workload_V4",
+	"Project_Workload_V5",
 	"Project_Workload_Style_V4",
 }
+
+
+def _disable_legacy_pwr_versions():
+	"""Отключить все Project_Workload_V* / Report_V* кроме активных из ENABLE_ON_IMPORT."""
+	disabled = []
+	for name in frappe.get_all(
+		"Client Script",
+		filters=[
+			["name", "like", "Project_Workload_V%"],
+		],
+		pluck="name",
+	):
+		if name in ENABLE_ON_IMPORT:
+			continue
+		if frappe.db.get_value("Client Script", name, "enabled"):
+			frappe.db.set_value("Client Script", name, "enabled", 0, update_modified=True)
+			disabled.append(name)
+	for name in frappe.get_all(
+		"Client Script",
+		filters=[
+			["name", "like", "Projects Workload Report_V%"],
+		],
+		pluck="name",
+	):
+		if name in ENABLE_ON_IMPORT:
+			continue
+		if frappe.db.get_value("Client Script", name, "enabled"):
+			frappe.db.set_value("Client Script", name, "enabled", 0, update_modified=True)
+			disabled.append(name)
+	return disabled
 
 SANDBOX_CS_DIR = Path(__file__).resolve().parent / "sandbox_cs"
 FIXTURE_PATH = Path(
@@ -86,6 +117,7 @@ def run():
 		if frappe.db.exists("Client Script", name):
 			frappe.db.set_value("Client Script", name, "enabled", 0, update_modified=True)
 			disabled.append(name)
+	disabled.extend(_disable_legacy_pwr_versions())
 
 	frappe.db.commit()
 	return {
