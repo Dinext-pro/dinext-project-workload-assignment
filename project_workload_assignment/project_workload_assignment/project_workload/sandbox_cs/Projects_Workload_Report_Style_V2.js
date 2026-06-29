@@ -293,6 +293,24 @@ function applyProjectsWorkloadStyle() {
             line-height: 1.2;
         }
 
+        .projects-workload-filters-section .pwr-filter-worker-wtype {
+            display: flex;
+            align-items: center;
+            min-width: 130px !important;
+            width: 130px !important;
+            max-width: 130px !important;
+            flex: 0 0 auto !important;
+        }
+
+        .projects-workload-filters-section .pwr-filter-worker-wtype-select {
+            width: 100% !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            font-size: 12px !important;
+            line-height: 1.2 !important;
+            padding: 2px 20px 2px 6px !important;
+        }
+
         .projects-workload-filters-section .pwr-filter-period-nav {
             display: inline-flex;
             align-items: center;
@@ -843,10 +861,15 @@ function applyProjectsWorkloadStyle() {
             height: 100% !important;
         }
 
-        .projects_workload_report .projects-workload-visualization.pwr-actual-fill {
-            background: rgba(33, 150, 243, 0.45) !important;
+        .projects_workload_report .pwr-plan-fact-cell .pwr-actual-fill {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            background: rgba(33, 150, 243, 0.5) !important;
             border-top: none !important;
-            z-index: 2;
+            z-index: 0;
         }
 
         .projects_workload_report .projects-workload-cell.pwr-plan-fact-cell {
@@ -868,26 +891,29 @@ function applyProjectsWorkloadStyle() {
             right: 0;
             bottom: 0;
             height: 42%;
-            display: flex;
             z-index: 1;
             pointer-events: none;
-        }
-
-        .projects_workload_report .pwr-indicator-slot {
-            flex: 1 1 50%;
-            position: relative;
-            height: 100%;
-            display: flex;
-            align-items: flex-end;
             overflow: hidden;
         }
 
-        .projects_workload_report .pwr-indicator-slot .projects-workload-visualization {
-            position: relative;
+        .projects_workload_report .pwr-plan-fact-cell .pwr-plan-fill {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
             width: 100%;
-            bottom: auto;
-            left: auto;
-            right: auto;
+            z-index: 2;
+        }
+
+        .projects_workload_report .pwr-plan-fact-cell .pwr-actual-marker {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #1565c0;
+            z-index: 3;
+            transform: translateY(50%);
+            box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.25);
         }
 
         .projects_workload_report .pwr-plan-fact-content {
@@ -903,48 +929,13 @@ function applyProjectsWorkloadStyle() {
             box-sizing: border-box;
         }
 
-        .projects_workload_report .pwr-plan-fact-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            line-height: 1;
-        }
-
-        .projects_workload_report .pwr-plan-fact-col {
-            flex: 1 1 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 0;
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        .projects_workload_report .pwr-plan-fact-row--hours .workload-hours {
+        .projects_workload_report .pwr-plan-fact-content .workload-hours {
             font-size: 9px !important;
         }
 
-        .projects_workload_report .pwr-plan-fact-row--pct .projects-workload-percentage {
+        .projects_workload_report .pwr-plan-fact-content .projects-workload-percentage {
             font-size: 7px !important;
             margin-top: 0 !important;
-        }
-
-        .projects_workload_report .pwr-plan-fact-col--actual .pwr-actual-hours {
-            color: #1565c0;
-            font-size: 9px !important;
-            font-weight: 600;
-        }
-
-        .projects_workload_report .pwr-plan-fact-col--actual .pwr-actual-pct {
-            color: #1565c0;
-            font-size: 7px !important;
-            font-weight: 600;
-        }
-
-        .projects_workload_report .pwr-actual-hours.zero-load,
-        .projects_workload_report .pwr-actual-pct.zero-load {
-            color: var(--gray-500) !important;
         }
         
         .projects_workload_report .projects-workload-content {

@@ -567,10 +567,34 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    from project_workload_assignment.project_workload_assignment.project_workload.utp_actual import (
 		        apply_actual_fields_to_row,
 		        compute_team_actual_hours,
+		        merge_user_actual_totals,
 		    )
 
+		    actual_assignments = assignments
+		    display_start_date = frappe.utils.getdate(display_start_win)
+		    if display_start_date < frappe.utils.getdate():
+		        from project_workload_assignment.project_workload_assignment.project_workload.assignments import (
+		            fetch_pwr_report_assignments,
+		        )
+
+		        restrict_users = None
+		        if user_totals_sql_paged and page_users:
+		            restrict_users = page_users
+		        elif mode == 'user_projects' and detail_user:
+		            restrict_users = [detail_user]
+		        actual_assignments = fetch_pwr_report_assignments(
+		            str(display_start_win),
+		            we,
+		            user=user,
+		            project=project,
+		            project_portfolio=project_portfolio,
+		            user_group_parent=user_group,
+		            use_sql_user_group_join=bool(use_sql_ug),
+		            restrict_users=restrict_users,
+		        )
+
 		    actual_results = compute_team_actual_hours(
-		        assignments,
+		        actual_assignments,
 		        periods,
 		        view_type,
 		        direct_user_totals=direct_user_totals,
@@ -657,7 +681,11 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    user_row['workload_total'] = "%.1f" % user_total_sum
 		    if load_actual:
 		        if direct_user_totals:
-		            apply_actual_fields_to_row(user_row, periods, actual_results.get(user_email, {}))
+		            apply_actual_fields_to_row(
+		                user_row,
+		                periods,
+		                merge_user_actual_totals(actual_results, user_email),
+		            )
 		        else:
 		            merged_actual = {}
 		            for project_name in project_names_result:

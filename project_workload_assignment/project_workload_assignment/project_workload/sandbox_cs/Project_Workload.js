@@ -29,6 +29,7 @@ let projectWorkloadTableData = [];
 let currentViewType = 'daily';
 let currentPeriodRange = 'quarter';
 window.currentViewType = currentViewType;
+window.projectWorkloadViewType = currentViewType;
 window.currentPeriodRange = currentPeriodRange;
 window.pwrShowFact = !!window.pwrShowFact;
 
@@ -68,6 +69,7 @@ function renderPwrPlanFactCell(options) {
 
 function syncPwrProjectGlobals() {
     window.currentViewType = currentViewType;
+    window.projectWorkloadViewType = currentViewType;
     window.currentPeriodRange = currentPeriodRange;
     window.displayDateFrom = displayDateFrom;
     window.displayDateTo = displayDateTo;
@@ -151,6 +153,33 @@ function createPwrPeriodNavFilter(container, frm) {
     });
 
     return $nav;
+}
+
+function createPwrWorkerTypeFilter(container) {
+    const workerTypeLabel = __('Worker type');
+    const $field = $(`
+        <div class="pwr-filter-field pwr-filter-worker-wtype">
+            <select class="form-control input-sm pwr-filter-worker-wtype-select" title="${frappe.utils.escape_html(workerTypeLabel)}">
+                <option value="">${frappe.utils.escape_html(__('All'))}</option>
+                <option value="Employee">${frappe.utils.escape_html(__('Employee'))}</option>
+                <option value="Supplier">${frappe.utils.escape_html(__('Supplier'))}</option>
+            </select>
+        </div>
+    `).appendTo(container);
+    const $select = $field.find('select');
+    $select.val(window.pwrWorkerWtype || '');
+    $select.on('change', function () {
+        window.pwrWorkerWtype = $(this).val() || '';
+        if (
+            project_workload_assignment.charts &&
+            typeof project_workload_assignment.charts.setWorkerWtype === 'function'
+        ) {
+            project_workload_assignment.charts.setWorkerWtype(cur_frm, window.pwrWorkerWtype);
+        } else {
+            requestProjectWorkloadChartReload(cur_frm);
+        }
+    });
+    return $field;
 }
 
 function createPwrShowFactFilter(container) {
@@ -1132,8 +1161,7 @@ function get_project_workload_columns_definition(periods) {
                     percentage = Math.round((hours / availableHours) * 100);
                 }
                 
-                tooltipDetails.push(`${__("Workload")}: ${hours.toFixed(1)}h`);
-                tooltipDetails.push(`${__("Load percentage")}: ${percentage}%`);
+                tooltipDetails.push(`${__("Workload")}: ${hours.toFixed(1)}h (${percentage}%)`);
                 const tooltip = tooltipDetails.join('\n');
 
                 
@@ -1254,6 +1282,7 @@ function createViewTypeDropdown(container) {
                 if (this.value && this.value !== currentViewType) {
                     currentViewType = this.value;
                     window.currentViewType = currentViewType;
+                    window.projectWorkloadViewType = currentViewType;
                     resetProjectWorkloadPeriodAnchor();
                     if (WL_DEBUG) console.log(`View type changed to: ${currentViewType}`);
                     if (cur_frm) {
@@ -1391,6 +1420,7 @@ function createProjectFilterRow(frm, $wrapper) {
     let controls = $('<div class="projects-workload-controls unified-filters-row"></div>').appendTo($wrapper);
 
     let $leftGroup = $('<div class="pwr-filters-group pwr-filters-group--left"></div>').appendTo(controls);
+    createPwrWorkerTypeFilter($leftGroup);
     createPwrShowFactFilter($leftGroup);
 
     ensureDatesInitialized();
@@ -1482,7 +1512,10 @@ async function load_project_workload_data(frm, forceRefresh = false) {
             const columns = get_project_workload_columns_definition(periods);
             
              $wrapper?.addClass("animate");
-            frm.project_workload_dt.refresh(table_data, columns);
+            frm.project_workload_dt.refresh(table_data, columns, {
+                workloadPeriods: periods,
+                workloadViewType: currentViewType,
+            });
             
             // Сворачиваем все узлы (показываем только пользователей)
             if (frm.project_workload_dt.rowmanager) {
@@ -1657,8 +1690,7 @@ frappe.ui.form.on("Project", {
         isProjectWorkloadLoading = false;
         currentViewType = 'daily';
         window.currentViewType = currentViewType;
-        
-        // ИНИЦИАЛИЗАЦИЯ ДАТ
+        window.projectWorkloadViewType = currentViewType;
         displayDateFrom = null;
         displayDateTo = null;
         syncPwrProjectGlobals();

@@ -80,22 +80,23 @@ def _period_window(periods: list[PWRPeriod], view_type: str) -> tuple[str, str]:
 	return str(display_start), str(display_end)
 
 
-def _init_team_actual_structure(direct_user_totals: bool) -> dict:
-	if direct_user_totals:
-		return {}
-	return {}
-
-
-def _ensure_user_project_bucket(store: dict, user: str, project: str, direct_user_totals: bool) -> dict:
-	if direct_user_totals:
-		if user not in store:
-			store[user] = {}
-		return store[user]
+def _ensure_user_project_bucket(store: dict, user: str, project: str) -> dict:
 	if user not in store:
 		store[user] = {}
 	if project not in store[user]:
 		store[user][project] = {}
 	return store[user][project]
+
+
+def merge_user_actual_totals(actual_by_user_project: dict, user: str) -> dict[str, float]:
+	"""Суммирует факт по всем проектам пользователя в totals по period_key."""
+	merged: dict[str, float] = {}
+	for period_map in (actual_by_user_project.get(user) or {}).values():
+		if not isinstance(period_map, dict):
+			continue
+		for period_key, hours in period_map.items():
+			merged[period_key] = merged.get(period_key, 0.0) + flt(hours)
+	return merged
 
 
 def compute_team_actual_hours(
@@ -130,7 +131,7 @@ def compute_team_actual_hours(
 		period_key = date_to_period_key.get(row["date"])
 		if not period_key:
 			continue
-		bucket = _ensure_user_project_bucket(store, row["user"], row["project"], direct_user_totals)
+		bucket = _ensure_user_project_bucket(store, row["user"], row["project"])
 		bucket[period_key] = bucket.get(period_key, 0.0) + flt(row["hours"])
 
 	return store

@@ -212,6 +212,23 @@
                 font-weight: 600;
                 white-space: normal;
             }
+            .projects-workload-ag-grid .projects-workload-ag-grid-header--current-period {
+                background: rgba(33, 150, 243, 0.14) !important;
+            }
+            .projects-workload-ag-grid .projects-workload-ag-grid-header--current-period .projects-workload-ag-grid-header-main,
+            .projects-workload-ag-grid .projects-workload-ag-grid-header--current-period .projects-workload-ag-grid-header-sub,
+            .projects-workload-ag-grid .projects-workload-ag-grid-header--current-period .projects-workload-ag-grid-header-single {
+                color: #1565c0;
+                font-weight: 600;
+            }
+            [data-theme="dark"] .projects-workload-ag-grid .projects-workload-ag-grid-header--current-period {
+                background: rgba(33, 150, 243, 0.22) !important;
+            }
+            [data-theme="dark"] .projects-workload-ag-grid .projects-workload-ag-grid-header--current-period .projects-workload-ag-grid-header-main,
+            [data-theme="dark"] .projects-workload-ag-grid .projects-workload-ag-grid-header--current-period .projects-workload-ag-grid-header-sub,
+            [data-theme="dark"] .projects-workload-ag-grid .projects-workload-ag-grid-header--current-period .projects-workload-ag-grid-header-single {
+                color: #64b5f6;
+            }
             .projects-workload-ag-grid-participant {
                 display: flex;
                 align-items: center;
@@ -464,6 +481,37 @@
             .join("\u0001");
     }
 
+    function resolveCurrentPeriodKey(periods, viewType) {
+        if (!periods?.length || !frappe.datetime?.get_today || !frappe.datetime?.str_to_obj) {
+            return null;
+        }
+        const today = frappe.datetime.str_to_obj(frappe.datetime.get_today());
+        for (let i = 0; i < periods.length; i += 1) {
+            const period = periods[i];
+            if (viewType === "daily") {
+                if (period.date === frappe.datetime.get_today()) {
+                    return period.key;
+                }
+                continue;
+            }
+            if (viewType === "weekly") {
+                const start = frappe.datetime.str_to_obj(period.start_date);
+                const end = frappe.datetime.str_to_obj(period.end_date);
+                if (today >= start && today <= end) {
+                    return period.key;
+                }
+                continue;
+            }
+            if (
+                period.year === today.getFullYear() &&
+                Number(period.month) === today.getMonth() + 1
+            ) {
+                return period.key;
+            }
+        }
+        return null;
+    }
+
     function getParticipantColumnWidth(table, column, isParticipant) {
         if (!isParticipant) {
             return Number(column.width) || 50;
@@ -488,7 +536,8 @@
             headerName: column.name || "",
             headerComponent: ProjectsWorkloadAgGridHeader,
             headerComponentParams: {
-                html: column.name || ""
+                html: column.name || "",
+                isCurrentPeriod: !!column.isCurrentPeriod,
             },
             width,
             minWidth,
@@ -560,6 +609,9 @@
                 `;
             } else {
                 this.eGui.innerHTML = `<div class="projects-workload-ag-grid-header-single">${parts[0] || rawHtml}</div>`;
+            }
+            if (params.isCurrentPeriod) {
+                this.eGui.classList.add("projects-workload-ag-grid-header--current-period");
             }
         }
 
@@ -666,6 +718,18 @@
             this.container.classList.toggle("projects-workload-ag-grid--show-fact", enabled);
         }
 
+        schedulePeriodCellRefresh() {
+            if (!this.api || typeof this.api.refreshCells !== "function") {
+                return;
+            }
+            requestAnimationFrame(() => {
+                if (!this.api || typeof this.api.refreshCells !== "function") {
+                    return;
+                }
+                this.api.refreshCells({ force: true });
+            });
+        }
+
         refresh(rows, columns, options) {
             const opts = options || {};
             this.syncShowFactClass(opts.showFact);
@@ -681,6 +745,27 @@
             if (columns != null) {
                 this.columns = columns;
             }
+            if (opts.workloadPeriods) {
+                this.workloadPeriods = opts.workloadPeriods;
+            }
+            if (opts.workloadViewType) {
+                this.workloadViewType = opts.workloadViewType;
+            }
+            const currentPeriodKey = resolveCurrentPeriodKey(
+                this.workloadPeriods,
+                this.workloadViewType
+            );
+            if (currentPeriodKey) {
+                this.columns = (this.columns || []).map((column) => {
+                    if (!column || column.id === "participant") {
+                        return column;
+                    }
+                    return {
+                        ...column,
+                        isCurrentPeriod: column.id === currentPeriodKey,
+                    };
+                });
+            }
             this.rows.forEach((row, index) => {
                 if (row) {
                     delete row._agRowId;
@@ -692,6 +777,7 @@
             this.setGridOption("columnDefs", columnDefs);
             this.renderRows({ forceFull: true });
             this.applyParticipantColumnWidth();
+            this.schedulePeriodCellRefresh();
 
             const periodsChanged =
                 columns != null && periodColumnSignature(this.columns) !== prevPeriodSignature;
