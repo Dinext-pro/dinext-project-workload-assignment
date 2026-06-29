@@ -74,10 +74,23 @@ let isProjectsWorkloadRedrawing = false;
 let currentViewType = 'weekly'; // ISS-2026-00865 V4: первично открываем квартал по неделям
 let currentPeriodRange = 'quarter'; // По умолчанию квартал
 window.currentViewType = currentViewType;
+window.pwrViewType = currentViewType;
 window.currentPeriodRange = currentPeriodRange;
 window.pwrPeriodAnchorDate = window.pwrPeriodAnchorDate || frappe.datetime.get_today();
 window.pwrShowFact = !!window.pwrShowFact;
+window.pwrWorkerWtype = window.pwrWorkerWtype || '';
 let pendingPwrReloadOptions = null;
+
+if (!window._pwrViewTypePageShowBound) {
+    window._pwrViewTypePageShowBound = true;
+    window.addEventListener('pageshow', function (event) {
+        if (!event.persisted) {
+            return;
+        }
+        window.pwrViewType = currentViewType;
+        window.currentViewType = currentViewType;
+    });
+}
 
 function isPwrShowFactEnabled() {
     if (window.pwrShowFact) {
@@ -101,6 +114,13 @@ function getPwrLoadActualFlag(options) {
         return options.loadActual ? 1 : 0;
     }
     return isPwrShowFactEnabled() ? 1 : 0;
+}
+
+function withPwrLoadActualOptions(options = {}) {
+    if (options.loadActual != null) {
+        return options;
+    }
+    return { ...options, loadActual: getPwrLoadActualFlag() };
 }
 
 function renderPwrPlanFactCell(options) {
@@ -198,6 +218,33 @@ function createPwrPeriodNavFilter(container, frm) {
     });
 
     return $nav;
+}
+
+function createPwrWorkerTypeFilter(container) {
+    const workerTypeLabel = __('Worker type');
+    const $field = $(`
+        <div class="pwr-filter-field pwr-filter-worker-wtype">
+            <select class="form-control input-sm pwr-filter-worker-wtype-select" title="${frappe.utils.escape_html(workerTypeLabel)}">
+                <option value="">${frappe.utils.escape_html(__('All'))}</option>
+                <option value="Employee">${frappe.utils.escape_html(__('Employee'))}</option>
+                <option value="Supplier">${frappe.utils.escape_html(__('Supplier'))}</option>
+            </select>
+        </div>
+    `).appendTo(container);
+    const $select = $field.find('select');
+    $select.val(window.pwrWorkerWtype || '');
+    $select.on('change', function () {
+        window.pwrWorkerWtype = $(this).val() || '';
+        if (
+            project_workload_assignment.charts &&
+            typeof project_workload_assignment.charts.setWorkerWtype === 'function'
+        ) {
+            project_workload_assignment.charts.setWorkerWtype(cur_frm, window.pwrWorkerWtype);
+        } else {
+            $(document).trigger('pwr-workload-chart-reload', [cur_frm]);
+        }
+    });
+    return $field;
 }
 
 function createPwrShowFactFilter(container) {
@@ -590,6 +637,7 @@ function formatAbsenceText(absenceType) {
  * Защита от множественных вызовов - дебаунсинг
  */
 function debouncedLoadProjectsWorkloadData(frm, immediate = false, options = {}) {
+    options = withPwrLoadActualOptions(options);
     if (projectsWorkloadLoadTimeout) {
         clearTimeout(projectsWorkloadLoadTimeout);
         projectsWorkloadLoadTimeout = null;
@@ -1086,6 +1134,7 @@ function createUnifiedFilterRow(frm, $wrapper) {
     createFormFilter(frm, 'project', __('Project'), $leftGroup);
     createFormFilter(frm, 'project_portfolio', __('Project Portfolio'), $leftGroup); // ISS-2026-00625
     createFormFilter(frm, 'user_group', __('User Group'), $leftGroup);
+    createPwrWorkerTypeFilter($leftGroup);
     createPwrShowFactFilter($leftGroup);
 
     let $centerGroup = $('<div class="pwr-filters-group pwr-filters-group--center"></div>').appendTo(controls);
@@ -1142,17 +1191,6 @@ function createUnifiedFilterRow(frm, $wrapper) {
         
         frm.filters_changed = true;
         debouncedLoadProjectsWorkloadData(frm, true);
-    });
-    
-    let loadMoreBtn = $(`
-        <button class="btn btn-default btn-sm projects-workload-load-more" title="${__('Load next 20 users')}" style="display: none;">
-            ${__('Show 20 more')}
-        </button>
-    `).appendTo(buttonsContainer);
-    
-    frm.projects_workload_load_more_btn = loadMoreBtn;
-    loadMoreBtn.on('click', function() {
-        loadMoreProjectsWorkloadUsers(frm);
     });
     
     return controls;
@@ -1214,6 +1252,7 @@ function createViewTypeDropdown(container) {
                 if (this.value && this.value !== currentViewType) {
                     currentViewType = this.value;
                     window.currentViewType = currentViewType;
+                    window.pwrViewType = currentViewType;
                     resetPwrPeriodAnchorForFilters();
                     console.log(`🔄 View type changed to: ${currentViewType}`);
                     if (cur_frm) {
@@ -1436,8 +1475,7 @@ function get_projects_workload_columns_definition(periods) {
                         tooltipParts.push(`${__("Available hours")}: ${availableHours.toFixed(1)}h`);
                     }
                     
-                    tooltipParts.push(`${__("Workload")}: ${hours.toFixed(1)}h`);
-                    tooltipParts.push(`${__("Load percentage")}: ${percentage}%`);
+                    tooltipParts.push(`${__("Workload")}: ${hours.toFixed(1)}h (${percentage}%)`);
                     
                     tooltip = tooltipParts.join('\n');
                     
@@ -1473,7 +1511,7 @@ function get_projects_workload_columns_definition(periods) {
                     if (availableHours > 0) {
                         percentage = Math.round((hours / availableHours) * 100);
                     }
-                    tooltip = `${__("Weekly available hours")}: ${availableHours.toFixed(1)}h\n${__("Workload")}: ${hours.toFixed(1)}h`;
+                    tooltip = `${__("Weekly available hours")}: ${availableHours.toFixed(1)}h\n${__("Workload")}: ${hours.toFixed(1)}h (${percentage}%)`;
                 } else {
                     availableHours = 160;
                     
@@ -1506,7 +1544,7 @@ function get_projects_workload_columns_definition(periods) {
                     if (availableHours > 0) {
                         percentage = Math.round((hours / availableHours) * 100);
                     }
-                    tooltip = `${__("Monthly available hours")}: ${availableHours.toFixed(1)}h\n${__("Workload")}: ${hours.toFixed(1)}h`;
+                    tooltip = `${__("Monthly available hours")}: ${availableHours.toFixed(1)}h\n${__("Workload")}: ${hours.toFixed(1)}h (${percentage}%)`;
                 }
                 
                 let displayHours = `${hours.toFixed(1)}h`;
@@ -1567,21 +1605,7 @@ function resetProjectsWorkloadPagingState() {
 }
 
 function setProjectsWorkloadLoadMoreState(frm, isLoading = false) {
-    if (!frm || !frm.projects_workload_load_more_btn) return;
-
-    const btn = frm.projects_workload_load_more_btn;
-    if (projectsWorkloadPaging.hasMore) {
-        btn.show();
-    } else {
-        btn.hide();
-    }
-
-    btn.prop('disabled', !!isLoading);
-    if (isLoading) {
-        btn.text(__('Loading...'));
-    } else {
-        btn.text(__('Show 20 more'));
-    }
+    return;
 }
 
 function setupProjectsWorkloadAutoLoadOnScroll(frm) {
@@ -1633,6 +1657,9 @@ function refreshProjectsWorkloadTable(frm, tableData, periods, collapseAll = tru
     const columns = get_projects_workload_columns_definition(currentProjectsWorkloadPeriods);
     frm.projects_workload_dt.refresh(projectsWorkloadTableData, columns, {
         rowHeight: getProjectsWorkloadRowHeight(),
+        workloadPeriods: currentProjectsWorkloadPeriods,
+        workloadViewType: currentViewType,
+        showFact: isPwrShowFactEnabled(),
     });
     if (collapseAll) {
         collapseProjectsWorkloadRows(frm);
@@ -1776,7 +1803,7 @@ $(document).on("pwr-workload-data-reload", function (_event, frm, meta) {
         frm._pwrUpdatePeriodNavLabel();
     }
     debouncedLoadProjectsWorkloadData(frm, true, {
-        loadActual: meta && meta.showFact ? 1 : 0,
+        loadActual: getPwrLoadActualFlag(),
     });
 });
 
@@ -1903,7 +1930,7 @@ async function render_projects_workload_table(frm) {
     if (frm.projects_workload_table_initialized && frm.projects_workload_dt) {
         console.log('🔄 Table already initialized, loading data...');
         applyProjectsWorkloadSectionLayout(frm);
-        debouncedLoadProjectsWorkloadData(frm, true);
+        debouncedLoadProjectsWorkloadData(frm, true, { loadActual: getPwrLoadActualFlag() });
         return;
     }
     

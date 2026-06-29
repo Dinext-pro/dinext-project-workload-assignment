@@ -1,5 +1,6 @@
 .pwr-workload-charts-root {
-	--pwr-chart-plot-height: 200px;
+	--pwr-chart-plot-height: 228px;
+	--pwr-chart-total-height: 228px;
 	--pwr-yaxis-gutter-width: 50px;
 	--pwr-filters-gutter-width: 170px;
 	margin-bottom: 0;
@@ -262,37 +263,40 @@
 	right: 0;
 	bottom: 0;
 	height: 42%;
-	display: flex;
 	z-index: 1;
 	pointer-events: none;
-}
-
-.pwr-indicator-slot {
-	flex: 1 1 50%;
-	position: relative;
-	height: 100%;
-	display: flex;
-	align-items: flex-end;
 	overflow: hidden;
 }
 
-.pwr-indicator-slot .projects-workload-visualization,
-.pwr-indicator-slot .project-workload-visualization {
-	position: relative;
+.pwr-plan-fact-cell .pwr-actual-fill {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
 	width: 100%;
-	bottom: auto;
-	left: auto;
-	right: auto;
+	background: rgba(33, 150, 243, 0.5) !important;
+	border-top: none !important;
+	z-index: 0;
 }
 
 .pwr-plan-fact-cell .pwr-plan-fill {
-	z-index: 1;
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 100%;
+	z-index: 2;
 }
 
-.pwr-plan-fact-cell .pwr-actual-fill {
-	background: rgba(33, 150, 243, 0.45) !important;
-	border-top: none !important;
-	z-index: 2;
+.pwr-plan-fact-cell .pwr-actual-marker {
+	position: absolute;
+	left: 0;
+	right: 0;
+	height: 2px;
+	background: #1565c0;
+	z-index: 3;
+	transform: translateY(50%);
+	box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.25);
 }
 
 .pwr-plan-fact-cell .pwr-plan-fact-content {
@@ -308,49 +312,14 @@
 	box-sizing: border-box;
 }
 
-.pwr-plan-fact-cell .pwr-plan-fact-row {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	line-height: 1;
-}
-
-.pwr-plan-fact-cell .pwr-plan-fact-col {
-	flex: 1 1 50%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 0;
-	text-align: center;
-	white-space: nowrap;
-}
-
-.pwr-plan-fact-cell .pwr-plan-fact-row--hours .workload-hours {
+.pwr-plan-fact-cell .pwr-plan-fact-content .workload-hours {
 	font-size: 9px !important;
 }
 
-.pwr-plan-fact-cell .pwr-plan-fact-row--pct .projects-workload-percentage,
-.pwr-plan-fact-cell .pwr-plan-fact-row--pct .project-workload-percentage {
+.pwr-plan-fact-cell .pwr-plan-fact-content .projects-workload-percentage,
+.pwr-plan-fact-cell .pwr-plan-fact-content .project-workload-percentage {
 	font-size: 7px !important;
 	margin-top: 0 !important;
-}
-
-.pwr-plan-fact-cell .pwr-plan-fact-col--actual .pwr-actual-hours {
-	color: #1565c0;
-	font-size: 9px !important;
-	font-weight: 600;
-}
-
-.pwr-plan-fact-cell .pwr-plan-fact-col--actual .pwr-actual-pct {
-	color: #1565c0;
-	font-size: 7px !important;
-	font-weight: 600;
-}
-
-.pwr-plan-fact-cell .pwr-actual-hours.zero-load,
-.pwr-plan-fact-cell .pwr-actual-pct.zero-load {
-	color: var(--gray-500, #888) !important;
 }
 
 .pwr-workload-charts-root .pwr-chart-period-nav {
