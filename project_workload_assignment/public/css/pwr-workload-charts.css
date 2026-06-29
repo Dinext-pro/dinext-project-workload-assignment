@@ -243,8 +243,15 @@
 /* ISS-2026-00709: план + факт в ячейках и навигация периода */
 .pwr-plan-fact-cell {
 	position: relative;
-	height: 54px !important;
-	min-height: 54px !important;
+	height: 100% !important;
+	min-height: 100% !important;
+	box-sizing: border-box;
+}
+
+.projects-workload-cell.pwr-plan-fact-cell,
+.project-workload-cell.pwr-plan-fact-cell {
+	height: 100% !important;
+	min-height: 100% !important;
 }
 
 .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-center-cols-container .ag-cell,
@@ -257,12 +264,14 @@
 	border-right: 1px solid var(--border-color) !important;
 }
 
-.pwr-plan-fact-indicators {
+.pwr-plan-fact-indicators,
+.pwr-plan-fact-indicators--full {
 	position: absolute;
 	left: 0;
 	right: 0;
+	top: 0;
 	bottom: 0;
-	height: 42%;
+	height: 100%;
 	z-index: 1;
 	pointer-events: none;
 	overflow: hidden;
@@ -300,16 +309,21 @@
 }
 
 .pwr-plan-fact-cell .pwr-plan-fact-content {
-	position: relative;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
 	z-index: 3;
 	display: flex !important;
 	flex-direction: column !important;
 	align-items: center !important;
 	justify-content: center !important;
 	gap: 2px !important;
-	padding: 1px 0 0 !important;
-	height: 58%;
+	padding: 0 !important;
+	height: 100%;
 	box-sizing: border-box;
+	pointer-events: none;
 }
 
 .pwr-plan-fact-cell .pwr-plan-fact-content .workload-hours {

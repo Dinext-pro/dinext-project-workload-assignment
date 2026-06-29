@@ -58,7 +58,7 @@ frappe.provide("project_workload_assignment.planFactCell");
 			lines.push(`${__("Plan")}: ${planHours.toFixed(1)}h (${percentage}%)`);
 		}
 		if (showFact) {
-			lines.push(`${__("Actual")}: ${actualHours.toFixed(1)}h (${actualPct}%)`);
+			lines.push(`${__("Fact")}: ${actualHours.toFixed(1)}h (${actualPct}%)`);
 		}
 		return escapeHtml(lines.join("\n"));
 	}
@@ -141,7 +141,7 @@ frappe.provide("project_workload_assignment.planFactCell");
 
 		return `
 			<div class="${cellClass} pwr-plan-fact-cell" title="${tooltip}">
-				<div class="pwr-plan-fact-indicators">
+				<div class="pwr-plan-fact-indicators pwr-plan-fact-indicators--full">
 					${indicatorLayers}
 				</div>
 				<div class="${prefix}-content pwr-plan-fact-content">

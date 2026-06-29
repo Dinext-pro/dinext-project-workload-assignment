@@ -15,7 +15,7 @@ frappe.provide("project_workload_assignment.charts");
 	const TABLE_WAIT_ATTEMPTS = 40;
 	const CONTAINER_WAIT_MS = 50;
 	const CONTAINER_WAIT_ATTEMPTS = 40;
-	const LEGEND_BAND_PX = 28;
+	const LEGEND_BAND_PX = 36;
 	const stateByForm = new WeakMap();
 	const CHART_DATA_HEIGHT_PX = 200;
 	const CHART_PLOT_HEIGHT_PX = CHART_DATA_HEIGHT_PX + LEGEND_BAND_PX;
@@ -117,10 +117,22 @@ frappe.provide("project_workload_assignment.charts");
 		state.workerWtype = window.pwrWorkerWtype;
 		if (frm.doctype === "Projects Workload Report") {
 			requestTeamChartReload(frm);
+			debouncedReloadTeamWorkloadTable(frm);
 			return;
 		}
 		if (frm.doctype === "Project") {
 			requestProjectChartReload(frm);
+			if (typeof window.debouncedLoadProjectWorkloadData === "function") {
+				window.debouncedLoadProjectWorkloadData(frm, true, true);
+			}
+		}
+	}
+
+	function debouncedReloadTeamWorkloadTable(frm) {
+		if (typeof window.debouncedLoadProjectsWorkloadData === "function") {
+			window.debouncedLoadProjectsWorkloadData(frm, true, { loadActual: isShowFactEnabled() ? 1 : 0 });
+		} else {
+			$(document).trigger("pwr-workload-data-reload", [frm, { showFact: isShowFactEnabled() }]);
 		}
 	}
 
@@ -830,14 +842,15 @@ frappe.provide("project_workload_assignment.charts");
 		const colors = themeColors || getPwrChartThemeColors();
 		return {
 			show: true,
-			type: "scroll",
+			type: "plain",
 			orient: "horizontal",
-			top: 2,
-			left: 8,
-			right: 8,
-			itemWidth: 12,
-			itemHeight: 8,
-			itemGap: 10,
+			top: 0,
+			left: "center",
+			width: "auto",
+			itemWidth: 14,
+			itemHeight: 10,
+			itemGap: 16,
+			padding: [0, 8, 4, 8],
 			textStyle: {
 				color: colors.muted,
 				fontSize: 10,
@@ -960,36 +973,59 @@ frappe.provide("project_workload_assignment.charts");
 		};
 	}
 
-	const PWR_WTYPE_BAR_COLORS = {
-		Employee: "#5B8FF9",
-		Supplier: "#5AD8A6",
+	const PWR_FORECAST_COLORS = {
+		Employee: "#73d13d",
+		Supplier: "#95de64",
+	};
+
+	const PWR_FACT_COLORS = {
+		Employee: "#1890ff",
+		Supplier: "#69c0ff",
 	};
 
 	const PWR_UTILIZATION_SCATTER_COLOR = "#F6BD16";
 
+	function buildSupplierDecal() {
+		return {
+			symbol: "rect",
+			color: "rgba(255,255,255,0.45)",
+			dashArrayX: [1, 0],
+			dashArrayY: [5, 3],
+			rotation: -Math.PI / 4,
+		};
+	}
+
 	function buildWtypeForecastBarSeries(name, stackId, data, wtype) {
-		const color = PWR_WTYPE_BAR_COLORS[wtype] || PWR_WTYPE_BAR_COLORS.Employee;
+		const color = PWR_FORECAST_COLORS[wtype] || PWR_FORECAST_COLORS.Employee;
+		const itemStyle = { color, opacity: 0.9 };
+		if (wtype === "Supplier") {
+			itemStyle.decal = buildSupplierDecal();
+		}
 		return {
 			name,
 			type: "bar",
 			stack: stackId,
 			z: 3,
 			barWidth: "36%",
-			itemStyle: { color, opacity: 0.88 },
+			itemStyle,
 			emphasis: { focus: "series" },
 			data: data || [],
 		};
 	}
 
 	function buildWtypeActualBarSeries(name, stackId, data, wtype, overlay) {
-		const color = PWR_WTYPE_BAR_COLORS[wtype] || PWR_WTYPE_BAR_COLORS.Employee;
+		const color = PWR_FACT_COLORS[wtype] || PWR_FACT_COLORS.Employee;
+		const itemStyle = { color, opacity: 1 };
+		if (wtype === "Supplier") {
+			itemStyle.decal = buildSupplierDecal();
+		}
 		const series = {
 			name,
 			type: "bar",
 			stack: stackId,
 			z: 6,
 			barWidth: "18%",
-			itemStyle: { color, opacity: 1 },
+			itemStyle,
 			emphasis: { focus: "series" },
 			data: data || [],
 		};
@@ -1001,9 +1037,18 @@ frappe.provide("project_workload_assignment.charts");
 
 	function appendWtypeActualBars(chartSeries, actualEmp, actualSup, stackId) {
 		chartSeries.push(
-			buildWtypeActualBarSeries(__("Employee actual"), stackId, actualEmp, "Employee", true),
-			buildWtypeActualBarSeries(__("Supplier actual"), stackId, actualSup, "Supplier", false)
+			buildWtypeActualBarSeries(__("Employee fact"), stackId, actualEmp, "Employee", true),
+			buildWtypeActualBarSeries(__("Supplier fact"), stackId, actualSup, "Supplier", false)
 		);
+	}
+
+	function buildChartAriaOptions() {
+		return {
+			enabled: true,
+			decal: {
+				show: true,
+			},
+		};
 	}
 
 	function buildTeamChartOption(data, viewType) {
@@ -1085,6 +1130,7 @@ frappe.provide("project_workload_assignment.charts");
 
 		return {
 			backgroundColor: "transparent",
+			aria: buildChartAriaOptions(),
 			tooltip: buildAxisTooltip(themeColors),
 			legend: buildChartLegend(themeColors),
 			grid: buildSyncedGrid(),
@@ -1152,6 +1198,7 @@ frappe.provide("project_workload_assignment.charts");
 
 		return {
 			backgroundColor: "transparent",
+			aria: buildChartAriaOptions(),
 			tooltip: buildAxisTooltip(themeColors),
 			legend: buildChartLegend(themeColors),
 			grid: buildSyncedGrid(),

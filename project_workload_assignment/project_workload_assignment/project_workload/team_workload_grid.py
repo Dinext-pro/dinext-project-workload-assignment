@@ -202,6 +202,13 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		period_range = fd.get('period_range', 'quarter')
 		period_anchor_date = fd.get('period_anchor_date')
 		load_actual = _parse_bool_form_value(fd.get('load_actual'), default=False)
+		worker_wtype_filter = None
+		from project_workload_assignment.project_workload_assignment.project_workload.worker_wtype_helpers import (
+			filter_users_by_wtype,
+			normalize_worker_wtype_filter,
+		)
+
+		worker_wtype_filter = normalize_worker_wtype_filter(fd.get('worker_wtype'))
 		mode = fd.get('mode', 'full')
 		detail_user = fd.get('detail_user')
 		
@@ -411,6 +418,27 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        if assignment['user'] in page_user_map:
 		            detail_assignments.append(assignment)
 		    assignments = detail_assignments
+		
+		if worker_wtype_filter and assignments:
+		    from project_workload_assignment.project_workload_assignment.project_workload.context_loaders import (
+		        load_users_with_worker_context,
+		        load_worker_wtypes,
+		    )
+
+		    scoped_users = sorted({a['user'] for a in assignments if a.get('user')})
+		    scoped_users_data = load_users_with_worker_context(scoped_users)
+		    scoped_wtypes = load_worker_wtypes(scoped_users)
+		    users_in_scope = set(
+		        filter_users_by_wtype(
+		            scoped_users,
+		            worker_wtype_filter,
+		            scoped_users_data,
+		            scoped_wtypes,
+		        )
+		    )
+		    assignments = [a for a in assignments if a.get('user') in users_in_scope]
+		    if page_users:
+		        page_users = [u for u in page_users if u in users_in_scope]
 		
 		users_set = {}
 		projects_set = {}

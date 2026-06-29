@@ -207,6 +207,32 @@ function applyProjectsWorkloadStyle() {
             border: none !important;
             border-radius: 0 !important;
         }
+
+        .projects_workload_report .projects-workload-ag-grid .ag-row {
+            align-items: stretch !important;
+        }
+
+        .projects_workload_report .projects-workload-ag-grid .ag-cell {
+            height: 100% !important;
+        }
+
+        .projects_workload_report .projects-workload-ag-grid .ag-cell-wrapper,
+        .projects_workload_report .projects-workload-ag-grid .ag-cell-value {
+            position: relative !important;
+            height: 100% !important;
+            min-height: 100% !important;
+        }
+
+        .projects_workload_report .projects-workload-ag-grid .ag-cell-value > .projects-workload-cell {
+            position: absolute !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+        }
         
         .projects_workload_report .projects-workload-table .datatable {
             margin-top: 0 !important;
@@ -717,8 +743,8 @@ function applyProjectsWorkloadStyle() {
             flex-direction: column;
             position: relative;
             width: 100% !important;
-            height: 40px !important;
-            min-height: 40px !important;
+            height: 100% !important;
+            min-height: 100% !important;
             font-size: 8px !important;
             cursor: pointer;
             margin: 0 !important;
@@ -756,8 +782,8 @@ function applyProjectsWorkloadStyle() {
             padding: 0 !important;
             margin: 0 !important;
             width: 100% !important;
-            height: 40px !important;
-            min-height: 40px !important;
+            height: 100% !important;
+            min-height: 100% !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -785,8 +811,8 @@ function applyProjectsWorkloadStyle() {
             padding: 0 !important;
             margin: 0 !important;
             width: 100% !important;
-            height: 40px !important;
-            min-height: 40px !important;
+            height: 100% !important;
+            min-height: 100% !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -873,8 +899,8 @@ function applyProjectsWorkloadStyle() {
         }
 
         .projects_workload_report .projects-workload-cell.pwr-plan-fact-cell {
-            height: 54px !important;
-            min-height: 54px !important;
+            height: 100% !important;
+            min-height: 100% !important;
         }
 
         .projects_workload_report .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-center-cols-container .ag-cell {
@@ -889,8 +915,9 @@ function applyProjectsWorkloadStyle() {
             position: absolute;
             left: 0;
             right: 0;
+            top: 0;
             bottom: 0;
-            height: 42%;
+            height: 100%;
             z-index: 1;
             pointer-events: none;
             overflow: hidden;
@@ -917,16 +944,21 @@ function applyProjectsWorkloadStyle() {
         }
 
         .projects_workload_report .pwr-plan-fact-content {
-            position: relative;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
             z-index: 3;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
             justify-content: center !important;
             gap: 2px !important;
-            padding: 1px 0 0 !important;
-            height: 58%;
+            padding: 0 !important;
+            height: 100%;
             box-sizing: border-box;
+            pointer-events: none;
         }
 
         .projects_workload_report .pwr-plan-fact-content .workload-hours {

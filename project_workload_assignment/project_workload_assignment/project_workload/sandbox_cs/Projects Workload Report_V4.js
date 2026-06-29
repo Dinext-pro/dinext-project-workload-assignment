@@ -235,20 +235,17 @@ function createPwrWorkerTypeFilter(container) {
     $select.val(window.pwrWorkerWtype || '');
     $select.on('change', function () {
         window.pwrWorkerWtype = $(this).val() || '';
-        if (
-            project_workload_assignment.charts &&
-            typeof project_workload_assignment.charts.setWorkerWtype === 'function'
-        ) {
-            project_workload_assignment.charts.setWorkerWtype(cur_frm, window.pwrWorkerWtype);
-        } else {
-            $(document).trigger('pwr-workload-chart-reload', [cur_frm]);
+        const frm = cur_frm;
+        $(document).trigger('pwr-workload-chart-reload', [frm]);
+        if (typeof debouncedLoadProjectsWorkloadData === 'function') {
+            debouncedLoadProjectsWorkloadData(frm, true);
         }
     });
     return $field;
 }
 
 function createPwrShowFactFilter(container) {
-    const showFactLabel = __("Show actual");
+    const showFactLabel = __("Show fact");
     const $field = $(`
         <div class="pwr-filter-field pwr-filter-show-fact">
             <label>
@@ -793,6 +790,7 @@ async function get_projects_workload_data(frm, options = {}) {
                 period_range: currentPeriodRange,
                 period_anchor_date: window.pwrPeriodAnchorDate || frappe.datetime.get_today(),
                 load_actual: getPwrLoadActualFlag(options),
+                worker_wtype: window.pwrWorkerWtype || '',
                 mode: mode,
                 limit: limit,
                 offset: offset,
