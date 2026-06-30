@@ -333,6 +333,15 @@
 	overflow: hidden;
 }
 
+.pwr-plan-fact-cell .pwr-plan-fill {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 100%;
+	z-index: 0;
+}
+
 .pwr-plan-fact-cell .pwr-actual-fill {
 	position: absolute;
 	left: 0;
@@ -340,28 +349,21 @@
 	bottom: 0;
 	width: 100%;
 	background: rgba(33, 150, 243, 0.5) !important;
-	border-top: none !important;
-	z-index: 0;
+	border-top: 2px solid #1565c0 !important;
+	box-sizing: border-box;
+	z-index: 1;
 }
 
-.pwr-plan-fact-cell .pwr-plan-fill {
+.pwr-plan-fact-cell .pwr-plan-marker {
 	position: absolute;
 	left: 0;
 	right: 0;
-	bottom: 0;
+	height: 2px !important;
 	width: 100%;
 	z-index: 2;
-}
-
-.pwr-plan-fact-cell .pwr-actual-marker {
-	position: absolute;
-	left: 0;
-	right: 0;
-	height: 2px;
-	background: #1565c0;
-	z-index: 3;
 	transform: translateY(50%);
-	box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.25);
+	border: none !important;
+	border-radius: 0 !important;
 }
 
 .pwr-plan-fact-cell .pwr-plan-fact-content {

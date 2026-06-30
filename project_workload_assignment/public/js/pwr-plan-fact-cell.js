@@ -70,19 +70,16 @@ frappe.provide("project_workload_assignment.planFactCell");
 		planFill,
 		visualizationClass
 	) {
-		const planLayer = `<div class="${visualizationClass} pwr-plan-fill" style="height:${planFill}%"></div>`;
+		const planFillLayer = `<div class="${visualizationClass} pwr-plan-fill" style="height:${planFill}%"></div>`;
 		if (actualHours <= 0) {
-			return planLayer;
+			return planFillLayer;
 		}
+		const actualFillLayer = `<div class="pwr-actual-fill" style="height:${actualFill}%"></div>`;
 		if (actualBelowPlan) {
-			return (
-				planLayer +
-				`<div class="pwr-actual-marker" style="bottom:${actualFill}%"></div>`
-			);
+			return planFillLayer + actualFillLayer;
 		}
-		return (
-			`<div class="pwr-actual-fill" style="height:${actualFill}%"></div>` + planLayer
-		);
+		const planMarkerLayer = `<div class="${visualizationClass} pwr-plan-marker" style="bottom:${planFill}%"></div>`;
+		return actualFillLayer + planMarkerLayer;
 	}
 
 	function renderPlanFactCell(options) {
@@ -117,6 +114,9 @@ frappe.provide("project_workload_assignment.planFactCell");
 		const planTextClass = planHours === 0 ? "workload-hours zero-load" : "workload-hours";
 		const planPctClass =
 			planHours === 0 ? "workload-percentage zero-load" : "workload-percentage";
+		const displayHours = showFact && actualHours > 0 ? actualHours : planHours;
+		const displayTextClass =
+			displayHours === 0 ? "workload-hours zero-load" : "workload-hours";
 
 		if (!showFact) {
 			const planLayer = `<div class="${visualizationClass}" style="height:${planFill}%"></div>`;
@@ -145,7 +145,7 @@ frappe.provide("project_workload_assignment.planFactCell");
 					${indicatorLayers}
 				</div>
 				<div class="${prefix}-content pwr-plan-fact-content">
-					<div class="${planTextClass}">${formatHours(planHours)}</div>
+					<div class="${displayTextClass}">${formatHours(displayHours)}</div>
 					<div class="${prefix}-percentage ${planPctClass}">${percentage}%</div>
 				</div>
 			</div>
