@@ -383,23 +383,44 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 		util_forecast = _zero_series(len(periods))
 		if load_utilization:
 			from project_workload_assignment.project_workload_assignment.project_workload.context_loaders import (
+				load_project_utilization_tables,
 				load_worker_utilization_tables,
+			)
+			from project_workload_assignment.project_workload_assignment.project_workload.utilization_forecast import (
+				compute_team_utilization_forecast_series,
 			)
 			from project_workload_assignment.project_workload_assignment.project_workload.utilization_plan import (
 				compute_team_utilization_plan_series,
 			)
 
+			projects_set = {
+				a.get("project_name") or a.get("project")
+				for a in assignments
+				if a.get("project_name") or a.get("project")
+			}
 			worker_utilization_map = load_worker_utilization_tables(users_in_scope)
+			project_utilization_map = load_project_utilization_tables(list(projects_set))
 			util_plan = compute_team_utilization_plan_series(
 				wl_ctx,
 				users_in_scope,
 				periods,
 				view_type,
 				worker_utilization_map,
+				users_data,
+				wtypes_map,
 			)
-			for wtype in WORKER_WTYPES:
-				for idx, hours in enumerate(workload_by_wtype[wtype]):
-					util_forecast[idx] += flt(hours)
+			util_forecast = compute_team_utilization_forecast_series(
+				wl_ctx,
+				assignments,
+				users_data,
+				wtypes_map,
+				worker_utilization_map,
+				project_utilization_map,
+				periods,
+				view_type,
+				date_to_period_key,
+				period_index,
+			)
 
 		actual_by_wtype = _zero_wtype_series(len(periods))
 		if load_actual:

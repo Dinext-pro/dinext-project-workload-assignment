@@ -72,10 +72,12 @@ doctype_js = {
                 ,"Issue":"public/js/pwa_form.js"
                 ,"Projects Workload Report":[
                     "public/js/pwr-plan-fact-cell.js",
+                    "public/js/pwr-shared.js",
                     "public/js/pwr-charts-bootstrap.js",
                 ]
                 ,"Project":[
                     "public/js/pwr-plan-fact-cell.js",
+                    "public/js/pwr-shared.js",
                     "public/js/pwr-charts-bootstrap.js",
                     "public/js/pwr-pl-forecast-from-we.js",
                 ]

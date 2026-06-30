@@ -885,14 +885,6 @@ frappe.provide("project_workload_assignment.charts");
 		return color || "#888";
 	}
 
-	function seriesHasSupplierPattern(series) {
-		return !!(
-			series &&
-			((series.itemStyle && series.itemStyle.decal) ||
-				/supplier|подряд/i.test(String(series.name || "")))
-		);
-	}
-
 	function ensureFixedLegendBar(panel) {
 		if (!panel || !panel.$viewport || !panel.$viewport.length) {
 			return null;
@@ -922,7 +914,6 @@ frappe.provide("project_workload_assignment.charts");
 
 	function buildLegendSwatchStyle(series) {
 		const color = resolveLegendSwatchColor(series);
-		const patterned = seriesHasSupplierPattern(series);
 		const style = {
 			display: "inline-block",
 			width: "14px",
@@ -934,11 +925,6 @@ frappe.provide("project_workload_assignment.charts");
 			boxSizing: "border-box",
 			backgroundColor: color,
 		};
-		if (patterned) {
-			style.backgroundColor = color;
-			style.backgroundImage =
-				"repeating-linear-gradient(-45deg, rgba(255,255,255,0.45) 0, rgba(255,255,255,0.45) 2px, transparent 2px, transparent 6px)";
-		}
 		if (series && series.type === "line") {
 			style.height = "2px";
 			style.minHeight = "2px";
@@ -952,7 +938,7 @@ frappe.provide("project_workload_assignment.charts");
 			style.minWidth = "8px";
 			style.minHeight = "8px";
 			style.borderRadius = "50%";
-			style.border = "1px solid #D48806";
+			style.border = `1px solid ${PWR_UTILIZATION_SCATTER_BORDER}`;
 		}
 		return style;
 	}
@@ -1107,26 +1093,61 @@ frappe.provide("project_workload_assignment.charts");
 	}
 
 	const PWR_FORECAST_COLORS = {
-		Employee: "#73d13d",
-		Supplier: "#95de64",
+		Employee: "#d8b4fe",
+		Supplier: "#531dab",
 	};
 
 	const PWR_FACT_COLORS = {
-		Employee: "#1890ff",
-		Supplier: "#69c0ff",
+		Employee: "#003eb3",
+		Supplier: "#a8d8ff",
 	};
 
 	const PWR_LINE_COLORS = {
-		capacity: "#5470c6",
-		teamCapacity: "#5470c6",
+		capacityLine: "#243660",
+		capacityArea: "#243660",
+		teamCapacityLine: "#243660",
+		teamCapacityArea: "#243660",
 		projectPlan: "#91cc75",
-		utilizationPlan: "#fac858",
+		utilizationPlan: "#85a5ff",
 	};
 
-	const PWR_UTILIZATION_SCATTER_COLOR = "#F6BD16";
+	const PWR_CAPACITY_LINE_OPACITY = 0.18;
+	const PWR_CAPACITY_AREA_OPACITY = 0.28;
+
+	const PWR_UTILIZATION_SCATTER_COLOR = "#2f54eb";
+	const PWR_UTILIZATION_SCATTER_BORDER = "#1d39c4";
+
+	function hideZeroChartValues(data) {
+		return (data || []).map((value) => {
+			const hours = Number(value);
+			return Number.isFinite(hours) && hours > 0 ? hours : null;
+		});
+	}
+
+	function filterWtypeSeriesData(data, wtype, workerWtypeFilter) {
+		const rows = data || [];
+		if (!workerWtypeFilter || workerWtypeFilter === "all") {
+			return hideZeroChartValues(rows);
+		}
+		if (workerWtypeFilter !== wtype) {
+			return rows.map(() => null);
+		}
+		return hideZeroChartValues(rows);
+	}
+
+	function buildUtilizationScatterData(hours) {
+		return (hours || []).reduce((points, value, index) => {
+			const hoursValue = Number(value);
+			if (Number.isFinite(hoursValue) && hoursValue > 0) {
+				points.push([index, hoursValue]);
+			}
+			return points;
+		}, []);
+	}
 
 	function buildPwrLineSeries(config) {
-		const lineColor = config.color || PWR_LINE_COLORS.capacity;
+		const lineColor = config.lineColor || config.color || PWR_LINE_COLORS.capacityLine;
+		const areaColor = config.areaColor || config.color || lineColor;
 		const lineOpacity = config.lineOpacity != null ? config.lineOpacity : 0.85;
 		const areaOpacity = config.areaOpacity != null ? config.areaOpacity : 0.12;
 		return {
@@ -1141,34 +1162,20 @@ frappe.provide("project_workload_assignment.charts");
 				opacity: lineOpacity,
 				width: config.lineWidth != null ? config.lineWidth : 2,
 			},
-			areaStyle: { color: lineColor, opacity: areaOpacity },
+			areaStyle: { color: areaColor, opacity: areaOpacity },
 			data: config.data || [],
-		};
-	}
-
-	function buildSupplierDecal() {
-		return {
-			symbol: "rect",
-			color: "rgba(255,255,255,0.45)",
-			dashArrayX: [1, 0],
-			dashArrayY: [5, 3],
-			rotation: -Math.PI / 4,
 		};
 	}
 
 	function buildWtypeForecastBarSeries(name, stackId, data, wtype) {
 		const color = PWR_FORECAST_COLORS[wtype] || PWR_FORECAST_COLORS.Employee;
-		const itemStyle = { color, opacity: 0.9 };
-		if (wtype === "Supplier") {
-			itemStyle.decal = buildSupplierDecal();
-		}
 		return {
 			name,
 			type: "bar",
 			stack: stackId,
 			z: 3,
 			barWidth: "36%",
-			itemStyle,
+			itemStyle: { color, opacity: 0.9 },
 			emphasis: { focus: "series" },
 			data: data || [],
 		};
@@ -1176,17 +1183,13 @@ frappe.provide("project_workload_assignment.charts");
 
 	function buildWtypeActualBarSeries(name, stackId, data, wtype, overlay) {
 		const color = PWR_FACT_COLORS[wtype] || PWR_FACT_COLORS.Employee;
-		const itemStyle = { color, opacity: 1 };
-		if (wtype === "Supplier") {
-			itemStyle.decal = buildSupplierDecal();
-		}
 		const series = {
 			name,
 			type: "bar",
 			stack: stackId,
 			z: 6,
 			barWidth: "18%",
-			itemStyle,
+			itemStyle: { color, opacity: 1 },
 			emphasis: { focus: "series" },
 			data: data || [],
 		};
@@ -1206,9 +1209,6 @@ frappe.provide("project_workload_assignment.charts");
 	function buildChartAriaOptions() {
 		return {
 			enabled: true,
-			decal: {
-				show: true,
-			},
 		};
 	}
 
@@ -1216,12 +1216,29 @@ frappe.provide("project_workload_assignment.charts");
 		const periods = data.periods || [];
 		const series = data.series || {};
 		const meta = data.meta || {};
+		const workerWtypeFilter = meta.worker_wtype_filter || "all";
 		const labels = periodLabels(periods, viewType);
 		const themeColors = getPwrChartThemeColors();
-		const employee = (series.workload_forecast_hours_by_wtype || {}).Employee || [];
-		const supplier = (series.workload_forecast_hours_by_wtype || {}).Supplier || [];
-		const actualEmp = (series.actual_hours_by_wtype || {}).Employee || [];
-		const actualSup = (series.actual_hours_by_wtype || {}).Supplier || [];
+		const employee = filterWtypeSeriesData(
+			(series.workload_forecast_hours_by_wtype || {}).Employee,
+			"Employee",
+			workerWtypeFilter
+		);
+		const supplier = filterWtypeSeriesData(
+			(series.workload_forecast_hours_by_wtype || {}).Supplier,
+			"Supplier",
+			workerWtypeFilter
+		);
+		const actualEmp = filterWtypeSeriesData(
+			(series.actual_hours_by_wtype || {}).Employee,
+			"Employee",
+			workerWtypeFilter
+		);
+		const actualSup = filterWtypeSeriesData(
+			(series.actual_hours_by_wtype || {}).Supplier,
+			"Supplier",
+			workerWtypeFilter
+		);
 		const showFact = !!meta.actual_loaded;
 		const showUtilization = !!meta.utilization_loaded;
 		// markLine временно отключён — согласование с архитектором (ISS-2026-00002).
@@ -1230,9 +1247,10 @@ frappe.provide("project_workload_assignment.charts");
 		const chartSeries = [
 			buildPwrLineSeries({
 				name: __("Capacity"),
-				color: PWR_LINE_COLORS.capacity,
-				lineOpacity: 0.85,
-				areaOpacity: 0.12,
+				lineColor: PWR_LINE_COLORS.capacityLine,
+				areaColor: PWR_LINE_COLORS.capacityArea,
+				lineOpacity: PWR_CAPACITY_LINE_OPACITY,
+				areaOpacity: PWR_CAPACITY_AREA_OPACITY,
 				z: 1,
 				data: series.capacity_hours || [],
 			}),
@@ -1270,10 +1288,10 @@ frappe.provide("project_workload_assignment.charts");
 					itemStyle: {
 						color: PWR_UTILIZATION_SCATTER_COLOR,
 						opacity: 0.95,
-						borderColor: "#D48806",
+						borderColor: PWR_UTILIZATION_SCATTER_BORDER,
 						borderWidth: 1,
 					},
-					data: (series.utilization_forecast_hours || []).map((v, i) => [i, v]),
+					data: buildUtilizationScatterData(series.utilization_forecast_hours),
 				}
 			);
 		}
@@ -1302,12 +1320,29 @@ frappe.provide("project_workload_assignment.charts");
 		const periods = data.periods || [];
 		const series = data.series || {};
 		const meta = data.meta || {};
+		const workerWtypeFilter = meta.worker_wtype_filter || "all";
 		const labels = periodLabels(periods, viewType);
 		const themeColors = getPwrChartThemeColors();
-		const forecastEmp = (series.workload_forecast_hours_by_wtype || {}).Employee || [];
-		const forecastSup = (series.workload_forecast_hours_by_wtype || {}).Supplier || [];
-		const actualEmp = (series.actual_hours_by_wtype || {}).Employee || [];
-		const actualSup = (series.actual_hours_by_wtype || {}).Supplier || [];
+		const forecastEmp = filterWtypeSeriesData(
+			(series.workload_forecast_hours_by_wtype || {}).Employee,
+			"Employee",
+			workerWtypeFilter
+		);
+		const forecastSup = filterWtypeSeriesData(
+			(series.workload_forecast_hours_by_wtype || {}).Supplier,
+			"Supplier",
+			workerWtypeFilter
+		);
+		const actualEmp = filterWtypeSeriesData(
+			(series.actual_hours_by_wtype || {}).Employee,
+			"Employee",
+			workerWtypeFilter
+		);
+		const actualSup = filterWtypeSeriesData(
+			(series.actual_hours_by_wtype || {}).Supplier,
+			"Supplier",
+			workerWtypeFilter
+		);
 		const showFact = !!meta.actual_loaded;
 		// markLine временно отключён — согласование с архитектором (ISS-2026-00002).
 		// const markLine = buildCurrentPeriodMarkLine(periods, viewType, labels, themeColors);
@@ -1315,9 +1350,10 @@ frappe.provide("project_workload_assignment.charts");
 		const chartSeries = [
 			buildPwrLineSeries({
 				name: __("Team capacity"),
-				color: PWR_LINE_COLORS.teamCapacity,
-				lineOpacity: 0.85,
-				areaOpacity: 0.1,
+				lineColor: PWR_LINE_COLORS.teamCapacityLine,
+				areaColor: PWR_LINE_COLORS.teamCapacityArea,
+				lineOpacity: PWR_CAPACITY_LINE_OPACITY,
+				areaOpacity: PWR_CAPACITY_AREA_OPACITY,
 				z: 1,
 				data: series.team_capacity_hours || [],
 			}),
@@ -1662,20 +1698,21 @@ frappe.provide("project_workload_assignment.charts");
 
 		const $filters = $('<div class="pwr-chart-filters"></div>').appendTo(panel.$gutterFilters);
 
-		if (options.showUtilizationButton && !state.loadUtilization) {
+		if (options.showUtilizationToggle) {
 			const utilizationLabel = __("Add utilization");
-			$(
-				`<div class="pwr-chart-filter-field pwr-chart-filter-field--action">
-					<button type="button" class="btn btn-xs btn-default pwr-chart-utilization-btn" title="${frappe.utils.escape_html(
-						utilizationLabel
-					)}">${frappe.utils.escape_html(utilizationLabel)}</button>
+			const $field = $(
+				`<div class="pwr-chart-filter-field pwr-chart-utilization-field">
+					<label>
+						<input type="checkbox" class="pwr-chart-utilization-checkbox" />
+						<span>${frappe.utils.escape_html(utilizationLabel)}</span>
+					</label>
 				</div>`
-			)
-				.appendTo($filters)
-				.find(".pwr-chart-utilization-btn")
-				.on("click", function () {
-					state.loadUtilization = true;
-					$(this).closest(".pwr-chart-filter-field--action").hide();
+			).appendTo($filters);
+			$field
+				.find(".pwr-chart-utilization-checkbox")
+				.prop("checked", !!state.loadUtilization)
+				.on("change", function () {
+					state.loadUtilization = $(this).is(":checked");
 					reloadFn();
 				});
 		}
@@ -2115,7 +2152,7 @@ frappe.provide("project_workload_assignment.charts");
 				const $anchor = getChartMountAnchor($table);
 				const panel = ensureChartPanel($anchor, state, __("Team workload summary"));
 				ensurePanelControls(panel, state, () => requestTeamChartReload(frm), {
-					showUtilizationButton: true,
+					showUtilizationToggle: true,
 					frm,
 				});
 				ensureChartVisibilityToggle(frm, state);
@@ -2154,7 +2191,7 @@ frappe.provide("project_workload_assignment.charts");
 				const $mountAnchor = getChartMountAnchor($anchor);
 				const panel = ensureChartPanel($mountAnchor, state, __("Project workload summary"));
 				ensurePanelControls(panel, state, () => requestProjectChartReload(frm), {
-					showUtilizationButton: false,
+					showUtilizationToggle: false,
 					frm,
 				});
 				ensureChartVisibilityToggle(frm, state);

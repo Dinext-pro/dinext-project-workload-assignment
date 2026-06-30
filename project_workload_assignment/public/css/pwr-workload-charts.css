@@ -23,7 +23,7 @@
 	grid-template-rows: var(--pwr-chart-total-height, 236px);
 	width: 100%;
 	min-width: 0;
-	align-items: end;
+	align-items: start;
 }
 
 .pwr-workload-charts-root .dinext-chart-panel__gutter-chrome {
@@ -31,10 +31,12 @@
 	grid-row: 1;
 	display: flex;
 	flex-direction: column;
+	align-self: start;
+	justify-content: flex-start;
 	min-width: 0;
 	max-width: var(--pwr-filters-gutter-width, 170px);
 	width: var(--pwr-filters-gutter-width, 170px);
-	padding: 8px 8px 8px 10px;
+	padding: 4px 8px 8px 10px;
 	box-sizing: border-box;
 	overflow: hidden;
 }
@@ -61,6 +63,7 @@
 .pwr-workload-charts-root .dinext-chart-panel__gutter-yaxis {
 	grid-column: 2;
 	grid-row: 1;
+	align-self: end;
 	box-sizing: border-box;
 	width: var(--pwr-yaxis-gutter-width, 50px);
 	min-width: var(--pwr-yaxis-gutter-width, 50px);
@@ -78,6 +81,7 @@
 .pwr-workload-charts-root .dinext-chart-panel__viewport {
 	grid-column: 3;
 	grid-row: 1;
+	align-self: end;
 	min-width: 0;
 	height: var(--pwr-chart-total-height, 236px);
 	max-height: var(--pwr-chart-total-height, 236px);
@@ -125,17 +129,6 @@
 	border-radius: 2px;
 	flex: 0 0 auto;
 	box-sizing: border-box;
-}
-
-.pwr-workload-charts-root .pwr-chart-legend-swatch--pattern {
-	background-color: var(--pwr-legend-color, #7bc67b);
-	background-image: repeating-linear-gradient(
-		-45deg,
-		rgba(255, 255, 255, 0.45) 0,
-		rgba(255, 255, 255, 0.45) 2px,
-		transparent 2px,
-		transparent 6px
-	);
 }
 
 .pwr-workload-charts-root .pwr-chart-legend-label {
@@ -220,17 +213,28 @@
 	appearance: auto;
 }
 
-.pwr-workload-charts-root .pwr-chart-utilization-btn {
-	width: 100%;
-	max-width: 100%;
-	margin: 0;
-	padding: 3px 6px;
+.pwr-workload-charts-root .pwr-chart-utilization-field {
+	display: flex;
+	align-items: flex-start;
+	align-self: flex-start;
+	gap: 6px;
 	min-height: 24px;
-	height: auto;
 	font-size: 11px;
-	line-height: 1.15;
 	white-space: normal;
-	text-align: center;
+	margin: 0;
+	padding: 0;
+}
+
+.pwr-workload-charts-root .pwr-chart-utilization-field label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	cursor: pointer;
+}
+
+.pwr-workload-charts-root .pwr-chart-utilization-field input {
+	margin: 0;
 }
 
 .pwr-workload-charts-root .pwr-chart-yaxis-name {
@@ -314,16 +318,6 @@
 .project-workload-cell.pwr-plan-fact-cell {
 	height: 54px !important;
 	min-height: 54px !important;
-}
-
-.projects-workload-ag-grid .ag-center-cols-container .ag-cell,
-.project-workload-ag-grid .ag-center-cols-container .ag-cell {
-	border-right: 1px solid var(--border-color) !important;
-}
-
-.projects-workload-ag-grid .ag-header-viewport .ag-header-cell,
-.project-workload-ag-grid .ag-header-viewport .ag-header-cell {
-	border-right: 1px solid var(--border-color) !important;
 }
 
 .pwr-plan-fact-indicators,
@@ -440,8 +434,8 @@
 }
 
 .filters-container .pwr-filter-worker-wtype-select {
-	min-width: 110px;
-	max-width: 140px;
+	min-width: 99px;
+	max-width: 117px;
 	min-height: 28px;
 	height: 28px;
 	font-size: 12px;

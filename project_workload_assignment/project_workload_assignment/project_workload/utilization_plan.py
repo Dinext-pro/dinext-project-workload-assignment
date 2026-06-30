@@ -3,25 +3,24 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
-
-import frappe
 from frappe.utils import add_days, flt, getdate
 
 from project_workload_assignment.project_workload_assignment.project_workload.periods import (
 	PWRPeriod,
 	build_date_to_period_key,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.types import (
+	UserWorkloadInfo,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.utilization_helpers import (
+	is_utilization_eligible_worker,
+	worker_utilization_pct_on_date,
+)
 from project_workload_assignment.project_workload_assignment.project_workload.workload_engine import (
 	WorkloadContext,
 )
 
 LEAVE_TYPE_EXCLUDED_FROM_UTIL = "Отгул"
-
-
-class WorkerUtilizationRow(TypedDict):
-	util_valid_from: str
-	utilization: float
 
 
 def _period_date_strings(periods: list[PWRPeriod], view_type: str) -> set[str]:
@@ -81,30 +80,14 @@ def _absence_hours_for_day(wl_ctx: WorkloadContext, user_email: str, date_str: s
 	return total
 
 
-def _utilization_pct_for_day(
-	user_email: str,
-	date_str: str,
-	worker_utilization_map: dict[str, list[WorkerUtilizationRow]],
-) -> float:
-	util_rows = worker_utilization_map.get(user_email) or []
-	target_date = getdate(date_str)
-	valid_rows = [
-		row
-		for row in util_rows
-		if row.get("util_valid_from") and getdate(row["util_valid_from"]) <= target_date
-	]
-	if not valid_rows:
-		return 0.0
-	latest = max(valid_rows, key=lambda row: getdate(row["util_valid_from"]))
-	return flt(latest.get("utilization")) / 100.0
-
-
 def compute_team_utilization_plan_series(
 	wl_ctx: WorkloadContext,
 	users_list: list[str],
 	periods: list[PWRPeriod],
 	view_type: str,
-	worker_utilization_map: dict[str, list[WorkerUtilizationRow]],
+	worker_utilization_map: dict[str, list[dict[str, str | float]]],
+	users_data: dict[str, UserWorkloadInfo],
+	wtypes_map: dict[str, str],
 ) -> list[float]:
 	"""Плановые часы утилизации по периодам для списка пользователей."""
 	period_count = len(periods)
@@ -119,13 +102,24 @@ def compute_team_utilization_plan_series(
 	series = [0.0] * period_count
 	for user_email in users_list:
 		for date_str in period_dates:
+			if not is_utilization_eligible_worker(
+				user_email,
+				date_str,
+				users_data,
+				worker_utilization_map,
+				wtypes_map,
+			):
+				continue
 			if _is_user_holiday(wl_ctx, user_email, date_str):
 				continue
 
 			scheduled = wl_ctx.get_base_hours(user_email, date_str)
 			absence_hours = _absence_hours_for_day(wl_ctx, user_email, date_str)
 			planned_work = max(0.0, scheduled - absence_hours)
-			pct = _utilization_pct_for_day(user_email, date_str, worker_utilization_map)
+			util_pct = worker_utilization_pct_on_date(
+				user_email, date_str, worker_utilization_map
+			)
+			pct = flt(util_pct) / 100.0 if util_pct is not None else 0.0
 			daily_plan = planned_work * pct
 
 			period_key = date_to_period_key.get(date_str)

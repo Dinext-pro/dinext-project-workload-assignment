@@ -12,6 +12,7 @@ from frappe.utils import getdate, nowdate
 from project_workload_assignment.project_workload_assignment.project_workload.types import (
 	AbsenceEntry,
 	HolidayEntry,
+	ProjectUtilizationRow,
 	ProjectWorkloadInfo,
 	TaskWorkloadInfo,
 	UserWorkloadInfo,
@@ -86,7 +87,14 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 	workers_db = frappe.get_list(
 		"Worker",
 		filters={"wuser": ["in", users_list]},
-		fields=["wuser", "wholiday_list", "wtimesheet_template", "wtype"],
+		fields=[
+			"wuser",
+			"wholiday_list",
+			"wtimesheet_template",
+			"wtype",
+			"wvalid_from",
+			"wvalid_for",
+		],
 	)
 	workers_by_user = {w["wuser"]: w for w in workers_db}
 
@@ -143,6 +151,8 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 			wholiday_list=worker.get("wholiday_list"),
 			wtimesheet_template=worker.get("wtimesheet_template"),
 			wtype=worker.get("wtype"),
+			wvalid_from=worker.get("wvalid_from"),
+			wvalid_for=worker.get("wvalid_for"),
 			hours_on_date=template.get("hours_on_date") if template else None,
 			tt_working_hours_on_date=template.get("tt_working_hours_on_date") if template else None,
 		)
@@ -198,6 +208,37 @@ def load_worker_utilization_tables(
 				"util_valid_from": str(row.util_valid_from) if row.util_valid_from else "",
 				"utilization": float(row.utilization or 0),
 			}
+		)
+	return result
+
+
+def load_project_utilization_tables(
+	projects_list: list[str],
+) -> dict[str, list[ProjectUtilizationRow]]:
+	"""Project.custom_project_utilization (Project Utilization Table) по project id."""
+	if not projects_list:
+		return {}
+
+	util_rows = frappe.qb.get_query(
+		"Project Utilization Table",
+		fields=["parent", "pu_valid_from", "pu_included"],
+		filters=[
+			["parent", "in", projects_list],
+			["parenttype", "=", "Project"],
+			["parentfield", "=", "custom_project_utilization"],
+		],
+	).run(as_dict=True)
+
+	result: dict[str, list[ProjectUtilizationRow]] = {}
+	for row in util_rows:
+		project_id = row.parent
+		if not project_id:
+			continue
+		result.setdefault(project_id, []).append(
+			ProjectUtilizationRow(
+				pu_valid_from=str(row.pu_valid_from) if row.pu_valid_from else "",
+				pu_included=row.pu_included or "",
+			)
 		)
 	return result
 

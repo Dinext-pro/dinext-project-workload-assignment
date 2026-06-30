@@ -1,0 +1,295 @@
+/* ISS-2026-00002: общие стили фильтров PWR / Project Workload */
+
+.projects-workload-filters-section,
+.projects-workload-filters-section .form-section,
+.projects_workload_report .projects-workload-controls,
+.project_workload_container .projects-workload-controls {
+	min-width: 0 !important;
+	max-width: 100% !important;
+	box-sizing: border-box;
+}
+
+.projects-workload-filters-section .section-body,
+.project_workload_container .section-body:has(.unified-filters-row) {
+	display: block !important;
+	width: 100% !important;
+	max-width: 100% !important;
+	min-width: 0 !important;
+}
+
+.projects-workload-filters-section .section-body > .row,
+.project_workload_container .section-body > .row:has(+ .unified-filters-row) {
+	display: none !important;
+}
+
+.projects_workload_report .unified-filters-row,
+.project_workload_container .unified-filters-row {
+	position: relative;
+	display: block !important;
+	width: 100% !important;
+	max-width: 100% !important;
+	min-height: 28px;
+	margin: 0 !important;
+	padding: 0 108px 0 4px !important;
+	box-sizing: border-box;
+	overflow: visible !important;
+	background: transparent !important;
+	border: none !important;
+	border-radius: 0 !important;
+}
+
+.pwr-filters-flow {
+	display: flex !important;
+	flex-direction: row !important;
+	flex-wrap: wrap !important;
+	align-items: center !important;
+	align-content: flex-start !important;
+	justify-content: flex-start !important;
+	gap: 8px;
+	width: 100% !important;
+	max-width: 100% !important;
+	box-sizing: border-box;
+	overflow: visible !important;
+}
+
+.pwr-filters-group {
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	flex: 0 0 auto;
+	gap: 8px;
+	min-height: 28px;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+.pwr-filters-group--right,
+.projects_workload_report .filter-buttons,
+.project_workload_container .filter-buttons {
+	position: absolute !important;
+	top: 0 !important;
+	right: 4px !important;
+	z-index: 2;
+	display: flex !important;
+	flex-direction: row !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+	gap: 4px;
+	margin: 0 !important;
+	flex-shrink: 0;
+}
+
+.projects_workload_report .form-filter-wrapper,
+.project_workload_container .form-filter-wrapper {
+	display: flex;
+	align-items: center;
+	min-width: 112px !important;
+	width: 112px !important;
+	max-width: 112px !important;
+	flex: 0 0 auto !important;
+	margin: 0 !important;
+}
+
+.projects_workload_report .form-filter-wrapper .control-input,
+.project_workload_container .form-filter-wrapper .control-input {
+	margin-bottom: 0 !important;
+	width: 100%;
+}
+
+.projects_workload_report .form-filter-wrapper .form-control,
+.project_workload_container .form-filter-wrapper .form-control {
+	height: 28px !important;
+	min-height: 28px !important;
+	font-size: 12px !important;
+	line-height: 1.2 !important;
+	width: 100% !important;
+	padding: 2px 8px !important;
+	box-sizing: border-box;
+}
+
+.projects_workload_report .form-filter-wrapper .link-field,
+.project_workload_container .form-filter-wrapper .link-field {
+	height: 28px !important;
+	min-height: 28px !important;
+	width: 100% !important;
+}
+
+.projects_workload_report .form-filter-wrapper .link-field .awesomplete,
+.project_workload_container .form-filter-wrapper .link-field .awesomplete {
+	width: 100% !important;
+}
+
+.projects_workload_report .form-filter-wrapper .link-field input,
+.project_workload_container .form-filter-wrapper .link-field input {
+	width: 100% !important;
+	height: 28px !important;
+	padding: 2px 8px !important;
+	font-size: 12px !important;
+	box-sizing: border-box;
+}
+
+.pwr-filters-flow .frappe-control {
+	flex: 0 0 auto !important;
+	width: auto !important;
+	max-width: 140px !important;
+	margin-bottom: 0 !important;
+}
+
+.pwr-filters-flow .form-group,
+.pwr-filters-flow .control-input-wrapper,
+.pwr-filters-flow .control-input {
+	width: auto !important;
+	margin-bottom: 0 !important;
+}
+
+.pwr-filters-flow > .frappe-control .form-control,
+.pwr-filters-flow > .frappe-control select {
+	width: 100% !important;
+	min-width: 90px !important;
+	max-width: 140px !important;
+	box-sizing: border-box;
+}
+
+.projects_workload_report .unified-filters-row .form-group,
+.project_workload_container .unified-filters-row .form-group {
+	margin-bottom: 0 !important;
+	margin-right: 0 !important;
+	width: auto;
+	min-width: 0;
+}
+
+.projects_workload_report .unified-filters-row .control-input,
+.project_workload_container .unified-filters-row .control-input {
+	margin-bottom: 0 !important;
+}
+
+.projects_workload_report .unified-filters-row .form-control,
+.project_workload_container .unified-filters-row .form-control {
+	height: 28px !important;
+	line-height: 1.2 !important;
+	font-size: 12px !important;
+	padding: 2px 8px !important;
+}
+
+.projects_workload_report .unified-filters-row .frappe-control,
+.project_workload_container .unified-filters-row .frappe-control {
+	margin-bottom: 0 !important;
+}
+
+.projects_workload_report .unified-filters-row .frappe-control .form-group,
+.project_workload_container .unified-filters-row .frappe-control .form-group {
+	margin-bottom: 0 !important;
+}
+
+.projects_workload_report .unified-filters-row .control-label,
+.project_workload_container .unified-filters-row .control-label {
+	display: none !important;
+}
+
+.projects_workload_report .filter-buttons .btn,
+.project_workload_container .filter-buttons .btn {
+	height: 28px !important;
+	min-height: 28px !important;
+	min-width: 28px !important;
+	padding: 0 6px !important;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px !important;
+	line-height: 1 !important;
+	border-radius: 3px !important;
+}
+
+.pwr-filter-field,
+.pwr-filter-show-fact label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	min-height: 28px;
+	line-height: 1.2;
+	flex: 0 0 auto;
+}
+
+.pwr-filter-worker-wtype {
+	min-width: 117px !important;
+	width: 117px !important;
+	max-width: 117px !important;
+	flex: 0 0 auto !important;
+}
+
+.pwr-filter-worker-wtype-select {
+	width: 100% !important;
+	height: 28px !important;
+	min-height: 28px !important;
+	font-size: 12px !important;
+	line-height: 1.2 !important;
+	padding: 2px 20px 2px 6px !important;
+	box-sizing: border-box;
+}
+
+.pwr-filter-period-nav {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	flex: 0 0 auto;
+}
+
+.pwr-filter-period-nav .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 28px !important;
+	min-height: 28px !important;
+	padding: 0 6px !important;
+}
+
+.pwr-filter-show-fact {
+	flex: 0 0 auto;
+}
+
+.pwr-filter-show-fact input {
+	margin: 0;
+}
+
+/* ========== АДАПТИВНОСТЬ ========== */
+@media screen and (max-width: 1200px) {
+	.projects_workload_report .form-filter-wrapper,
+	.project_workload_container .form-filter-wrapper {
+		min-width: 98px !important;
+		width: 98px !important;
+		max-width: 98px !important;
+	}
+}
+
+@media screen and (max-width: 992px) {
+	.projects_workload_report .form-filter-wrapper,
+	.project_workload_container .form-filter-wrapper {
+		min-width: calc(33.333% - 12px) !important;
+		width: calc(33.333% - 12px) !important;
+		max-width: calc(33.333% - 12px) !important;
+	}
+}
+
+@media screen and (max-width: 768px) {
+	.projects_workload_report .unified-filters-row,
+	.project_workload_container .unified-filters-row {
+		padding-right: 4px !important;
+		padding-bottom: 36px !important;
+	}
+
+	.projects_workload_report .filter-buttons,
+	.project_workload_container .filter-buttons,
+	.pwr-filters-group--right {
+		top: auto !important;
+		bottom: 0 !important;
+		right: 4px !important;
+	}
+
+	.projects_workload_report .form-filter-wrapper,
+	.project_workload_container .form-filter-wrapper {
+		min-width: calc(50% - 8px) !important;
+		width: calc(50% - 8px) !important;
+		max-width: calc(50% - 8px) !important;
+	}
+}

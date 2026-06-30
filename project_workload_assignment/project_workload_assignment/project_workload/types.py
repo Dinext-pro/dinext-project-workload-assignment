@@ -32,8 +32,16 @@ class UserWorkloadInfo(TypedDict, total=False):
 	wholiday_list: str | None
 	wtimesheet_template: str | None
 	wtype: str | None
+	wvalid_from: date | str | None
+	wvalid_for: date | str | None
 	hours_on_date: float | None
 	tt_working_hours_on_date: str | None
+
+
+class ProjectUtilizationRow(TypedDict, total=False):
+	"""Строка Project.custom_project_utilization (Project Utilization Table)."""
+	pu_valid_from: str
+	pu_included: str | None
 
 
 class ProjectWorkloadInfo(TypedDict, total=False):
