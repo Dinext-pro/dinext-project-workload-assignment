@@ -18,8 +18,8 @@ frappe.provide("project_workload_assignment.charts");
 	const LEGEND_BAND_PX = 36;
 	const stateByForm = new WeakMap();
 	const CHART_DATA_HEIGHT_PX = 200;
-	const CHART_PLOT_HEIGHT_PX = CHART_DATA_HEIGHT_PX + LEGEND_BAND_PX;
-	const CHART_TOTAL_HEIGHT_PX = CHART_PLOT_HEIGHT_PX;
+	const CHART_PLOT_HEIGHT_PX = CHART_DATA_HEIGHT_PX;
+	const CHART_TOTAL_HEIGHT_PX = CHART_DATA_HEIGHT_PX + LEGEND_BAND_PX;
 	const CHART_HEIGHT = `${CHART_TOTAL_HEIGHT_PX}px`;
 	const CHART_PLOT_HEIGHT = `${CHART_PLOT_HEIGHT_PX}px`;
 	let pwrChartThemeObserver = null;
@@ -400,10 +400,23 @@ frappe.provide("project_workload_assignment.charts");
 			panel.$syncGrid.css("--pwr-chart-total-height", totalHeightVar);
 		}
 		if (panel.$viewport && panel.$viewport.length) {
-			panel.$viewport.css({ height: plotHeightVar });
+			panel.$viewport.css({ height: totalHeightVar, maxHeight: totalHeightVar });
 		}
 		if (panel.$gutterYaxis && panel.$gutterYaxis.length) {
-			panel.$gutterYaxis.css({ height: plotHeightVar, minHeight: plotHeightVar });
+			panel.$gutterYaxis.css({
+				height: plotHeightVar,
+				minHeight: plotHeightVar,
+				maxHeight: plotHeightVar,
+				alignSelf: "end",
+			});
+		}
+		if (panel.$chartTrack && panel.$chartTrack.length) {
+			panel.$chartTrack.css({
+				height: plotHeightVar,
+				minHeight: plotHeightVar,
+				maxHeight: plotHeightVar,
+				flex: "1 1 auto",
+			});
 		}
 		if (panel.$chartEl && panel.$chartEl.length) {
 			panel.$chartEl.css({ height: plotHeightVar, minHeight: plotHeightVar });
@@ -844,32 +857,146 @@ frappe.provide("project_workload_assignment.charts");
 		};
 	}
 
-	function buildChartLegend(themeColors) {
-		const colors = themeColors || getPwrChartThemeColors();
-		return {
-			show: true,
-			type: "plain",
-			orient: "horizontal",
-			top: 0,
-			left: "center",
-			width: "auto",
-			itemWidth: 14,
-			itemHeight: 10,
-			itemGap: 16,
-			padding: [0, 8, 4, 8],
-			textStyle: {
-				color: colors.muted,
-				fontSize: 10,
-			},
+	function buildChartLegend() {
+		return { show: false };
+	}
+
+	function getSeriesLegendColor(series) {
+		if (!series) {
+			return "#888";
+		}
+		if (series.lineStyle && series.lineStyle.color) {
+			return series.lineStyle.color;
+		}
+		if (series.itemStyle && series.itemStyle.color) {
+			return series.itemStyle.color;
+		}
+		if (series.areaStyle && series.areaStyle.color) {
+			return series.areaStyle.color;
+		}
+		return "#888";
+	}
+
+	function resolveLegendSwatchColor(series) {
+		const color = getSeriesLegendColor(series);
+		if (series && series.type === "scatter") {
+			return PWR_UTILIZATION_SCATTER_COLOR;
+		}
+		return color || "#888";
+	}
+
+	function seriesHasSupplierPattern(series) {
+		return !!(
+			series &&
+			((series.itemStyle && series.itemStyle.decal) ||
+				/supplier|подряд/i.test(String(series.name || "")))
+		);
+	}
+
+	function ensureFixedLegendBar(panel) {
+		if (!panel || !panel.$viewport || !panel.$viewport.length) {
+			return null;
+		}
+		if (panel.$legendBar && panel.$legendBar.length) {
+			return panel.$legendBar;
+		}
+		const $bar = $('<div class="pwr-chart-legend-bar"></div>').css({
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "flex-start",
+			flexWrap: "wrap",
+			gap: "8px 16px",
+			height: `${LEGEND_BAND_PX}px`,
+			minHeight: `${LEGEND_BAND_PX}px`,
+			maxHeight: `${LEGEND_BAND_PX}px`,
+			padding: "0 8px",
+			boxSizing: "border-box",
+			overflow: "hidden",
+			background: "var(--ag-background-color, var(--bg-color))",
+			zIndex: 3,
+		});
+		panel.$viewport.prepend($bar);
+		panel.$legendBar = $bar;
+		return $bar;
+	}
+
+	function buildLegendSwatchStyle(series) {
+		const color = resolveLegendSwatchColor(series);
+		const patterned = seriesHasSupplierPattern(series);
+		const style = {
+			display: "inline-block",
+			width: "14px",
+			height: "10px",
+			minWidth: "14px",
+			minHeight: "10px",
+			borderRadius: "2px",
+			flexShrink: 0,
+			boxSizing: "border-box",
+			backgroundColor: color,
 		};
+		if (patterned) {
+			style.backgroundColor = color;
+			style.backgroundImage =
+				"repeating-linear-gradient(-45deg, rgba(255,255,255,0.45) 0, rgba(255,255,255,0.45) 2px, transparent 2px, transparent 6px)";
+		}
+		if (series && series.type === "line") {
+			style.height = "2px";
+			style.minHeight = "2px";
+			style.marginTop = "4px";
+			style.marginBottom = "4px";
+			style.borderRadius = "1px";
+		}
+		if (series && series.type === "scatter") {
+			style.width = "8px";
+			style.height = "8px";
+			style.minWidth = "8px";
+			style.minHeight = "8px";
+			style.borderRadius = "50%";
+			style.border = "1px solid #D48806";
+		}
+		return style;
+	}
+
+	function updateFixedChartLegend(panel, option) {
+		const $bar = ensureFixedLegendBar(panel);
+		if (!$bar || !option) {
+			return;
+		}
+		const items = (option.series || []).filter((series) => series && series.name);
+		$bar.empty();
+		if (!items.length) {
+			return;
+		}
+		items.forEach((series) => {
+			const $item = $('<span class="pwr-chart-legend-item"></span>').css({
+				display: "inline-flex",
+				alignItems: "center",
+				gap: "6px",
+				marginRight: "16px",
+				whiteSpace: "nowrap",
+				flex: "0 0 auto",
+			});
+			const $swatch = $('<span class="pwr-chart-legend-swatch"></span>').css(
+				buildLegendSwatchStyle(series)
+			);
+			const $label = $('<span class="pwr-chart-legend-label"></span>')
+				.text(series.name)
+				.css({
+					fontSize: "10px",
+					lineHeight: "1.2",
+					color: "var(--text-muted, #8d99a6)",
+				});
+			$item.append($swatch, $label);
+			$bar.append($item);
+		});
 	}
 
 	function buildSyncedGrid() {
 		return {
 			left: 0,
 			right: 0,
-			top: LEGEND_BAND_PX,
-			bottom: 0,
+			top: 8,
+			bottom: 8,
 			containLabel: false,
 		};
 	}
@@ -989,7 +1116,35 @@ frappe.provide("project_workload_assignment.charts");
 		Supplier: "#69c0ff",
 	};
 
+	const PWR_LINE_COLORS = {
+		capacity: "#5470c6",
+		teamCapacity: "#5470c6",
+		projectPlan: "#91cc75",
+		utilizationPlan: "#fac858",
+	};
+
 	const PWR_UTILIZATION_SCATTER_COLOR = "#F6BD16";
+
+	function buildPwrLineSeries(config) {
+		const lineColor = config.color || PWR_LINE_COLORS.capacity;
+		const lineOpacity = config.lineOpacity != null ? config.lineOpacity : 0.85;
+		const areaOpacity = config.areaOpacity != null ? config.areaOpacity : 0.12;
+		return {
+			name: config.name,
+			type: "line",
+			smooth: true,
+			showSymbol: false,
+			z: config.z != null ? config.z : 1,
+			itemStyle: { color: lineColor },
+			lineStyle: {
+				color: lineColor,
+				opacity: lineOpacity,
+				width: config.lineWidth != null ? config.lineWidth : 2,
+			},
+			areaStyle: { color: lineColor, opacity: areaOpacity },
+			data: config.data || [],
+		};
+	}
 
 	function buildSupplierDecal() {
 		return {
@@ -1073,16 +1228,14 @@ frappe.provide("project_workload_assignment.charts");
 		// const markLine = buildCurrentPeriodMarkLine(periods, viewType, labels, themeColors);
 
 		const chartSeries = [
-			{
+			buildPwrLineSeries({
 				name: __("Capacity"),
-				type: "line",
-				smooth: true,
-				showSymbol: false,
+				color: PWR_LINE_COLORS.capacity,
+				lineOpacity: 0.85,
+				areaOpacity: 0.12,
 				z: 1,
-				areaStyle: { opacity: 0.12, color: "rgba(120,120,120,0.25)" },
-				lineStyle: { opacity: 0.35, width: 1 },
 				data: series.capacity_hours || [],
-			},
+			}),
 			buildWtypeForecastBarSeries(
 				__("Employee forecast"),
 				"workload",
@@ -1101,15 +1254,14 @@ frappe.provide("project_workload_assignment.charts");
 			chartSeries.splice(
 				1,
 				0,
-				{
+				buildPwrLineSeries({
 					name: __("Utilization plan"),
-					type: "line",
-					smooth: true,
-					showSymbol: false,
+					color: PWR_LINE_COLORS.utilizationPlan,
+					lineOpacity: 0.85,
+					areaOpacity: 0.12,
 					z: 2,
-					areaStyle: { opacity: 0.12 },
 					data: series.utilization_plan_hours || [],
-				},
+				}),
 				{
 					name: __("Utilization forecast"),
 					type: "scatter",
@@ -1161,25 +1313,22 @@ frappe.provide("project_workload_assignment.charts");
 		// const markLine = buildCurrentPeriodMarkLine(periods, viewType, labels, themeColors);
 
 		const chartSeries = [
-			{
+			buildPwrLineSeries({
 				name: __("Team capacity"),
-				type: "line",
-				smooth: true,
-				showSymbol: false,
+				color: PWR_LINE_COLORS.teamCapacity,
+				lineOpacity: 0.85,
+				areaOpacity: 0.1,
 				z: 1,
-				areaStyle: { opacity: 0.1 },
-				lineStyle: { opacity: 0.35, width: 1 },
 				data: series.team_capacity_hours || [],
-			},
-			{
+			}),
+			buildPwrLineSeries({
 				name: __("Project plan"),
-				type: "line",
-				smooth: true,
-				showSymbol: false,
+				color: PWR_LINE_COLORS.projectPlan,
+				lineOpacity: 0.85,
+				areaOpacity: 0.15,
 				z: 2,
-				areaStyle: { opacity: 0.15 },
 				data: series.project_plan_hours || [],
-			},
+			}),
 			buildWtypeForecastBarSeries(
 				__("Employee forecast"),
 				"forecast",
@@ -1243,6 +1392,7 @@ frappe.provide("project_workload_assignment.charts");
 		}
 		state.chart.setOption(option, true);
 		if (state.panel) {
+			updateFixedChartLegend(state.panel, option);
 			syncYAxisGutterLabels(state.chart, state.panel, __("Hours"));
 		}
 		state.chart.resize();
@@ -1441,6 +1591,9 @@ frappe.provide("project_workload_assignment.charts");
 		if (state.panel && state.panel.$gutterYaxis) {
 			state.panel.$gutterYaxis.empty();
 		}
+		if (state.panel && state.panel.$legendBar) {
+			state.panel.$legendBar.empty();
+		}
 		if (state.panel && state.panel.$chartEl) {
 			DinextCharts.dispose(state.panel.$chartEl);
 		}
@@ -1494,6 +1647,7 @@ frappe.provide("project_workload_assignment.charts");
 		panel.$syncGrid.attr("data-pwr-layout", CHART_LAYOUT_VERSION);
 		state.panel = panel;
 		applyChartHeights(panel);
+		ensureFixedLegendBar(panel);
 		return panel;
 	}
 
@@ -1785,6 +1939,7 @@ frappe.provide("project_workload_assignment.charts");
 						}
 						panel.$chartEl.css({ width: mountW, height: CHART_PLOT_HEIGHT });
 						state.chart = DinextCharts.mount(panel.$chartEl, option);
+						updateFixedChartLegend(panel, option);
 						state.loadedPeriodCount = periodCount;
 						state.resizeCleanup = null;
 						state.loadedContextKey = contextKey;
