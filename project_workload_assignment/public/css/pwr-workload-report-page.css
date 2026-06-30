@@ -1,0 +1,87 @@
+/* ISS-2026-00002: page chrome — Projects Workload Report */
+
+body[data-route="Form/Projects Workload Report"] .layout-side-section,
+body[data-route="Form/Projects Workload Report"] .page-actions,
+body[data-route="Form/Projects Workload Report"] .form-dashboard {
+	display: none !important;
+}
+
+body[data-route="Form/Projects Workload Report"] .layout-main-section-wrapper,
+body[data-route="Form/Projects Workload Report"] .layout-main-section {
+	width: 100% !important;
+	max-width: 100% !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+}
+
+@media (min-width: 1200px) {
+	body[data-route="Form/Projects Workload Report"] .container-xl,
+	body[data-route="Form/Projects Workload Report"] .container-lg,
+	body[data-route="Form/Projects Workload Report"] .container-md,
+	body[data-route="Form/Projects Workload Report"] .container-sm,
+	body[data-route="Form/Projects Workload Report"] .container,
+	[id="page-Projects Workload Report"] .container-xl,
+	[id="page-Projects Workload Report"] .container-lg,
+	[id="page-Projects Workload Report"] .container-md,
+	[id="page-Projects Workload Report"] .container-sm,
+	[id="page-Projects Workload Report"] .container {
+		max-width: 1490px !important;
+	}
+}
+
+html[data-theme],
+body[data-route="Form/Projects Workload Report"] {
+	overflow: hidden !important;
+	height: 100% !important;
+}
+
+body[data-route="Form/Projects Workload Report"] .page-container,
+body[data-route="Form/Projects Workload Report"] .main-section,
+body[data-route="Form/Projects Workload Report"] .container.page-body {
+	overflow: hidden !important;
+	max-height: 100vh !important;
+}
+
+body[data-route="Form/Projects Workload Report"] .layout-main {
+	display: flex !important;
+	flex-direction: column !important;
+	height: calc(100vh - var(--navbar-height) - var(--page-head-height) - 5px) !important;
+	max-height: calc(100vh - var(--navbar-height) - var(--page-head-height) - 5px) !important;
+	min-height: 0 !important;
+	overflow: hidden !important;
+}
+
+body[data-route="Form/Projects Workload Report"] .layout-main-section-wrapper,
+body[data-route="Form/Projects Workload Report"] .layout-main-section,
+body[data-route="Form/Projects Workload Report"] .std-form-layout,
+body[data-route="Form/Projects Workload Report"] .form-layout {
+	overflow: hidden !important;
+}
+
+.projects_workload_report {
+	display: flex;
+	flex-direction: column;
+	min-height: 320px !important;
+	overflow: hidden !important;
+	width: 100% !important;
+	max-width: 100% !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	box-sizing: border-box !important;
+}
+
+.projects_workload_report .projects-workload-table {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	min-height: 0 !important;
+	overflow: hidden !important;
+}
+
+.projects_workload_report .projects-workload-ag-grid {
+	flex: 1 1 auto;
+	height: 100% !important;
+	min-height: 0 !important;
+	overflow: hidden !important;
+	padding-bottom: 24px !important;
+}

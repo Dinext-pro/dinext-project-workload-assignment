@@ -16,8 +16,6 @@ var WL_DEBUG = typeof WL_DEBUG !== "undefined" ? WL_DEBUG : false;
 
 let isProjectWorkloadLoading = false;
 let projectWorkloadLoadTimeout = null;
-let projectWorkloadAgGridPromise = null;
-
 
 // Кэш для данных
 let projectWorkloadCache = {
@@ -33,38 +31,28 @@ window.projectWorkloadViewType = currentViewType;
 window.currentPeriodRange = currentPeriodRange;
 window.pwrShowFact = !!window.pwrShowFact;
 
+function pwrShared() {
+    return project_workload_assignment.pwrShared || {};
+}
+
 function isPwrShowFactEnabled() {
-    if (window.pwrShowFact) {
-        return true;
-    }
-    try {
-        if (
-            project_workload_assignment.charts &&
-            typeof project_workload_assignment.charts.isShowFactEnabled === "function"
-        ) {
-            return project_workload_assignment.charts.isShowFactEnabled(window.cur_frm);
-        }
-    } catch (_e) {
-        /* ignore */
-    }
-    return false;
+    return pwrShared().isPwrShowFactEnabled ? pwrShared().isPwrShowFactEnabled(window.cur_frm) : !!window.pwrShowFact;
 }
 
 function getPwrLoadActualFlag(options) {
-    if (options && options.loadActual != null) {
-        return options.loadActual ? 1 : 0;
-    }
-    return isPwrShowFactEnabled() ? 1 : 0;
+    return pwrShared().getPwrLoadActualFlag
+        ? pwrShared().getPwrLoadActualFlag(options)
+        : (isPwrShowFactEnabled() ? 1 : 0);
 }
 
 function renderPwrPlanFactCell(options) {
-    if (
-        project_workload_assignment.planFactCell &&
-        typeof project_workload_assignment.planFactCell.renderPlanFactCell === "function"
-    ) {
-        return project_workload_assignment.planFactCell.renderPlanFactCell(options);
-    }
-    return null;
+    return pwrShared().renderPwrPlanFactCell
+        ? pwrShared().renderPwrPlanFactCell(options)
+        : null;
+}
+
+function getPwrRowHeight() {
+    return pwrShared().getPwrRowHeight ? pwrShared().getPwrRowHeight() : (isPwrShowFactEnabled() ? 54 : 40);
 }
 
 function syncPwrProjectGlobals() {
@@ -76,136 +64,61 @@ function syncPwrProjectGlobals() {
 }
 
 function getPwrPeriodAnchorLabel(frm) {
-    if (
-        project_workload_assignment.charts &&
-        typeof project_workload_assignment.charts.getPeriodAnchorLabel === "function"
-    ) {
-        return project_workload_assignment.charts.getPeriodAnchorLabel(frm || cur_frm);
-    }
-    ensureDatesInitialized();
-    return `${frappe.datetime.str_to_user(displayDateFrom)} — ${frappe.datetime.str_to_user(displayDateTo)}`;
+    return pwrShared().getPwrPeriodAnchorLabel
+        ? pwrShared().getPwrPeriodAnchorLabel(frm || cur_frm, () => {
+            ensureDatesInitialized();
+            return `${frappe.datetime.str_to_user(displayDateFrom)} — ${frappe.datetime.str_to_user(displayDateTo)}`;
+        })
+        : '';
 }
 
 function triggerPwrWorkloadDataReload(frm) {
     syncPwrProjectGlobals();
-    $(document).trigger("pwr-workload-data-reload", [
-        frm || cur_frm,
-        {
+    if (pwrShared().triggerPwrWorkloadDataReload) {
+        pwrShared().triggerPwrWorkloadDataReload(frm || cur_frm, {
             showFact: isPwrShowFactEnabled(),
             periodAnchor: displayDateFrom,
-        },
-    ]);
+        });
+    }
+}
+
+function shiftProjectWorkloadPeriod(direction) {
+    ensureDatesInitialized();
+    displayDateFrom = frappe.datetime.add_months(displayDateFrom, direction);
+    displayDateTo = frappe.datetime.add_months(displayDateTo, direction);
+    syncPwrProjectGlobals();
+    updateDateControls();
+    triggerPwrWorkloadDataReload(cur_frm);
 }
 
 function createPwrPeriodNavFilter(container, frm) {
-    const $nav = $(`
-        <div class="pwr-chart-period-nav pwr-filter-period-nav">
-            <button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-prev" title="${frappe.utils.escape_html(__("Previous month"))}">&lt;</button>
-            <button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-next" title="${frappe.utils.escape_html(__("Next month"))}">&gt;</button>
-        </div>
-    `).appendTo(container);
-
-    const updateNavTitles = () => {
-        const label = getPwrPeriodAnchorLabel(frm);
-        $nav.find(".pwr-chart-period-prev").attr("title", `${__("Previous month")} (${label})`);
-        $nav.find(".pwr-chart-period-next").attr("title", `${__("Next month")} (${label})`);
-    };
-
-    if (frm) {
-        frm._pwrUpdatePeriodNavLabel = updateNavTitles;
-    }
-    updateNavTitles();
-
-    $nav.find(".pwr-chart-period-prev").on("click", function () {
-        const activeFrm = frm || cur_frm;
-        if (
-            project_workload_assignment.charts &&
-            typeof project_workload_assignment.charts.shiftPeriod === "function"
-        ) {
-            project_workload_assignment.charts.shiftPeriod(activeFrm, -1);
-        } else {
-            ensureDatesInitialized();
-            displayDateFrom = frappe.datetime.add_months(displayDateFrom, -1);
-            displayDateTo = frappe.datetime.add_months(displayDateTo, -1);
-            syncPwrProjectGlobals();
-            updateDateControls();
-            triggerPwrWorkloadDataReload(activeFrm);
-        }
-        updateNavTitles();
-    });
-
-    $nav.find(".pwr-chart-period-next").on("click", function () {
-        const activeFrm = frm || cur_frm;
-        if (
-            project_workload_assignment.charts &&
-            typeof project_workload_assignment.charts.shiftPeriod === "function"
-        ) {
-            project_workload_assignment.charts.shiftPeriod(activeFrm, 1);
-        } else {
-            ensureDatesInitialized();
-            displayDateFrom = frappe.datetime.add_months(displayDateFrom, 1);
-            displayDateTo = frappe.datetime.add_months(displayDateTo, 1);
-            syncPwrProjectGlobals();
-            updateDateControls();
-            triggerPwrWorkloadDataReload(activeFrm);
-        }
-        updateNavTitles();
-    });
-
-    return $nav;
+    return pwrShared().createPwrPeriodNavFilter
+        ? pwrShared().createPwrPeriodNavFilter(container, frm, {
+            fallbackPeriodLabel: () => getPwrPeriodAnchorLabel(frm),
+            onShiftPeriod: (activeFrm, direction) => {
+                if (
+                    project_workload_assignment.charts &&
+                    typeof project_workload_assignment.charts.shiftPeriod === "function"
+                ) {
+                    project_workload_assignment.charts.shiftPeriod(activeFrm, direction);
+                    return;
+                }
+                shiftProjectWorkloadPeriod(direction);
+            },
+        })
+        : $();
 }
 
 function createPwrWorkerTypeFilter(container) {
-    const workerTypeLabel = __('Worker type');
-    const $field = $(`
-        <div class="pwr-filter-field pwr-filter-worker-wtype">
-            <select class="form-control input-sm pwr-filter-worker-wtype-select" title="${frappe.utils.escape_html(workerTypeLabel)}">
-                <option value="">${frappe.utils.escape_html(__('All'))}</option>
-                <option value="Employee">${frappe.utils.escape_html(__('Employee'))}</option>
-                <option value="Supplier">${frappe.utils.escape_html(__('Supplier'))}</option>
-            </select>
-        </div>
-    `).appendTo(container);
-    const $select = $field.find('select');
-    $select.val(window.pwrWorkerWtype || '');
-    $select.on('change', function () {
-        window.pwrWorkerWtype = $(this).val() || '';
-        if (
-            project_workload_assignment.charts &&
-            typeof project_workload_assignment.charts.setWorkerWtype === 'function'
-        ) {
-            project_workload_assignment.charts.setWorkerWtype(cur_frm, window.pwrWorkerWtype);
-        } else {
-            requestProjectWorkloadChartReload(cur_frm);
-        }
-    });
-    return $field;
+    return pwrShared().createPwrWorkerTypeFilter
+        ? pwrShared().createPwrWorkerTypeFilter(container)
+        : $();
 }
 
 function createPwrShowFactFilter(container) {
-    const showFactLabel = __("Show fact");
-    const $field = $(`
-        <div class="pwr-filter-field pwr-filter-show-fact">
-            <label>
-                <input type="checkbox" class="pwr-filter-show-fact-checkbox" />
-                <span>${frappe.utils.escape_html(showFactLabel)}</span>
-            </label>
-        </div>
-    `).appendTo(container);
-    const $checkbox = $field.find("input");
-    $checkbox.prop("checked", !!window.pwrShowFact);
-    $checkbox.on("change", function () {
-        window.pwrShowFact = !!this.checked;
-        if (
-            project_workload_assignment.charts &&
-            typeof project_workload_assignment.charts.setShowFact === "function"
-        ) {
-            project_workload_assignment.charts.setShowFact(cur_frm, window.pwrShowFact);
-        } else {
-            triggerPwrWorkloadDataReload(cur_frm);
-        }
-    });
-    return $field;
+    return pwrShared().createPwrShowFactFilter
+        ? pwrShared().createPwrShowFactFilter(container)
+        : $();
 }
 
 function resetProjectWorkloadPeriodAnchor() {
@@ -239,49 +152,11 @@ window.projectWorkloadMetadata = {};
 // Система измерения производительности
 const performanceLog = {};
 
-function loadProjectWorkloadScript(url) {
-    return new Promise((resolve, reject) => {
-        document.querySelectorAll('script[src*="projects-workload-ag-grid.js"]').forEach(script => {
-            if (!script.src.includes(url.split('?')[1] || '')) {
-                script.remove();
-            }
-        });
-        delete window.ProjectsWorkloadAgGrid;
-
-        const existing = document.querySelector(`script[src="${url}"]`);
-        if (existing) {
-            existing.addEventListener('load', resolve, {once: true});
-            existing.addEventListener('error', reject, {once: true});
-            if (window.ProjectsWorkloadAgGrid) resolve();
-            return;
-        }
-
-        const script = document.createElement('script');
-        script.src = url;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.body.appendChild(script);
-    });
-}
-
 function ensureProjectWorkloadAgGrid() {
-    if (window.ProjectsWorkloadAgGrid && typeof window.ProjectsWorkloadAgGrid.ensure === 'function') {
-        return window.ProjectsWorkloadAgGrid.ensure();
+    if (pwrShared().ensureAgGrid) {
+        return pwrShared().ensureAgGrid();
     }
-
-    if (!projectWorkloadAgGridPromise) {
-        const cacheBuster = '?v=iss-866-pwa-ag-grid';
-        const workloadUrl = '/assets/project_workload_assignment/js/projects-workload-ag-grid.js' + cacheBuster;
-        projectWorkloadAgGridPromise = loadProjectWorkloadScript(workloadUrl)
-            .then(() => {
-            if (!window.ProjectsWorkloadAgGrid || typeof window.ProjectsWorkloadAgGrid.ensure !== 'function') {
-                throw new Error('ProjectsWorkloadAgGrid не загрузился');
-            }
-            return window.ProjectsWorkloadAgGrid.ensure();
-        });
-    }
-
-    return projectWorkloadAgGridPromise;
+    return Promise.reject(new Error('pwrShared.ensureAgGrid is not available'));
 }
 
 function startTimer(name) {
@@ -1020,7 +895,7 @@ function get_project_workload_columns_definition(periods) {
         treeView: true,
         format: (value, row, column, data) => {
             if (!data) {
-                return `<div class="project-workload-cell"></div>`;
+                return `<div class="project-workload-cell pwr-participant-cell"></div>`;
             }
             
             if (data.level === 'user') {
@@ -1034,7 +909,7 @@ function get_project_workload_columns_definition(periods) {
                         if (!image) {
                             return `<div class="${prefix}-placeholder">${initial}</div>`;
                         }
-                        return `<span class="${prefix}-wrap"><img src="${image}" class="${prefix}" alt="${name}" onerror="this.style.display='none';var p=this.parentElement&&this.parentElement.querySelector('.${prefix}-placeholder');if(p)p.style.display='flex';"><div class="${prefix}-placeholder" style="display:none">${initial}</div></span>`;
+                        return `<span class="${prefix}-wrap"><img src="${image}" class="${prefix}" alt="${name}" onerror="this.style.display='none';var p=this.parentElement&&this.parentElement.querySelector('.${prefix}-placeholder');if(p)p.classList.add('pwr-avatar-visible');"><div class="${prefix}-placeholder">${initial}</div></span>`;
                     };
                 if (!data._cachedAvatarHtml || data._cachedAvatarSrc !== userImage) {
                     data._cachedAvatarSrc = userImage;
@@ -1042,7 +917,7 @@ function get_project_workload_columns_definition(periods) {
                 }
                 const avatarHtml = data._cachedAvatarHtml;
                 
-                return `<div class="project-workload-cell">
+                return `<div class="project-workload-cell pwr-participant-cell">
                     <div class="project-user-display">
                         ${avatarHtml}
                         <div class="project-user-info">
@@ -1054,7 +929,7 @@ function get_project_workload_columns_definition(periods) {
             }
             
             else if (data.level === 'role') {
-                return `<div class="project-workload-cell project-role-display">
+                return `<div class="project-workload-cell pwr-participant-cell project-role-display">
                     <div class="project-role-name" title="${data.roleName || __('No Role')}">
                         ${data.roleName || __('No Role')}
                     </div>
@@ -1062,14 +937,14 @@ function get_project_workload_columns_definition(periods) {
             }
             
             else if (data.level === 'task') {
-                return `<div class="project-workload-cell project-task-display">
+                return `<div class="project-workload-cell pwr-participant-cell project-task-display">
                     <div class="project-task-name" title="${data.task_subject || __('Task')}">
                         ${data.task_subject || __('Task')}
                     </div>
                 </div>`;
             }
             
-            return `<div class="project-workload-cell"></div>`;
+            return `<div class="project-workload-cell pwr-participant-cell"></div>`;
         }
     });
     
@@ -1165,21 +1040,6 @@ function get_project_workload_columns_definition(periods) {
                 tooltipDetails.push(`${__("Workload")}: ${hours.toFixed(1)}h (${percentage}%)`);
                 const tooltip = tooltipDetails.join('\n');
 
-                
-                let displayHours = `${hours.toFixed(1)}h`;
-                let displayPercentage = `${percentage}%`;
-                
-                // Визуализация: высота от 0 до 100%, но для перегрузки показываем 100%
-                const fillHeight = percentage > 100 ? 100 : percentage;
-                
-                let visualizationClass = "project-workload-visualization normal";
-                
-                if (percentage > 120) {
-                    visualizationClass = "project-workload-visualization overload";
-                } else if (percentage >= 95) {
-                    visualizationClass = "project-workload-visualization warning";
-                }
-
                 const levelClass = `level-${data.level || 'unknown'}`;
 
                 if (isPwrShowFactEnabled()) {
@@ -1197,20 +1057,16 @@ function get_project_workload_columns_definition(periods) {
                         return planFactHtml;
                     }
                 }
-                
-                const visualizationStyle = `height: ${fillHeight}%`;
-                const hoursClass = hours === 0 ? "workload-hours zero-load" : "workload-hours";
-                const percentageClass = hours === 0 ? "workload-percentage zero-load" : "workload-percentage";
-                
-                return `
-                    <div class="project-workload-cell ${levelClass}" title="${tooltip}">
-                        <div class="${visualizationClass}" style="${visualizationStyle}"></div>
-                        <div class="project-workload-content">
-                            <div class="${hoursClass}">${displayHours}</div>
-                            <div class="project-workload-percentage ${percentageClass}">${displayPercentage}</div>
-                        </div>
-                    </div>
-                `;
+
+                if (pwrShared().renderPlanOnlyWorkloadCell) {
+                    return pwrShared().renderPlanOnlyWorkloadCell({
+                        planHours: hours,
+                        percentage,
+                        tooltip,
+                        cellClass: `project-workload-cell ${levelClass}`,
+                        visualPrefix: "project-workload",
+                    });
+                }
             }
         });
     });
@@ -1420,16 +1276,15 @@ function applyProjectWorkloadSectionLayout(frm) {
 function createProjectFilterRow(frm, $wrapper) {
     let controls = $('<div class="projects-workload-controls unified-filters-row"></div>').appendTo($wrapper);
 
-    let $leftGroup = $('<div class="pwr-filters-group pwr-filters-group--left"></div>').appendTo(controls);
-    createPwrWorkerTypeFilter($leftGroup);
-    createPwrShowFactFilter($leftGroup);
+    let $flow = $('<div class="pwr-filters-flow"></div>').appendTo(controls);
+    createPwrWorkerTypeFilter($flow);
+    createPwrShowFactFilter($flow);
 
     ensureDatesInitialized();
 
-    let $centerGroup = $('<div class="pwr-filters-group pwr-filters-group--center"></div>').appendTo(controls);
-    createPwrPeriodNavFilter($centerGroup, frm);
-    createViewTypeDropdown($centerGroup);
-    createPeriodRangeDropdown($centerGroup);
+    createPwrPeriodNavFilter($flow, frm);
+    createViewTypeDropdown($flow);
+    createPeriodRangeDropdown($flow);
 
     let buttonsContainer = $('<div class="pwr-filters-group pwr-filters-group--right filter-buttons"></div>').appendTo(controls);
 
@@ -1516,6 +1371,8 @@ async function load_project_workload_data(frm, forceRefresh = false) {
             frm.project_workload_dt.refresh(table_data, columns, {
                 workloadPeriods: periods,
                 workloadViewType: currentViewType,
+                rowHeight: getPwrRowHeight(),
+                showFact: isPwrShowFactEnabled(),
             });
             
             // Сворачиваем все узлы (показываем только пользователей)
@@ -1609,7 +1466,7 @@ async function render_project_workload_table(frm) {
     frm.project_workload_dt = new ProjectsWorkloadAgGrid.Table(table_container[0], {
         columns: [],
         data: [],
-        rowHeight: 40,
+        rowHeight: getPwrRowHeight(),
         headerHeight: 70,
         participantWidth: 250,
         indentSize: 18,

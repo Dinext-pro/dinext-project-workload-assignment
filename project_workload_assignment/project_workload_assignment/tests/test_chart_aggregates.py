@@ -79,16 +79,7 @@ class TestChartAggregates(FrappeTestCase):
 		period_count = len(result["periods"])
 		self.assertEqual(len(series.get("utilization_plan_hours") or []), period_count)
 		self.assertEqual(len(series.get("utilization_forecast_hours") or []), period_count)
-		if period_count and series.get("workload_forecast_hours_by_wtype"):
-			employee = series["workload_forecast_hours_by_wtype"].get("Employee") or []
-			supplier = series["workload_forecast_hours_by_wtype"].get("Supplier") or []
-			forecast = series.get("utilization_forecast_hours") or []
-			for idx in range(period_count):
-				self.assertAlmostEqual(
-					forecast[idx],
-					(employee[idx] if idx < len(employee) else 0.0)
-					+ (supplier[idx] if idx < len(supplier) else 0.0),
-				)
+		# utilization_forecast ≠ sum stacked (Employee+Supplier); см. iss_2026_00002_utilization_charts.
 
 	def test_team_charts_load_actual_flag(self):
 		result = run_get_team_workload_charts(

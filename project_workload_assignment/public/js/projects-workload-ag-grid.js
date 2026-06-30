@@ -162,13 +162,15 @@
             .projects-workload-ag-grid .ag-pinned-left-cols-container {
                 border-right: 1px solid var(--border-color) !important;
             }
-            .projects-workload-ag-grid .ag-center-cols-container .ag-cell,
-            .project-workload-ag-grid .ag-center-cols-container .ag-cell {
-                border-right: 1px solid var(--border-color) !important;
+            .projects-workload-ag-grid .ag-header-cell .projects-workload-ag-grid-header {
+                box-sizing: border-box;
+                min-height: 100%;
             }
-            .projects-workload-ag-grid .ag-header-viewport .ag-header-cell,
-            .project-workload-ag-grid .ag-header-viewport .ag-header-cell {
-                border-right: 1px solid var(--border-color) !important;
+            .projects-workload-ag-grid .ag-header-cell:has(.projects-workload-ag-grid-header--current-period) {
+                background: rgba(33, 150, 243, 0.14) !important;
+            }
+            [data-theme="dark"] .projects-workload-ag-grid .ag-header-cell:has(.projects-workload-ag-grid-header--current-period) {
+                background: rgba(33, 150, 243, 0.22) !important;
             }
             .projects-workload-ag-grid[data-loading-message]::after {
                 content: attr(data-loading-message);
@@ -369,8 +371,10 @@
         return (
             `<span class="${classPrefix}-wrap">` +
             `<img src="${safeSrc}" class="${classPrefix}" alt="${safeName}" ` +
-            `onerror="this.style.display='none';var p=this.parentElement&&this.parentElement.querySelector('.${placeholderClass}');if(p)p.style.display='flex';">` +
-            `<div class="${placeholderClass}" style="display:none">${initial}</div>` +
+            `onerror="this.style.display='none';` +
+            `var p=this.parentElement&&this.parentElement.querySelector('.${placeholderClass}');` +
+            `if(p)p.classList.add('pwr-avatar-visible');">` +
+            `<div class="${placeholderClass}">${initial}</div>` +
             `</span>`
         );
     }
