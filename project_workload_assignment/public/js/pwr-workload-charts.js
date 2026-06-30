@@ -1135,13 +1135,17 @@ frappe.provide("project_workload_assignment.charts");
 
 	const PWR_FORECAST_COLORS = {
 		Employee: "#d8b4fe",
-		Supplier: "#531dab",
+		Supplier: "#a8d8ff",
 	};
 
 	const PWR_FACT_COLORS = {
-		Employee: "#003eb3",
-		Supplier: "#a8d8ff",
+		Employee: "#531dab",
+		Supplier: "#003eb3",
 	};
+
+	// const PWR_BAR_BORDER_RADIUS = [3, 3, 0, 0];
+	const PWR_FORECAST_BAR_WIDTH = "36%";
+	const PWR_ACTUAL_BAR_WIDTH = "36%";
 
 	const PWR_LINE_COLORS = {
 		capacityLine: "#243660",
@@ -1243,76 +1247,84 @@ frappe.provide("project_workload_assignment.charts");
 			type: "bar",
 			stack: stackId,
 			z: 3,
-			barWidth: "36%",
-			itemStyle: { color, opacity: 0.9 },
+			barWidth: PWR_FORECAST_BAR_WIDTH,
+			itemStyle: {
+				color,
+				opacity: 0.9,
+				// borderRadius: PWR_BAR_BORDER_RADIUS,
+			},
 			emphasis: { focus: "series" },
 			data: data || [],
 		};
 	}
 
-	function buildWtypeActualBarSeries(name, stackId, data, wtype, overlay) {
+	function buildWtypeActualBarSeries(name, stackId, data, wtype) {
 		const color = PWR_FACT_COLORS[wtype] || PWR_FACT_COLORS.Employee;
-		const series = {
+		return {
 			name,
 			type: "bar",
 			stack: stackId,
 			z: 6,
-			barWidth: "18%",
-			itemStyle: { color, opacity: 1 },
+			barWidth: PWR_ACTUAL_BAR_WIDTH,
+			barGap: "-100%",
+			itemStyle: {
+				color,
+				opacity: 1,
+				// borderRadius: PWR_BAR_BORDER_RADIUS,
+			},
 			emphasis: { focus: "series" },
 			data: data || [],
 		};
-		if (overlay) {
-			series.barGap = "-100%";
-		}
-		return series;
 	}
 
-	function appendWtypeActualBars(chartSeries, actualEmp, actualSup, stackId, workerWtypeFilter) {
-		if (isWtypeSeriesIncluded("Employee", workerWtypeFilter)) {
-			chartSeries.push(
-				buildWtypeActualBarSeries(
-					__("Employee fact"),
-					stackId,
-					actualEmp,
-					"Employee",
-					true
-				)
-			);
-		}
-		if (isWtypeSeriesIncluded("Supplier", workerWtypeFilter)) {
-			chartSeries.push(
-				buildWtypeActualBarSeries(
-					__("Supplier fact"),
-					stackId,
-					actualSup,
-					"Supplier",
-					false
-				)
-			);
-		}
-	}
+	function appendWtypeWorkloadBars(chartSeries, options) {
+		const employee = options.employee;
+		const supplier = options.supplier;
+		const actualEmp = options.actualEmp;
+		const actualSup = options.actualSup;
+		const forecastStackId = options.forecastStackId;
+		const workerWtypeFilter = options.workerWtypeFilter;
+		const showFact = !!options.showFact;
 
-	function appendWtypeForecastBars(chartSeries, employee, supplier, stackId, workerWtypeFilter) {
 		if (isWtypeSeriesIncluded("Employee", workerWtypeFilter)) {
 			chartSeries.push(
 				buildWtypeForecastBarSeries(
 					__("Employee forecast"),
-					stackId,
+					forecastStackId,
 					employee,
 					"Employee"
 				)
 			);
+			if (showFact) {
+				chartSeries.push(
+					buildWtypeActualBarSeries(
+						__("Employee fact"),
+						"actual",
+						actualEmp,
+						"Employee"
+					)
+				);
+			}
 		}
 		if (isWtypeSeriesIncluded("Supplier", workerWtypeFilter)) {
 			chartSeries.push(
 				buildWtypeForecastBarSeries(
 					__("Supplier forecast"),
-					stackId,
+					forecastStackId,
 					supplier,
 					"Supplier"
 				)
 			);
+			if (showFact) {
+				chartSeries.push(
+					buildWtypeActualBarSeries(
+						__("Supplier fact"),
+						"actual",
+						actualSup,
+						"Supplier"
+					)
+				);
+			}
 		}
 	}
 
@@ -1365,7 +1377,15 @@ frappe.provide("project_workload_assignment.charts");
 				data: series.capacity_hours || [],
 			}),
 		];
-		appendWtypeForecastBars(chartSeries, employee, supplier, "workload", workerWtypeFilter);
+		appendWtypeWorkloadBars(chartSeries, {
+			employee,
+			supplier,
+			actualEmp,
+			actualSup,
+			forecastStackId: "workload",
+			workerWtypeFilter,
+			showFact,
+		});
 
 		if (showUtilization) {
 			chartSeries.splice(
@@ -1386,10 +1406,6 @@ frappe.provide("project_workload_assignment.charts");
 		// if (markLine) {
 		// 	chartSeries[0].markLine = markLine;
 		// }
-
-		if (showFact) {
-			appendWtypeActualBars(chartSeries, actualEmp, actualSup, "actual", workerWtypeFilter);
-		}
 
 		return {
 			backgroundColor: "transparent",
@@ -1453,15 +1469,19 @@ frappe.provide("project_workload_assignment.charts");
 				data: series.project_plan_hours || [],
 			}),
 		];
-		appendWtypeForecastBars(chartSeries, forecastEmp, forecastSup, "forecast", workerWtypeFilter);
+		appendWtypeWorkloadBars(chartSeries, {
+			employee: forecastEmp,
+			supplier: forecastSup,
+			actualEmp,
+			actualSup,
+			forecastStackId: "forecast",
+			workerWtypeFilter,
+			showFact,
+		});
 
 		// if (markLine) {
 		// 	chartSeries[0].markLine = markLine;
 		// }
-
-		if (showFact) {
-			appendWtypeActualBars(chartSeries, actualEmp, actualSup, "actual", workerWtypeFilter);
-		}
 
 		return {
 			backgroundColor: "transparent",
