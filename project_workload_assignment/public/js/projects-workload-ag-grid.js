@@ -88,12 +88,6 @@
                 max-height: none;
                 margin: 0;
             }
-            .project_workload_container .project-workload-ag-grid .ag-cell {
-                height: 100%;
-            }
-            .project_workload_container .project-workload-ag-grid .ag-row {
-                align-items: stretch;
-            }
             .projects-workload-ag-grid .ag-pinned-left-header {
                 --ag-header-column-resize-handle-display: block;
             }
@@ -122,7 +116,6 @@
             .projects-workload-ag-grid .ag-row {
                 border: none !important;
                 background: transparent !important;
-                align-items: stretch;
             }
             .projects-workload-ag-grid .ag-cell {
                 padding: 0 !important;
@@ -130,28 +123,14 @@
                 line-height: normal;
                 border: none !important;
                 overflow: hidden !important;
-                height: 100%;
             }
             .projects-workload-ag-grid .ag-cell-wrapper,
             .projects-workload-ag-grid .ag-cell-value {
                 width: 100%;
                 height: 100%;
-                min-height: 100%;
                 padding: 0 !important;
                 margin: 0 !important;
                 display: block;
-                position: relative;
-            }
-            .projects-workload-ag-grid .ag-cell-value > .projects-workload-cell,
-            .projects-workload-ag-grid .ag-cell-value > .project-workload-cell {
-                position: absolute;
-                top: 0;
-                right: 0;
-                bottom: 0;
-                left: 0;
-                width: 100% !important;
-                height: auto !important;
-                min-height: 0 !important;
             }
             .projects-workload-ag-grid .ag-header-cell-label {
                 justify-content: center;
@@ -664,6 +643,7 @@
             this.onCellDoubleClick = typeof options.onCellDoubleClick === "function"
                 ? options.onCellDoubleClick
                 : null;
+            this.rowHeight = Number(options.rowHeight) || 40;
 
             this.container.classList.add("projects-workload-ag-grid");
             if (options.extraClass) {

@@ -207,32 +207,6 @@ function applyProjectsWorkloadStyle() {
             border: none !important;
             border-radius: 0 !important;
         }
-
-        .projects_workload_report .projects-workload-ag-grid .ag-row {
-            align-items: stretch !important;
-        }
-
-        .projects_workload_report .projects-workload-ag-grid .ag-cell {
-            height: 100% !important;
-        }
-
-        .projects_workload_report .projects-workload-ag-grid .ag-cell-wrapper,
-        .projects_workload_report .projects-workload-ag-grid .ag-cell-value {
-            position: relative !important;
-            height: 100% !important;
-            min-height: 100% !important;
-        }
-
-        .projects_workload_report .projects-workload-ag-grid .ag-cell-value > .projects-workload-cell {
-            position: absolute !important;
-            top: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            min-height: 0 !important;
-        }
         
         .projects_workload_report .projects-workload-table .datatable {
             margin-top: 0 !important;
@@ -743,8 +717,8 @@ function applyProjectsWorkloadStyle() {
             flex-direction: column;
             position: relative;
             width: 100% !important;
-            height: 100% !important;
-            min-height: 100% !important;
+            height: 40px !important;
+            min-height: 40px !important;
             font-size: 8px !important;
             cursor: pointer;
             margin: 0 !important;
@@ -782,8 +756,8 @@ function applyProjectsWorkloadStyle() {
             padding: 0 !important;
             margin: 0 !important;
             width: 100% !important;
-            height: 100% !important;
-            min-height: 100% !important;
+            height: 40px !important;
+            min-height: 40px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -811,8 +785,8 @@ function applyProjectsWorkloadStyle() {
             padding: 0 !important;
             margin: 0 !important;
             width: 100% !important;
-            height: 100% !important;
-            min-height: 100% !important;
+            height: 40px !important;
+            min-height: 40px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -899,8 +873,13 @@ function applyProjectsWorkloadStyle() {
         }
 
         .projects_workload_report .projects-workload-cell.pwr-plan-fact-cell {
-            height: 100% !important;
-            min-height: 100% !important;
+            height: 54px !important;
+            min-height: 54px !important;
+        }
+
+        .projects_workload_report .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .projects-workload-cell:not(.pwr-plan-fact-cell) {
+            height: 54px !important;
+            min-height: 54px !important;
         }
 
         .projects_workload_report .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-center-cols-container .ag-cell {

@@ -49,11 +49,13 @@ class TeamWorkloadFormInput(TypedDict, total=False):
 	"""Входные параметры для отчёта загрузки команды (team_workload_grid)."""
 	user: str | None
 	project: str | None
+	project_portfolio: str | None
 	user_group: str | None
 	view_type: Literal['daily', 'weekly', 'monthly']
 	period_range: Literal['quarter', 'half_year', 'year']
 	period_anchor_date: str | None
 	load_actual: bool | str | int
+	worker_wtype: str | None
 	mode: Literal['full', 'user_totals', 'user_projects']
 	detail_user: str | None
 	limit: str | int
@@ -109,9 +111,12 @@ class ProjectChartFormInput(TypedDict, total=False):
 
 
 @frappe.whitelist()
-def pwr_run_team_workload_grid() -> TeamWorkloadResponse | ErrorTeamWorkloadResponse:
+def pwr_run_team_workload_grid(**kwargs) -> TeamWorkloadResponse | ErrorTeamWorkloadResponse:
 	"""Отчёт загрузки команды (Projects Workload Report). API method: get_projects_workload_data_v2."""
-	form_input: TeamWorkloadFormInput = frappe.form_dict
+	form_input: TeamWorkloadFormInput = frappe._dict(frappe.form_dict)
+	for key, value in kwargs.items():
+		if value is not None:
+			form_input[key] = value
 	return run_get_projects_workload_data_v2(form_input)
 
 
