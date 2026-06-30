@@ -8,7 +8,7 @@
 	frappe.provide("project_workload_assignment.charts");
 
 	const ASSET_BASE = "/assets/project_workload_assignment";
-	const PWR_ASSET_VERSION = "20260630-filters-flow-fix";
+	const PWR_ASSET_VERSION = "20260630-project-grid-min480";
 	const SHARED_CSS = [
 		`${ASSET_BASE}/css/pwr-workload-cells.css`,
 		`${ASSET_BASE}/css/pwr-workload-participant-column.css`,

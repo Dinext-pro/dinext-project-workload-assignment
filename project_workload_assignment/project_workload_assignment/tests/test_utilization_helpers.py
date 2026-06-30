@@ -151,6 +151,27 @@ class TestUtilizationHelpers(FrappeTestCase):
 				"2026-06-01",
 				users_data,
 				util_map,
+				{"sup@example.com": "Supplier"},
+			)
+		)
+
+	def test_is_utilization_eligible_true_when_wtype_empty_defaults_employee(self):
+		users_data = {
+			"emp@example.com": UserWorkloadInfo(
+				wvalid_from="2026-01-01",
+			),
+		}
+		util_map = {
+			"emp@example.com": [
+				{"util_valid_from": "2026-01-01", "utilization": 75.0},
+			],
+		}
+		self.assertTrue(
+			is_utilization_eligible_worker(
+				"emp@example.com",
+				"2026-06-01",
+				users_data,
+				util_map,
 				{},
 			)
 		)

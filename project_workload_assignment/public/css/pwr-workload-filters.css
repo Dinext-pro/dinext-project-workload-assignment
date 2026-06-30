@@ -22,15 +22,20 @@
 	display: none !important;
 }
 
-.projects_workload_report .unified-filters-row,
-.project_workload_container .unified-filters-row {
-	position: relative;
-	display: block !important;
+/* Две колонки: фильтры (динамическая ширина) + кнопки (120px). Селекторы без привязки к .projects_workload_report — фильтры PWR в отдельной секции формы. */
+.unified-filters-row {
+	display: flex !important;
+	flex-direction: row !important;
+	flex-wrap: nowrap !important;
+	align-items: flex-start !important;
+	justify-content: flex-start !important;
+	gap: 8px;
 	width: 100% !important;
 	max-width: 100% !important;
+	min-width: 0 !important;
 	min-height: 28px;
 	margin: 0 !important;
-	padding: 0 108px 0 4px !important;
+	padding: 0 4px !important;
 	box-sizing: border-box;
 	overflow: visible !important;
 	background: transparent !important;
@@ -38,45 +43,43 @@
 	border-radius: 0 !important;
 }
 
-.pwr-filters-flow {
+/* Колонка 1: всё доступное пространство минус 120px у кнопок */
+.unified-filters-row > .pwr-filters-flow {
 	display: flex !important;
+	flex: 1 1 auto !important;
 	flex-direction: row !important;
 	flex-wrap: wrap !important;
 	align-items: center !important;
 	align-content: flex-start !important;
 	justify-content: flex-start !important;
 	gap: 8px;
-	width: 100% !important;
-	max-width: 100% !important;
+	width: auto !important;
+	min-width: 0 !important;
+	max-width: calc(100% - 128px) !important;
 	box-sizing: border-box;
 	overflow: visible !important;
 }
 
-.pwr-filters-group {
-	display: flex;
-	align-items: center;
-	flex-wrap: nowrap;
-	flex: 0 0 auto;
-	gap: 8px;
-	min-height: 28px;
-	margin: 0 !important;
-	padding: 0 !important;
-}
-
-.pwr-filters-group--right,
-.projects_workload_report .filter-buttons,
-.project_workload_container .filter-buttons {
-	position: absolute !important;
-	top: 0 !important;
-	right: 4px !important;
-	z-index: 2;
+/* Колонка 2: фиксированная ширина, кнопки в одну строку */
+.unified-filters-row > .pwr-filters-group--right,
+.unified-filters-row > .filter-buttons {
 	display: flex !important;
+	flex: 0 0 120px !important;
+	flex-shrink: 0 !important;
+	flex-wrap: nowrap !important;
 	flex-direction: row !important;
 	align-items: center !important;
+	align-self: flex-start !important;
 	justify-content: flex-end !important;
 	gap: 4px;
+	width: 120px !important;
+	min-width: 120px !important;
+	max-width: 120px !important;
 	margin: 0 !important;
-	flex-shrink: 0;
+	padding: 0 !important;
+	box-sizing: border-box;
+	overflow: visible !important;
+	white-space: nowrap;
 }
 
 .projects_workload_report .form-filter-wrapper,
@@ -272,20 +275,6 @@
 }
 
 @media screen and (max-width: 768px) {
-	.projects_workload_report .unified-filters-row,
-	.project_workload_container .unified-filters-row {
-		padding-right: 4px !important;
-		padding-bottom: 36px !important;
-	}
-
-	.projects_workload_report .filter-buttons,
-	.project_workload_container .filter-buttons,
-	.pwr-filters-group--right {
-		top: auto !important;
-		bottom: 0 !important;
-		right: 4px !important;
-	}
-
 	.projects_workload_report .form-filter-wrapper,
 	.project_workload_container .form-filter-wrapper {
 		min-width: calc(50% - 8px) !important;

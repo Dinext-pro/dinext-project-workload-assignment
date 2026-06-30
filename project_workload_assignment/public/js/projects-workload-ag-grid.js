@@ -741,16 +741,12 @@
             if (!this.container.classList.contains("project-workload-ag-grid")) {
                 return;
             }
-            const visibleCount = Array.isArray(this._visibleRowIdList)
-                ? this._visibleRowIdList.length
-                : 0;
-            const headerH = this.gridOptions.headerHeight || 70;
-            const rowH = this.rowHeight || 40;
-            const height = headerH + Math.max(visibleCount, 1) * rowH + 2;
-            this.container.style.height = `${height}px`;
-            const tableWrap = this.container.closest(".project-workload-table");
-            if (tableWrap) {
-                tableWrap.style.height = `${height}px`;
+            const charts =
+                typeof project_workload_assignment !== "undefined"
+                    ? project_workload_assignment.charts
+                    : null;
+            if (charts && typeof charts.syncGridViewportHeight === "function") {
+                charts.syncGridViewportHeight(window.cur_frm);
             }
         }
 
