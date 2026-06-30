@@ -116,19 +116,19 @@ function applyProjectWorkloadStyle() {
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 400px;
+            min-height: 480px;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
         }
 
         .project_workload_container .project-workload-table .project-workload-ag-grid {
-            flex: 1 1 auto;
+            flex: 0 0 auto;
             width: 100% !important;
             max-width: 100% !important;
             height: auto !important;
-            min-height: 400px;
-            max-height: max(calc(100vh - 400px), 350px);
+            min-height: 0 !important;
+            max-height: none !important;
             margin: 0 !important;
             padding: 0 !important;
             position: relative;
@@ -143,7 +143,9 @@ function applyProjectWorkloadStyle() {
 
         .project_workload_container .project-workload-table .project-workload-ag-grid .ag-body-viewport,
         .project_workload_container .project-workload-table .project-workload-ag-grid .ag-center-cols-viewport {
-            min-height: 320px;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
         }
 
         .project_workload_container .project-workload-table .project-workload-ag-grid .ag-cell {
@@ -166,6 +168,14 @@ function applyProjectWorkloadStyle() {
 
         .project_workload_container .project-workload-table .project-workload-ag-grid .ag-pinned-left-cols-container .ag-cell {
             background: var(--bg-color);
+        }
+
+        .project_workload_container .project-workload-table .project-workload-ag-grid .ag-center-cols-container .ag-cell {
+            border-right: 1px solid var(--border-color) !important;
+        }
+
+        .project_workload_container .project-workload-table .project-workload-ag-grid .ag-header-viewport .ag-header-cell {
+            border-right: 1px solid var(--border-color) !important;
         }
         
         .project_workload_container .project-workload-table .datatable {
@@ -676,13 +686,13 @@ function applyProjectWorkloadStyle() {
             text-align: center;
             padding: 0 !important;
             display: flex;
-            align-items: center;
+            align-items: stretch;
             justify-content: center;
             flex-direction: column;
             position: relative;
             width: 100% !important;
-            height: 40px !important;
-            min-height: 40px !important;
+            height: 100% !important;
+            min-height: 100% !important;
             font-size: 8px !important;
             cursor: pointer;
             margin: 0 !important;
@@ -698,8 +708,8 @@ function applyProjectWorkloadStyle() {
             padding: 0 !important;
             margin: 0 !important;
             width: 100% !important;
-            height: 40px !important;
-            min-height: 40px !important;
+            height: 100% !important;
+            min-height: 100% !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;

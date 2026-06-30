@@ -162,10 +162,12 @@
             .projects-workload-ag-grid .ag-pinned-left-cols-container {
                 border-right: 1px solid var(--border-color) !important;
             }
-            .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-center-cols-container .ag-cell {
+            .projects-workload-ag-grid .ag-center-cols-container .ag-cell,
+            .project-workload-ag-grid .ag-center-cols-container .ag-cell {
                 border-right: 1px solid var(--border-color) !important;
             }
-            .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-header-viewport .ag-header-cell {
+            .projects-workload-ag-grid .ag-header-viewport .ag-header-cell,
+            .project-workload-ag-grid .ag-header-viewport .ag-header-cell {
                 border-right: 1px solid var(--border-color) !important;
             }
             .projects-workload-ag-grid[data-loading-message]::after {

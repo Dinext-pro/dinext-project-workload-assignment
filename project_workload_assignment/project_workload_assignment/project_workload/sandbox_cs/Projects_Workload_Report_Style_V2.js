@@ -882,6 +882,14 @@ function applyProjectsWorkloadStyle() {
             min-height: 54px !important;
         }
 
+        .projects_workload_report .projects-workload-ag-grid .ag-center-cols-container .ag-cell {
+            border-right: 1px solid var(--border-color) !important;
+        }
+
+        .projects_workload_report .projects-workload-ag-grid .ag-header-viewport .ag-header-cell {
+            border-right: 1px solid var(--border-color) !important;
+        }
+
         .projects_workload_report .projects-workload-ag-grid.projects-workload-ag-grid--show-fact .ag-center-cols-container .ag-cell {
             border-right: 1px solid var(--border-color) !important;
         }
