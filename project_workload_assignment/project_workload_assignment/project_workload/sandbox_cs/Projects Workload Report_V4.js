@@ -220,6 +220,25 @@ function createPwrPeriodNavFilter(container, frm) {
     return $nav;
 }
 
+function getPwrWorkerWtype(options) {
+    if (options && options.workerWtype != null) {
+        return options.workerWtype || '';
+    }
+    return window.pwrWorkerWtype || '';
+}
+
+function reloadProjectsWorkloadTableForWorkerFilter(frm) {
+    const reloadFn = window.debouncedLoadProjectsWorkloadData || debouncedLoadProjectsWorkloadData;
+    if (typeof reloadFn !== 'function') {
+        console.error('[PWR] debouncedLoadProjectsWorkloadData is not available');
+        return;
+    }
+    reloadFn(frm, true, {
+        workerWtype: window.pwrWorkerWtype || '',
+        loadActual: getPwrLoadActualFlag(),
+    });
+}
+
 function createPwrWorkerTypeFilter(container) {
     const workerTypeLabel = __('Worker type');
     const $field = $(`
@@ -236,9 +255,15 @@ function createPwrWorkerTypeFilter(container) {
     $select.on('change', function () {
         window.pwrWorkerWtype = $(this).val() || '';
         const frm = cur_frm;
-        $(document).trigger('pwr-workload-chart-reload', [frm]);
-        if (typeof debouncedLoadProjectsWorkloadData === 'function') {
-            debouncedLoadProjectsWorkloadData(frm, true);
+        console.log('[PWR] worker type filter:', window.pwrWorkerWtype || 'all');
+        if (
+            project_workload_assignment.charts &&
+            typeof project_workload_assignment.charts.setWorkerWtype === 'function'
+        ) {
+            project_workload_assignment.charts.setWorkerWtype(frm, window.pwrWorkerWtype);
+        } else {
+            $(document).trigger('pwr-workload-chart-reload', [frm]);
+            reloadProjectsWorkloadTableForWorkerFilter(frm);
         }
     });
     return $field;
@@ -775,7 +800,7 @@ async function get_projects_workload_data(frm, options = {}) {
     const detailUser = options.detail_user || '';
 
     console.log('=== START PWR V4 DATA LOAD ===');
-    console.log('Request parameters:', {mode, limit, offset, detailUser, view_type: currentViewType, period_range: currentPeriodRange});
+    console.log('Request parameters:', {mode, limit, offset, detailUser, worker_wtype: getPwrWorkerWtype(options), view_type: currentViewType, period_range: currentPeriodRange});
     console.time("get_projects_workload_data_v2");
     
     try {
@@ -790,7 +815,7 @@ async function get_projects_workload_data(frm, options = {}) {
                 period_range: currentPeriodRange,
                 period_anchor_date: window.pwrPeriodAnchorDate || frappe.datetime.get_today(),
                 load_actual: getPwrLoadActualFlag(options),
-                worker_wtype: window.pwrWorkerWtype || '',
+                worker_wtype: getPwrWorkerWtype(options),
                 mode: mode,
                 limit: limit,
                 offset: offset,
@@ -1186,7 +1211,9 @@ function createUnifiedFilterRow(frm, $wrapper) {
         frm.set_value('project', '');
         frm.set_value('project_portfolio', '');
         frm.set_value('user_group', '');
-        
+        window.pwrWorkerWtype = '';
+        $('.pwr-filter-worker-wtype-select').val('');
+
         frm.filters_changed = true;
         debouncedLoadProjectsWorkloadData(frm, true);
     });
@@ -1802,6 +1829,7 @@ $(document).on("pwr-workload-data-reload", function (_event, frm, meta) {
     }
     debouncedLoadProjectsWorkloadData(frm, true, {
         loadActual: getPwrLoadActualFlag(),
+        workerWtype: window.pwrWorkerWtype || '',
     });
 });
 

@@ -3,6 +3,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import frappe
+
 WORKER_WTYPES = ("Employee", "Supplier")
 
 
@@ -22,6 +26,26 @@ def resolve_wtype(user_email: str, users_data: dict, wtypes_map: dict[str, str])
 	if wtype in WORKER_WTYPES:
 		return wtype
 	return "Employee"
+
+
+def apply_worker_wtype_to_pwr_query(q: Any, PWA: Any, worker_wtype_filter: str | None) -> Any:
+	"""SQL-фильтр PWA по Worker.wtype (согласован с resolve_wtype)."""
+	if not worker_wtype_filter or worker_wtype_filter not in WORKER_WTYPES:
+		return q
+
+	Worker = frappe.qb.DocType("Worker")
+	if worker_wtype_filter == "Supplier":
+		return q.inner_join(Worker).on(
+			(Worker.wuser == PWA.user) & (Worker.wtype == "Supplier")
+		)
+
+	q = q.left_join(Worker).on(Worker.wuser == PWA.user)
+	return q.where(
+		(Worker.name.isnull())
+		| (Worker.wtype.isnull())
+		| (Worker.wtype == "")
+		| (Worker.wtype == "Employee")
+	)
 
 
 def filter_users_by_wtype(

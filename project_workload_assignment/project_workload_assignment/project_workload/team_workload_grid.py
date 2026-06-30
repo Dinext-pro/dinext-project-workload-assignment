@@ -232,7 +232,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    user = detail_user
 		
 		frappe.log("Filter values - user: " + str(user) + ", project: " + str(project) + ", project_portfolio: " + str(project_portfolio) + ", user_group: " + str(user_group) + ", mode: " + str(mode))
-		perf_log("PARAMS mode=" + str(mode) + ", limit=" + str(limit) + ", offset=" + str(offset) + ", detail_user=" + str(detail_user) + ", view_type=" + str(view_type) + ", period_range=" + str(period_range) + ", user=" + str(user) + ", project=" + str(project) + ", project_portfolio=" + str(project_portfolio) + ", user_group=" + str(user_group))
+		perf_log("PARAMS mode=" + str(mode) + ", limit=" + str(limit) + ", offset=" + str(offset) + ", detail_user=" + str(detail_user) + ", view_type=" + str(view_type) + ", period_range=" + str(period_range) + ", worker_wtype=" + str(worker_wtype_filter) + ", user=" + str(user) + ", project=" + str(project) + ", project_portfolio=" + str(project_portfolio) + ", user_group=" + str(user_group))
 		
 		# ISS-2026-00865 V2: для user_totals сначала выбираем только страницу пользователей,
 		# а затем грузим назначения только по этой странице. Детализация проектов остается
@@ -283,6 +283,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        project_portfolio=project_portfolio,
 		        user_group_parent=user_group,
 		        use_sql_user_group_join=use_join,
+		        worker_wtype_filter=worker_wtype_filter,
 		    )
 		    total_users = int(bundle.get("total_users") or 0)
 		    page_users = bundle.get("page_users") or []
@@ -313,6 +314,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        user_group_parent=user_group,
 		        use_sql_user_group_join=bool(use_sql_ug),
 		        restrict_users=None,
+		        worker_wtype_filter=worker_wtype_filter,
 		    )
 		    if assignments is None:
 		        assignments = []
@@ -619,6 +621,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            user_group_parent=user_group,
 		            use_sql_user_group_join=bool(use_sql_ug),
 		            restrict_users=restrict_users,
+		            worker_wtype_filter=worker_wtype_filter,
 		        )
 
 		    actual_results = compute_team_actual_hours(

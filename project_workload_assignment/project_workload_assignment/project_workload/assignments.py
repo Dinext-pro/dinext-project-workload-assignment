@@ -83,6 +83,7 @@ def build_pwr_assignment_base_query(
 	task: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
+	worker_wtype_filter: str | None = None,
 ) -> tuple[Any, Any, Any]:
 	"""Базовый qb: PWA + Task, пересечение интервала назначения с [window_start, window_end]."""
 	window_start = _as_date(window_start)
@@ -118,6 +119,12 @@ def build_pwr_assignment_base_query(
 	if task:
 		q = q.where(PWA.task == task)
 
+	from project_workload_assignment.project_workload_assignment.project_workload.worker_wtype_helpers import (
+		apply_worker_wtype_to_pwr_query,
+	)
+
+	q = apply_worker_wtype_to_pwr_query(q, PWA, worker_wtype_filter)
+
 	return q, PWA, Task
 
 
@@ -131,6 +138,7 @@ def fetch_pwr_report_assignments(
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
 	restrict_users: list[str] | None = None,
+	worker_wtype_filter: str | None = None,
 ) -> list[AssignmentRow]:
 	"""Строки как в Get Projects Workload Data_Exp_V2 (поля PWA + project_name)."""
 	q, PWA, Task = build_pwr_assignment_base_query(
@@ -141,6 +149,7 @@ def fetch_pwr_report_assignments(
 		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
+		worker_wtype_filter=worker_wtype_filter,
 	)
 
 	q = q.select(
@@ -205,6 +214,7 @@ def count_pwr_report_distinct_users(
 	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
+	worker_wtype_filter: str | None = None,
 ) -> int:
 	q, PWA, Task = build_pwr_assignment_base_query(
 		window_start,
@@ -214,6 +224,7 @@ def count_pwr_report_distinct_users(
 		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
+		worker_wtype_filter=worker_wtype_filter,
 	)
 	rows = q.select(Count(PWA.user).distinct().as_("total_users")).run(as_dict=True)
 	if not rows:
@@ -232,6 +243,7 @@ def fetch_pwr_report_user_page(
 	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
+	worker_wtype_filter: str | None = None,
 ) -> list[str]:
 	q, PWA, Task = build_pwr_assignment_base_query(
 		window_start,
@@ -241,6 +253,7 @@ def fetch_pwr_report_user_page(
 		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
+		worker_wtype_filter=worker_wtype_filter,
 	)
 	rows = (
 		q.select(PWA.user.as_("user"))
@@ -269,6 +282,7 @@ def fetch_pwr_user_totals_bundle(
 	project_portfolio: str | None = None,
 	user_group_parent: str | None = None,
 	use_sql_user_group_join: bool = False,
+	worker_wtype_filter: str | None = None,
 ) -> UserTotalsBundle:
 	"""Режим user_totals отчёта команды: count, страница пользователей, назначения только по странице."""
 	lim = int(limit or 0) or 20
@@ -281,6 +295,7 @@ def fetch_pwr_user_totals_bundle(
 		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
+		worker_wtype_filter=worker_wtype_filter,
 	)
 	page_users = fetch_pwr_report_user_page(
 		window_start,
@@ -292,6 +307,7 @@ def fetch_pwr_user_totals_bundle(
 		project_portfolio=project_portfolio,
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
+		worker_wtype_filter=worker_wtype_filter,
 	)
 	if not page_users:
 		return {"total_users": total_users, "page_users": [], "assignments": []}
@@ -304,6 +320,7 @@ def fetch_pwr_user_totals_bundle(
 		user_group_parent=user_group_parent,
 		use_sql_user_group_join=use_sql_user_group_join,
 		restrict_users=page_users,
+		worker_wtype_filter=worker_wtype_filter,
 	)
 	return {"total_users": total_users, "page_users": page_users, "assignments": assignments}
 

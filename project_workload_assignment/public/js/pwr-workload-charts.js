@@ -130,7 +130,10 @@ frappe.provide("project_workload_assignment.charts");
 
 	function debouncedReloadTeamWorkloadTable(frm) {
 		if (typeof window.debouncedLoadProjectsWorkloadData === "function") {
-			window.debouncedLoadProjectsWorkloadData(frm, true, { loadActual: isShowFactEnabled() ? 1 : 0 });
+			window.debouncedLoadProjectsWorkloadData(frm, true, {
+				loadActual: isShowFactEnabled() ? 1 : 0,
+				workerWtype: window.pwrWorkerWtype || "",
+			});
 		} else {
 			$(document).trigger("pwr-workload-data-reload", [frm, { showFact: isShowFactEnabled() }]);
 		}
@@ -240,6 +243,9 @@ frappe.provide("project_workload_assignment.charts");
 
 	function syncStateFromGlobals(state) {
 		state.showFact = !!readPwrGlobal("pwrShowFact", false);
+		if (typeof window !== "undefined" && window.pwrWorkerWtype != null) {
+			state.workerWtype = window.pwrWorkerWtype || "";
+		}
 	}
 
 	function sumSeries(a, b) {
