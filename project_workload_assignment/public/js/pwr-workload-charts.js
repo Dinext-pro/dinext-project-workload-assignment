@@ -22,6 +22,8 @@ frappe.provide("project_workload_assignment.charts");
 	const CHART_TOTAL_HEIGHT_PX = CHART_DATA_HEIGHT_PX + LEGEND_BAND_PX;
 	const CHART_HEIGHT = `${CHART_TOTAL_HEIGHT_PX}px`;
 	const CHART_PLOT_HEIGHT = `${CHART_PLOT_HEIGHT_PX}px`;
+	const TEAM_WORKLOAD_GRID_MIN_HEIGHT_PX = 320;
+	const PROJECT_WORKLOAD_GRID_MIN_HEIGHT_PX = 480;
 	let pwrChartThemeObserver = null;
 
 	function getChartMountAnchor($table) {
@@ -479,12 +481,23 @@ frappe.provide("project_workload_assignment.charts");
 		node.style.setProperty("box-sizing", "border-box");
 	}
 
-	function applyGridSlotHeight(frm, $gridRoot, $gridSlot, gridHeight) {
+	function computeWorkloadGridHeight(gridTop, minHeightPx) {
+		const available = window.innerHeight - gridTop - 16;
+		return Math.max(minHeightPx, available);
+	}
+
+	function applyGridSlotHeight(frm, $gridRoot, $gridSlot, gridHeight, isProjectGrid) {
 		setElementBoxHeight($gridSlot, gridHeight);
 		$gridRoot.find(".projects-workload-ag-grid, .project-workload-ag-grid").each(function () {
 			const node = this;
+			const isProject =
+				isProjectGrid || node.classList.contains("project-workload-ag-grid");
 			node.style.setProperty("height", `${gridHeight}px`, "important");
-			node.style.setProperty("min-height", "0", "important");
+			node.style.setProperty(
+				"min-height",
+				isProject ? `${gridHeight}px` : "0",
+				"important"
+			);
 			node.style.setProperty("max-height", `${gridHeight}px`, "important");
 			node.style.setProperty("margin", "0", "important");
 			node.style.setProperty("flex", "1 1 auto");
@@ -538,8 +551,11 @@ frappe.provide("project_workload_assignment.charts");
 		applyWorkloadGridRootLayout($gridRoot);
 
 		const gridTop = $gridSlot[0].getBoundingClientRect().top;
-		const gridHeight = Math.max(320, window.innerHeight - gridTop - 16);
-		applyGridSlotHeight(frm, $gridRoot, $gridSlot, gridHeight);
+		const gridHeight = computeWorkloadGridHeight(
+			gridTop,
+			TEAM_WORKLOAD_GRID_MIN_HEIGHT_PX
+		);
+		applyGridSlotHeight(frm, $gridRoot, $gridSlot, gridHeight, false);
 	}
 
 	function syncProjectWorkloadGridViewportHeight(frm) {
@@ -560,8 +576,11 @@ frappe.provide("project_workload_assignment.charts");
 		applyWorkloadGridRootLayout($gridRoot);
 
 		const gridTop = $gridSlot[0].getBoundingClientRect().top;
-		const gridHeight = Math.max(320, window.innerHeight - gridTop - 16);
-		applyGridSlotHeight(frm, $gridRoot, $gridSlot, gridHeight);
+		const gridHeight = computeWorkloadGridHeight(
+			gridTop,
+			PROJECT_WORKLOAD_GRID_MIN_HEIGHT_PX
+		);
+		applyGridSlotHeight(frm, $gridRoot, $gridSlot, gridHeight, true);
 	}
 
 	function syncWorkloadGridViewportHeight(frm) {
@@ -853,7 +872,29 @@ frappe.provide("project_workload_assignment.charts");
 			backgroundColor: colors.bg,
 			borderColor: colors.border,
 			textStyle: { color: colors.text },
-			valueFormatter: (value) => formatChartLegendValue(value),
+			formatter(params) {
+				const items = Array.isArray(params) ? params : [params];
+				if (!items.length) {
+					return "";
+				}
+				const header = items[0].axisValueLabel || items[0].name || "";
+				const lines = [header];
+				items.forEach((item) => {
+					const raw = Array.isArray(item.value)
+						? item.value[item.value.length - 1]
+						: item.value;
+					if (raw == null || raw === "") {
+						return;
+					}
+					const num = Number(raw);
+					if (!Number.isFinite(num)) {
+						return;
+					}
+					const marker = item.marker || "";
+					lines.push(`${marker}${item.seriesName}: ${num.toFixed(1)}`);
+				});
+				return lines.length > 1 ? lines.join("<br/>") : header;
+			},
 		};
 	}
 
@@ -879,7 +920,7 @@ frappe.provide("project_workload_assignment.charts");
 
 	function resolveLegendSwatchColor(series) {
 		const color = getSeriesLegendColor(series);
-		if (series && series.type === "scatter") {
+		if (series && (series.type === "scatter" || series.pwrUtilizationForecast)) {
 			return PWR_UTILIZATION_SCATTER_COLOR;
 		}
 		return color || "#888";
@@ -932,7 +973,7 @@ frappe.provide("project_workload_assignment.charts");
 			style.marginBottom = "4px";
 			style.borderRadius = "1px";
 		}
-		if (series && series.type === "scatter") {
+		if (series && (series.type === "scatter" || series.pwrUtilizationForecast)) {
 			style.width = "8px";
 			style.height = "8px";
 			style.minWidth = "8px";
@@ -1124,25 +1165,53 @@ frappe.provide("project_workload_assignment.charts");
 		});
 	}
 
+	function normalizeWorkerWtypeFilter(workerWtypeFilter) {
+		if (!workerWtypeFilter || workerWtypeFilter === "all") {
+			return "all";
+		}
+		return workerWtypeFilter;
+	}
+
+	function isWtypeSeriesIncluded(wtype, workerWtypeFilter) {
+		const filter = normalizeWorkerWtypeFilter(workerWtypeFilter);
+		return filter === "all" || filter === wtype;
+	}
+
 	function filterWtypeSeriesData(data, wtype, workerWtypeFilter) {
 		const rows = data || [];
-		if (!workerWtypeFilter || workerWtypeFilter === "all") {
-			return hideZeroChartValues(rows);
-		}
-		if (workerWtypeFilter !== wtype) {
+		if (!isWtypeSeriesIncluded(wtype, workerWtypeFilter)) {
 			return rows.map(() => null);
 		}
 		return hideZeroChartValues(rows);
 	}
 
-	function buildUtilizationScatterData(hours) {
-		return (hours || []).reduce((points, value, index) => {
+	function buildUtilizationForecastSeriesData(hours) {
+		return (hours || []).map((value) => {
 			const hoursValue = Number(value);
-			if (Number.isFinite(hoursValue) && hoursValue > 0) {
-				points.push([index, hoursValue]);
-			}
-			return points;
-		}, []);
+			return Number.isFinite(hoursValue) && hoursValue > 0 ? hoursValue : null;
+		});
+	}
+
+	function buildUtilizationForecastSeries(hours) {
+		// Line + symbols: axis tooltip и category xAxis (scatter [[idx,y]] их не показывает).
+		return {
+			name: __("Utilization forecast"),
+			type: "line",
+			z: 4,
+			showSymbol: true,
+			showAllSymbol: true,
+			symbol: "circle",
+			symbolSize: 7,
+			lineStyle: { width: 0, opacity: 0 },
+			itemStyle: {
+				color: PWR_UTILIZATION_SCATTER_COLOR,
+				opacity: 0.95,
+				borderColor: PWR_UTILIZATION_SCATTER_BORDER,
+				borderWidth: 1,
+			},
+			data: buildUtilizationForecastSeriesData(hours),
+			pwrUtilizationForecast: true,
+		};
 	}
 
 	function buildPwrLineSeries(config) {
@@ -1199,11 +1268,52 @@ frappe.provide("project_workload_assignment.charts");
 		return series;
 	}
 
-	function appendWtypeActualBars(chartSeries, actualEmp, actualSup, stackId) {
-		chartSeries.push(
-			buildWtypeActualBarSeries(__("Employee fact"), stackId, actualEmp, "Employee", true),
-			buildWtypeActualBarSeries(__("Supplier fact"), stackId, actualSup, "Supplier", false)
-		);
+	function appendWtypeActualBars(chartSeries, actualEmp, actualSup, stackId, workerWtypeFilter) {
+		if (isWtypeSeriesIncluded("Employee", workerWtypeFilter)) {
+			chartSeries.push(
+				buildWtypeActualBarSeries(
+					__("Employee fact"),
+					stackId,
+					actualEmp,
+					"Employee",
+					true
+				)
+			);
+		}
+		if (isWtypeSeriesIncluded("Supplier", workerWtypeFilter)) {
+			chartSeries.push(
+				buildWtypeActualBarSeries(
+					__("Supplier fact"),
+					stackId,
+					actualSup,
+					"Supplier",
+					false
+				)
+			);
+		}
+	}
+
+	function appendWtypeForecastBars(chartSeries, employee, supplier, stackId, workerWtypeFilter) {
+		if (isWtypeSeriesIncluded("Employee", workerWtypeFilter)) {
+			chartSeries.push(
+				buildWtypeForecastBarSeries(
+					__("Employee forecast"),
+					stackId,
+					employee,
+					"Employee"
+				)
+			);
+		}
+		if (isWtypeSeriesIncluded("Supplier", workerWtypeFilter)) {
+			chartSeries.push(
+				buildWtypeForecastBarSeries(
+					__("Supplier forecast"),
+					stackId,
+					supplier,
+					"Supplier"
+				)
+			);
+		}
 	}
 
 	function buildChartAriaOptions() {
@@ -1254,19 +1364,8 @@ frappe.provide("project_workload_assignment.charts");
 				z: 1,
 				data: series.capacity_hours || [],
 			}),
-			buildWtypeForecastBarSeries(
-				__("Employee forecast"),
-				"workload",
-				employee,
-				"Employee"
-			),
-			buildWtypeForecastBarSeries(
-				__("Supplier forecast"),
-				"workload",
-				supplier,
-				"Supplier"
-			),
 		];
+		appendWtypeForecastBars(chartSeries, employee, supplier, "workload", workerWtypeFilter);
 
 		if (showUtilization) {
 			chartSeries.splice(
@@ -1280,19 +1379,7 @@ frappe.provide("project_workload_assignment.charts");
 					z: 2,
 					data: series.utilization_plan_hours || [],
 				}),
-				{
-					name: __("Utilization forecast"),
-					type: "scatter",
-					z: 4,
-					symbolSize: 7,
-					itemStyle: {
-						color: PWR_UTILIZATION_SCATTER_COLOR,
-						opacity: 0.95,
-						borderColor: PWR_UTILIZATION_SCATTER_BORDER,
-						borderWidth: 1,
-					},
-					data: buildUtilizationScatterData(series.utilization_forecast_hours),
-				}
+				buildUtilizationForecastSeries(series.utilization_forecast_hours)
 			);
 		}
 
@@ -1301,7 +1388,7 @@ frappe.provide("project_workload_assignment.charts");
 		// }
 
 		if (showFact) {
-			appendWtypeActualBars(chartSeries, actualEmp, actualSup, "actual");
+			appendWtypeActualBars(chartSeries, actualEmp, actualSup, "actual", workerWtypeFilter);
 		}
 
 		return {
@@ -1365,26 +1452,15 @@ frappe.provide("project_workload_assignment.charts");
 				z: 2,
 				data: series.project_plan_hours || [],
 			}),
-			buildWtypeForecastBarSeries(
-				__("Employee forecast"),
-				"forecast",
-				forecastEmp,
-				"Employee"
-			),
-			buildWtypeForecastBarSeries(
-				__("Supplier forecast"),
-				"forecast",
-				forecastSup,
-				"Supplier"
-			),
 		];
+		appendWtypeForecastBars(chartSeries, forecastEmp, forecastSup, "forecast", workerWtypeFilter);
 
 		// if (markLine) {
 		// 	chartSeries[0].markLine = markLine;
 		// }
 
 		if (showFact) {
-			appendWtypeActualBars(chartSeries, actualEmp, actualSup, "actual");
+			appendWtypeActualBars(chartSeries, actualEmp, actualSup, "actual", workerWtypeFilter);
 		}
 
 		return {
@@ -2334,6 +2410,9 @@ frappe.provide("project_workload_assignment.charts");
 			function () {
 				if (cur_frm && cur_frm.doctype === "Project") {
 					requestProjectChartReload(cur_frm);
+					requestAnimationFrame(() => {
+						syncProjectWorkloadGridViewportHeight(cur_frm);
+					});
 				}
 			}
 		);

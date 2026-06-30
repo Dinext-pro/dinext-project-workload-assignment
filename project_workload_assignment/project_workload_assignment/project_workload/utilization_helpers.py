@@ -11,6 +11,9 @@ from project_workload_assignment.project_workload_assignment.project_workload.ty
 	ProjectUtilizationRow,
 	UserWorkloadInfo,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.worker_wtype_helpers import (
+	resolve_wtype,
+)
 
 WorkerUtilizationMap = dict[str, list[dict[str, str | float]]]
 ProjectUtilizationMap = dict[str, list[ProjectUtilizationRow]]
@@ -83,10 +86,10 @@ def is_utilization_eligible_worker(
 	wtypes_map: dict[str, str],
 ) -> bool:
 	"""Employee + активный wvalid + задан % утилизации на дату."""
-	user_data = users_data.get(user_email) or {}
-	wtype = user_data.get("wtype") or wtypes_map.get(user_email) or ""
-	if wtype != "Employee":
+	if resolve_wtype(user_email, users_data, wtypes_map) != "Employee":
 		return False
+
+	user_data = users_data.get(user_email) or {}
 
 	if not is_worker_active_on_date(
 		user_data.get("wvalid_from"),
