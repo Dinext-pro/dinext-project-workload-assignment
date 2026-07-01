@@ -5,11 +5,13 @@ ISS-2026-00865: расчёт PWR/PWE/прогноза — только здес�
 Server Script на сайте — тонкие обёртки (`frappe.call` на методы ниже), без копии ядра в `script`.
 ISS-2026-00926: новый DinextAgGrid UI не меняет эти entrypoints; не возвращать логику в dinext_common.
 
-Четыре точки входа (whitelist → api_method Server Script → модуль ядра):
+Шесть точек входа (whitelist → api_method Server Script → модуль ядра):
 - pwr_run_team_workload_grid → get_projects_workload_data_v2 → team_workload_grid.run_get_projects_workload_data_v2
 - pwr_run_project_workload_tree → get_project_workload_data → single_project_workload_tree.run_get_project_workload_data
 - pwr_run_tasks_forecast_workload → get_tasks_forecast_and_workload_v2 → tasks_forecast_workload.run_get_tasks_forecast_and_workload
 - pwr_run_add_forecast_from_work_efforts → add_forecast_from_work_efforts → forecast_from_work_efforts.run_add_forecast_from_work_efforts
+- check_workload_overload → check_workload_overload → workload_overload.run_check_workload_overload
+- update_forecast_from_assignments → update_forecast_from_assignments → forecast_from_assignments.run_update_forecast_from_assignments
 """
 
 from typing import TypedDict, Literal, TYPE_CHECKING
@@ -40,6 +42,12 @@ from project_workload_assignment.project_workload_assignment.project_workload.ch
 )
 from project_workload_assignment.project_workload_assignment.project_workload.forecast_from_work_efforts import (
 	run_add_forecast_from_work_efforts,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.workload_overload import (
+	run_check_workload_overload,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.forecast_from_assignments import (
+	run_update_forecast_from_assignments,
 )
 
 
@@ -152,3 +160,39 @@ def pwr_run_project_workload_charts() -> ChartResponse:
 def pwr_run_add_forecast_from_work_efforts():
 	"""Add P&L forecast from work efforts. API method: add_forecast_from_work_efforts."""
 	return run_add_forecast_from_work_efforts(frappe.form_dict)
+
+
+class CheckWorkloadOverloadFormInput(TypedDict, total=False):
+	"""Входные параметры для проверки перегрузки (check_workload_overload)."""
+	project: str
+	periods: list[ForecastPeriodInput] | None
+	view_options: str
+
+
+class UpdateItem(TypedDict, total=False):
+	"""Одна запись обновления прогноза для update_forecast_from_assignments."""
+	task: str
+	role: str
+	year: int
+	month: int
+	assigned_hours: float
+
+
+class UpdateForecastFromAssignmentsFormInput(TypedDict, total=False):
+	"""Входные параметры для обновления прогноза (update_forecast_from_assignments)."""
+	project: str
+	updates_json: str
+
+
+@frappe.whitelist()
+def check_workload_overload():
+	"""Проверяет перегрузку PWA относительно прогноза PWE. API method: check_workload_overload."""
+	form_input: CheckWorkloadOverloadFormInput = frappe.form_dict
+	return run_check_workload_overload(form_input)
+
+
+@frappe.whitelist()
+def update_forecast_from_assignments():
+	"""Обновляет pwea_expected по назначениям PWA. API method: update_forecast_from_assignments."""
+	form_input: UpdateForecastFromAssignmentsFormInput = frappe.form_dict
+	return run_update_forecast_from_assignments(form_input)

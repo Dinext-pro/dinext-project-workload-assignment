@@ -300,6 +300,7 @@ def _run_api_server_script(api_method: str, form_data: dict) -> dict:
 
 
 def call_check_workload_overload(project: str, periods: list, view_options: str) -> dict:
+	"""Вызов через активный Server Script (SS-путь)."""
 	return _run_api_server_script(
 		"check_workload_overload",
 		{
@@ -311,7 +312,7 @@ def call_check_workload_overload(project: str, periods: list, view_options: str)
 
 
 def call_update_forecast_from_assignments(project: str, updates: list[dict]) -> dict:
-	"""Точка входа Server Script update_forecast_from_assignments."""
+	"""Вызов через активный Server Script (SS-путь)."""
 	return _run_api_server_script(
 		"update_forecast_from_assignments",
 		{
@@ -319,6 +320,33 @@ def call_update_forecast_from_assignments(project: str, updates: list[dict]) -> 
 			"updates_json": json.dumps(updates, ensure_ascii=False),
 		},
 	)
+
+
+# ==================== Python-путь (прямой вызов модуля) ====================
+
+def call_check_workload_overload_python(project: str, periods: list, view_options: str) -> dict:
+	"""Прямой вызов Python-модуля workload_overload (без SS)."""
+	from project_workload_assignment.project_workload_assignment.project_workload.workload_overload import (
+		run_check_workload_overload,
+	)
+
+	return run_check_workload_overload(frappe._dict({
+		"project": project,
+		"periods": periods,
+		"view_options": view_options,
+	}))
+
+
+def call_update_forecast_from_assignments_python(project: str, updates: list[dict]) -> dict:
+	"""Прямой вызов Python-модуля forecast_from_assignments (без SS)."""
+	from project_workload_assignment.project_workload_assignment.project_workload.forecast_from_assignments import (
+		run_update_forecast_from_assignments,
+	)
+
+	return run_update_forecast_from_assignments(frappe._dict({
+		"project": project,
+		"updates_json": json.dumps(updates, ensure_ascii=False),
+	}))
 
 
 def get_pwe_expected_by_fy_month(pwe_name: str, fiscal_year: str, month: int) -> float:
