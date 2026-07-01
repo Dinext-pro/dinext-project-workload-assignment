@@ -32,7 +32,7 @@ function start_pwa_dialog(cbfunc, task) {
         limit: 0
     }).then(pwas => {
         frappe.call({
-            method: 'calculate_timesheet_limits',
+            method: 'dinext_projects.dinext_projects.work_efforts_api.calculate_timesheet_limits',
             args: {
                 timesheet_name: "",
                 positions: [ {

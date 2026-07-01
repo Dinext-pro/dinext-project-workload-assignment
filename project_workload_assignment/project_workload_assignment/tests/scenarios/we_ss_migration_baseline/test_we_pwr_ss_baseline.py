@@ -66,7 +66,7 @@ class TestWEPwrSsMigrationBaseline(FrappeTestCase):
 		golden.pop("_comment", None)
 
 		frappe.set_user("Administrator")
-		raw = call_check_workload_overload(
+		raw = call_check_workload_overload_python(
 			DEPENDENCY_PROJECT,
 			TC01_PERIODS,
 			TC01_VIEW_OPTIONS,
@@ -137,7 +137,7 @@ class TestWEPwrSsMigrationBaseline(FrappeTestCase):
 		self.assertAlmostEqual(before, float(ctx["initial_forecast"]), delta=0.01)
 
 		frappe.set_user("Administrator")
-		result = call_update_forecast_from_assignments(
+		result = call_update_forecast_from_assignments_python(
 			project,
 			[
 				{
