@@ -501,7 +501,7 @@ function ensureProjectWorkEffortsTasks(frm) {
 		}
 
 		frappe.call({
-			method: "get_work_efforts_consolidated_data",
+			method: "dinext_projects.dinext_projects.work_efforts_api.get_work_efforts_consolidated_data",
 			args: {
 				project: frm.doc.name,
 				view_options: frm.view_options || frm.budget_view_options || __("Forecast and actual"),
