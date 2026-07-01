@@ -1172,6 +1172,9 @@ frappe.provide("project_workload_assignment.charts");
 
 	const PWR_UTILIZATION_FORECAST_COLOR = "#c9a66b";
 	const PWR_UTILIZATION_FORECAST_BORDER = "#a67c52";
+	// fact bars z:6 — utilization series must render above them when «Показать факт» включён
+	const PWR_Z_UTILIZATION_PLAN = 7;
+	const PWR_Z_UTILIZATION_FORECAST = 8;
 
 	function hideZeroChartValues(data) {
 		return (data || []).map((value) => {
@@ -1212,11 +1215,11 @@ frappe.provide("project_workload_assignment.charts");
 		return {
 			name: __("Utilization forecast"),
 			type: "line",
-			z: 4,
+			z: PWR_Z_UTILIZATION_FORECAST,
 			showSymbol: true,
 			showAllSymbol: true,
 			symbol: "circle",
-			symbolSize: 7,
+			symbolSize: 8,
 			lineStyle: { width: 0, opacity: 0 },
 			itemStyle: {
 				color: PWR_UTILIZATION_FORECAST_COLOR,
@@ -1407,7 +1410,7 @@ frappe.provide("project_workload_assignment.charts");
 					color: PWR_LINE_COLORS.utilizationPlan,
 					lineOpacity: 0.85,
 					areaOpacity: 0.12,
-					z: 2,
+					z: PWR_Z_UTILIZATION_PLAN,
 					data: series.utilization_plan_hours || [],
 				}),
 				buildUtilizationForecastSeries(series.utilization_forecast_hours)
@@ -1500,7 +1503,7 @@ frappe.provide("project_workload_assignment.charts");
 					color: PWR_LINE_COLORS.utilizationPlan,
 					lineOpacity: 0.85,
 					areaOpacity: 0.12,
-					z: 2,
+					z: PWR_Z_UTILIZATION_PLAN,
 					data: series.utilization_plan_hours || [],
 				}),
 				buildUtilizationForecastSeries(series.utilization_forecast_hours)
