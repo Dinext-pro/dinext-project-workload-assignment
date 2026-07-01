@@ -1,0 +1,105 @@
+{
+  "_comment": "WE-SS-MIG-PWR TC-01: golden ответ Server Script check_workload_overload на dependency project TEST-V15.106.0 (HEAD). Обновлять через capture_golden_pwr.py только при намеренном изменении контракта.",
+  "project": "TEST-V15.106.0 (HEAD)",
+  "view_options": "Прогноз и факт",
+  "periods": [
+    {
+      "year": 2026,
+      "month": 6,
+      "is_past": false
+    },
+    {
+      "year": 2026,
+      "month": 7,
+      "is_past": false
+    },
+    {
+      "year": 2026,
+      "month": 8,
+      "is_past": false
+    },
+    {
+      "year": 2026,
+      "month": 9,
+      "is_past": false
+    },
+    {
+      "year": 2026,
+      "month": 10,
+      "is_past": false
+    },
+    {
+      "year": 2026,
+      "month": 11,
+      "is_past": false
+    },
+    {
+      "year": 2026,
+      "month": 12,
+      "is_past": false
+    }
+  ],
+  "total_overloads": 2,
+  "affected_tasks": 2,
+  "affected_users": 2,
+  "overloads": [
+    {
+      "task": "TASK-2026-00139",
+      "task_subject": "Разработка",
+      "role": "Разработчик",
+      "total_forecast": 100.0,
+      "total_assigned": 184.0,
+      "overload": 84.0,
+      "affected_users": 1,
+      "months": [
+        {
+          "year": 2026,
+          "month": 7,
+          "forecast_hours": 100.0,
+          "assigned_hours": 184.0,
+          "users": [
+            {
+              "user": "dinext.test.user03@example.com",
+              "assigned": 184.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "task": "TASK-2026-00140",
+      "task_subject": "Тестирование",
+      "role": "Руководитель проекта",
+      "total_forecast": 0.0,
+      "total_assigned": 100.0,
+      "overload": 100.0,
+      "affected_users": 1,
+      "months": [
+        {
+          "year": 2026,
+          "month": 7,
+          "forecast_hours": 0.0,
+          "assigned_hours": 95.83,
+          "users": [
+            {
+              "user": "dinext.test.user04@example.com",
+              "assigned": 95.83
+            }
+          ]
+        },
+        {
+          "year": 2026,
+          "month": 8,
+          "forecast_hours": 0.0,
+          "assigned_hours": 4.17,
+          "users": [
+            {
+              "user": "dinext.test.user04@example.com",
+              "assigned": 4.17
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
