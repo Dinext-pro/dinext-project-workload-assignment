@@ -81,6 +81,7 @@ class ProjectChartFormDict(TypedDict, total=False):
 	date_to: str | None
 	worker_wtype: str | None
 	load_actual: bool | str | int
+	load_utilization: bool | str | int
 
 
 def _parse_bool(value, default: bool = False) -> bool:
@@ -481,6 +482,7 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		date_to = fd.get("date_to") or frappe.utils.add_months(date_from, 1)
 		worker_wtype_filter = normalize_worker_wtype_filter(fd.get("worker_wtype"))
 		load_actual = _parse_bool(fd.get("load_actual"))
+		load_utilization = _parse_bool(fd.get("load_utilization"))
 
 		project_row = frappe.db.get_value(
 			"Project",
@@ -572,6 +574,44 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 				users=users_in_scope,
 			)
 
+		util_plan = _zero_series(len(periods))
+		util_forecast = _zero_series(len(periods))
+		if load_utilization:
+			from project_workload_assignment.project_workload_assignment.project_workload.context_loaders import (
+				load_project_utilization_tables,
+				load_worker_utilization_tables,
+			)
+			from project_workload_assignment.project_workload_assignment.project_workload.utilization_forecast import (
+				compute_team_utilization_forecast_series,
+			)
+			from project_workload_assignment.project_workload_assignment.project_workload.utilization_plan import (
+				compute_team_utilization_plan_series,
+			)
+
+			worker_utilization_map = load_worker_utilization_tables(users_in_scope)
+			project_utilization_map = load_project_utilization_tables([project])
+			util_plan = compute_team_utilization_plan_series(
+				wl_ctx,
+				users_in_scope,
+				periods,
+				view_type,
+				worker_utilization_map,
+				users_data,
+				wtypes_map,
+			)
+			util_forecast = compute_team_utilization_forecast_series(
+				wl_ctx,
+				assignments,
+				users_data,
+				wtypes_map,
+				worker_utilization_map,
+				project_utilization_map,
+				periods,
+				view_type,
+				date_to_period_key,
+				period_index,
+			)
+
 		series = ChartSeries(
 			project_plan_hours=project_plan,
 			team_capacity_hours=team_capacity,
@@ -579,13 +619,16 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		)
 		if load_actual:
 			series["actual_hours_by_wtype"] = actual_by_wtype
+		if load_utilization:
+			series["utilization_plan_hours"] = util_plan
+			series["utilization_forecast_hours"] = util_forecast
 
 		return ChartResponse(
 			periods=periods,
 			series=series,
 			meta=ChartMeta(
 				worker_wtype_filter=worker_wtype_filter or "all",
-				utilization_loaded=False,
+				utilization_loaded=load_utilization,
 				actual_loaded=load_actual,
 				users_in_scope=len(users_in_scope),
 				project=project,

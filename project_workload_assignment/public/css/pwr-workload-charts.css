@@ -214,22 +214,13 @@
 }
 
 .pwr-workload-charts-root .pwr-chart-utilization-field {
-	display: flex;
-	align-items: flex-start;
-	align-self: flex-start;
-	gap: 6px;
 	min-height: 24px;
 	font-size: 11px;
 	white-space: normal;
-	margin: 4px 0 0;
-	padding: 0;
 }
 
 .pwr-workload-charts-root .pwr-chart-utilization-field label {
-	display: flex;
-	align-items: center;
 	gap: 6px;
-	margin: 0;
 	cursor: pointer;
 }
 

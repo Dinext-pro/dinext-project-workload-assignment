@@ -5,6 +5,17 @@ frappe.provide("project_workload_assignment.pwrShared");
 	const NS = project_workload_assignment.pwrShared;
 	let agGridPromise = null;
 
+	/** Frappe/Bootstrap 4 utilities for filter toolbar (keep pwr-* hooks for domain CSS). */
+	const PWR_FILTER_BS = {
+		row: "d-flex flex-nowrap align-items-start w-100",
+		flow: "d-flex flex-wrap align-items-center",
+		buttons: "d-flex flex-shrink-0 align-items-center justify-content-end",
+		field: "d-flex align-items-center flex-shrink-0",
+		label: "d-flex align-items-center mb-0",
+		btn: "d-inline-flex align-items-center justify-content-center",
+	};
+	const PWR_FILTER_BTN_CLASS = "btn btn-default btn-sm " + PWR_FILTER_BS.btn;
+
 	function escapeHtml(value) {
 		return frappe.utils.escape_html(String(value == null ? "" : value));
 	}
@@ -127,18 +138,32 @@ frappe.provide("project_workload_assignment.pwrShared");
 			return;
 		}
 		$control.find(".help-box, .clearfix").remove();
-		$control.find(".form-group, .frappe-control, .control-input-wrapper, .control-input").css({
-			marginBottom: 0,
-			paddingBottom: 0,
-		});
+		$control
+			.find(".form-group, .frappe-control, .control-input-wrapper, .control-input")
+			.addClass("mb-0 pb-0");
+	}
+
+	function createPwrFilterRowShell($wrapper, options) {
+		const opts = options || {};
+		const extraRowClass = opts.extraRowClass || "";
+		const controls = $(
+			`<div class="projects-workload-controls unified-filters-row pwr-unified-filters-row ${PWR_FILTER_BS.row} ${extraRowClass}"></div>`
+		).appendTo($wrapper);
+		const $flow = $(`<div class="pwr-filters-flow ${PWR_FILTER_BS.flow}"></div>`).appendTo(
+			controls
+		);
+		const $buttons = $(
+			`<div class="pwr-filters-group pwr-filters-group--right filter-buttons ${PWR_FILTER_BS.buttons}"></div>`
+		).appendTo(controls);
+		return { controls, $flow, buttonsContainer: $buttons, $buttons };
 	}
 
 	function createPwrPeriodNavFilter(container, frm, options) {
 		const opts = options || {};
 		const $nav = $(`
-			<div class="pwr-chart-period-nav pwr-filter-period-nav">
-				<button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-prev" title="${escapeHtml(__("Previous month"))}">&lt;</button>
-				<button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-next" title="${escapeHtml(__("Next month"))}">&gt;</button>
+			<div class="pwr-chart-period-nav pwr-filter-period-nav d-inline-flex align-items-center flex-shrink-0">
+				<button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-prev ${PWR_FILTER_BS.btn}" title="${escapeHtml(__("Previous month"))}">&lt;</button>
+				<button type="button" class="btn btn-xs btn-default pwr-chart-period-nav-btn pwr-chart-period-next ${PWR_FILTER_BS.btn}" title="${escapeHtml(__("Next month"))}">&gt;</button>
 			</div>
 		`).appendTo(container);
 
@@ -202,7 +227,7 @@ frappe.provide("project_workload_assignment.pwrShared");
 		const opts = options || {};
 		const workerTypeLabel = __("Worker type");
 		const $field = $(`
-			<div class="pwr-filter-field pwr-filter-worker-wtype">
+			<div class="pwr-filter-field pwr-filter-worker-wtype ${PWR_FILTER_BS.field}">
 				<select class="form-control input-sm pwr-filter-worker-wtype-select" title="${escapeHtml(workerTypeLabel)}">
 					<option value="">${escapeHtml(__("All"))}</option>
 					<option value="Employee">${escapeHtml(__("Employee"))}</option>
@@ -234,8 +259,8 @@ frappe.provide("project_workload_assignment.pwrShared");
 		const opts = options || {};
 		const showFactLabel = __("Show fact");
 		const $field = $(`
-			<div class="pwr-filter-field pwr-filter-show-fact">
-				<label>
+			<div class="pwr-filter-field pwr-filter-show-fact ${PWR_FILTER_BS.field}">
+				<label class="${PWR_FILTER_BS.label}">
 					<input type="checkbox" class="pwr-filter-show-fact-checkbox" />
 					<span>${escapeHtml(showFactLabel)}</span>
 				</label>
@@ -284,6 +309,8 @@ frappe.provide("project_workload_assignment.pwrShared");
 	}
 
 	Object.assign(NS, {
+		PWR_FILTER_BS,
+		PWR_FILTER_BTN_CLASS,
 		isPwrShowFactEnabled,
 		getPwrLoadActualFlag,
 		getPwrRowHeight,
@@ -293,6 +320,7 @@ frappe.provide("project_workload_assignment.pwrShared");
 		getPwrPeriodAnchorLabel,
 		triggerPwrWorkloadDataReload,
 		compactPwrFilterControl,
+		createPwrFilterRowShell,
 		createPwrPeriodNavFilter,
 		createPwrWorkerTypeFilter,
 		createPwrShowFactFilter,

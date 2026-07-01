@@ -245,6 +245,7 @@ frappe.provide("project_workload_assignment.charts");
 
 	function syncStateFromGlobals(state) {
 		state.showFact = !!readPwrGlobal("pwrShowFact", false);
+		state.loadUtilization = !!readPwrGlobal("pwrLoadUtilization", false);
 		if (typeof window !== "undefined" && window.pwrWorkerWtype != null) {
 			state.workerWtype = window.pwrWorkerWtype || "";
 		}
@@ -313,6 +314,22 @@ frappe.provide("project_workload_assignment.charts");
 		triggerShowFactReload(frm, state);
 	}
 
+	function setLoadUtilization(frm, value) {
+		frm = resolveActiveWorkloadFrm(frm);
+		window.pwrLoadUtilization = !!value;
+		const state = ensureState(frm);
+		state.loadUtilization = !!value;
+		triggerWorkloadDataReload(frm);
+	}
+
+	function getLoadUtilization(frm) {
+		const state = frm ? ensureState(frm) : null;
+		if (state) {
+			return !!state.loadUtilization;
+		}
+		return !!readPwrGlobal("pwrLoadUtilization", false);
+	}
+
 	function getShowFact(frm) {
 		return isShowFactEnabled(frm ? ensureState(frm) : null);
 	}
@@ -374,6 +391,7 @@ frappe.provide("project_workload_assignment.charts");
 			from,
 			to,
 			getWorkerWtype(state),
+			state.loadUtilization ? "1" : "0",
 			isShowFactEnabled(state) ? "1" : "0",
 		].join("|");
 	}
@@ -921,7 +939,7 @@ frappe.provide("project_workload_assignment.charts");
 	function resolveLegendSwatchColor(series) {
 		const color = getSeriesLegendColor(series);
 		if (series && (series.type === "scatter" || series.pwrUtilizationForecast)) {
-			return PWR_UTILIZATION_SCATTER_COLOR;
+			return PWR_UTILIZATION_FORECAST_COLOR;
 		}
 		return color || "#888";
 	}
@@ -933,16 +951,13 @@ frappe.provide("project_workload_assignment.charts");
 		if (panel.$legendBar && panel.$legendBar.length) {
 			return panel.$legendBar;
 		}
-		const $bar = $('<div class="pwr-chart-legend-bar"></div>').css({
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "flex-start",
-			flexWrap: "wrap",
+		const $bar = $(
+			'<div class="pwr-chart-legend-bar d-flex align-items-center flex-wrap px-2"></div>'
+		).css({
 			gap: "8px 16px",
 			height: `${LEGEND_BAND_PX}px`,
 			minHeight: `${LEGEND_BAND_PX}px`,
 			maxHeight: `${LEGEND_BAND_PX}px`,
-			padding: "0 8px",
 			boxSizing: "border-box",
 			overflow: "hidden",
 			background: "var(--ag-background-color, var(--bg-color))",
@@ -979,7 +994,7 @@ frappe.provide("project_workload_assignment.charts");
 			style.minWidth = "8px";
 			style.minHeight = "8px";
 			style.borderRadius = "50%";
-			style.border = `1px solid ${PWR_UTILIZATION_SCATTER_BORDER}`;
+			style.border = `1px solid ${PWR_UTILIZATION_FORECAST_BORDER}`;
 		}
 		return style;
 	}
@@ -995,13 +1010,9 @@ frappe.provide("project_workload_assignment.charts");
 			return;
 		}
 		items.forEach((series) => {
-			const $item = $('<span class="pwr-chart-legend-item"></span>').css({
-				display: "inline-flex",
-				alignItems: "center",
+			const $item = $('<span class="pwr-chart-legend-item d-inline-flex align-items-center flex-shrink-0 mr-3"></span>').css({
 				gap: "6px",
-				marginRight: "16px",
 				whiteSpace: "nowrap",
-				flex: "0 0 auto",
 			});
 			const $swatch = $('<span class="pwr-chart-legend-swatch"></span>').css(
 				buildLegendSwatchStyle(series)
@@ -1153,14 +1164,14 @@ frappe.provide("project_workload_assignment.charts");
 		teamCapacityLine: "#243660",
 		teamCapacityArea: "#243660",
 		projectPlan: "#91cc75",
-		utilizationPlan: "#85a5ff",
+		utilizationPlan: "#5d4037",
 	};
 
 	const PWR_CAPACITY_LINE_OPACITY = 0.18;
 	const PWR_CAPACITY_AREA_OPACITY = 0.28;
 
-	const PWR_UTILIZATION_SCATTER_COLOR = "#2f54eb";
-	const PWR_UTILIZATION_SCATTER_BORDER = "#1d39c4";
+	const PWR_UTILIZATION_FORECAST_COLOR = "#c9a66b";
+	const PWR_UTILIZATION_FORECAST_BORDER = "#a67c52";
 
 	function hideZeroChartValues(data) {
 		return (data || []).map((value) => {
@@ -1208,9 +1219,9 @@ frappe.provide("project_workload_assignment.charts");
 			symbolSize: 7,
 			lineStyle: { width: 0, opacity: 0 },
 			itemStyle: {
-				color: PWR_UTILIZATION_SCATTER_COLOR,
+				color: PWR_UTILIZATION_FORECAST_COLOR,
 				opacity: 0.95,
-				borderColor: PWR_UTILIZATION_SCATTER_BORDER,
+				borderColor: PWR_UTILIZATION_FORECAST_BORDER,
 				borderWidth: 1,
 			},
 			data: buildUtilizationForecastSeriesData(hours),
@@ -1447,6 +1458,7 @@ frappe.provide("project_workload_assignment.charts");
 			workerWtypeFilter
 		);
 		const showFact = !!meta.actual_loaded;
+		const showUtilization = !!meta.utilization_loaded;
 		// markLine временно отключён — согласование с архитектором (ISS-2026-00002).
 		// const markLine = buildCurrentPeriodMarkLine(periods, viewType, labels, themeColors);
 
@@ -1478,6 +1490,22 @@ frappe.provide("project_workload_assignment.charts");
 			workerWtypeFilter,
 			showFact,
 		});
+
+		if (showUtilization) {
+			chartSeries.splice(
+				2,
+				0,
+				buildPwrLineSeries({
+					name: __("Utilization plan"),
+					color: PWR_LINE_COLORS.utilizationPlan,
+					lineOpacity: 0.85,
+					areaOpacity: 0.12,
+					z: 2,
+					data: series.utilization_plan_hours || [],
+				}),
+				buildUtilizationForecastSeries(series.utilization_forecast_hours)
+			);
+		}
 
 		// if (markLine) {
 		// 	chartSeries[0].markLine = markLine;
@@ -1794,11 +1822,11 @@ frappe.provide("project_workload_assignment.charts");
 
 		const $filters = $('<div class="pwr-chart-filters"></div>').appendTo(panel.$gutterFilters);
 
-		if (options.showUtilizationToggle) {
+		if (options.showUtilizationToggle !== false) {
 			const utilizationLabel = __("Add utilization");
 			const $field = $(
-				`<div class="pwr-chart-filter-field pwr-chart-utilization-field">
-					<label>
+				`<div class="pwr-chart-filter-field pwr-chart-utilization-field d-flex align-items-start flex-shrink-0 mt-1">
+					<label class="d-flex align-items-center mb-0">
 						<input type="checkbox" class="pwr-chart-utilization-checkbox" />
 						<span>${frappe.utils.escape_html(utilizationLabel)}</span>
 					</label>
@@ -1808,10 +1836,21 @@ frappe.provide("project_workload_assignment.charts");
 				.find(".pwr-chart-utilization-checkbox")
 				.prop("checked", !!state.loadUtilization)
 				.on("change", function () {
-					state.loadUtilization = $(this).is(":checked");
+					const frm = (options && options.frm) || window.cur_frm;
+					const checked = $(this).is(":checked");
+					if (
+						project_workload_assignment.charts &&
+						typeof project_workload_assignment.charts.setLoadUtilization === "function"
+					) {
+						project_workload_assignment.charts.setLoadUtilization(frm, checked);
+						return;
+					}
+					state.loadUtilization = checked;
+					window.pwrLoadUtilization = checked;
 					reloadFn();
 				});
 		}
+
 		state._controlsReady = true;
 	}
 
@@ -2184,6 +2223,7 @@ frappe.provide("project_workload_assignment.charts");
 				date_from: from,
 				date_to: to,
 				worker_wtype: getWorkerWtype(state),
+				load_utilization: state.loadUtilization ? 1 : 0,
 				load_actual: isShowFactEnabled(state) ? 1 : 0,
 			},
 			callback(r) {
@@ -2248,7 +2288,6 @@ frappe.provide("project_workload_assignment.charts");
 				const $anchor = getChartMountAnchor($table);
 				const panel = ensureChartPanel($anchor, state, __("Team workload summary"));
 				ensurePanelControls(panel, state, () => requestTeamChartReload(frm), {
-					showUtilizationToggle: true,
 					frm,
 				});
 				ensureChartVisibilityToggle(frm, state);
@@ -2287,7 +2326,6 @@ frappe.provide("project_workload_assignment.charts");
 				const $mountAnchor = getChartMountAnchor($anchor);
 				const panel = ensureChartPanel($mountAnchor, state, __("Project workload summary"));
 				ensurePanelControls(panel, state, () => requestProjectChartReload(frm), {
-					showUtilizationToggle: false,
 					frm,
 				});
 				ensureChartVisibilityToggle(frm, state);
@@ -2459,6 +2497,8 @@ frappe.provide("project_workload_assignment.charts");
 	project_workload_assignment.charts.isShowFactEnabled = getShowFact;
 	project_workload_assignment.charts.getShowFact = getShowFact;
 	project_workload_assignment.charts.setShowFact = setShowFact;
+	project_workload_assignment.charts.setLoadUtilization = setLoadUtilization;
+	project_workload_assignment.charts.getLoadUtilization = getLoadUtilization;
 	project_workload_assignment.charts.setWorkerWtype = setWorkerWtype;
 	project_workload_assignment.charts.getWorkerWtype = getWorkerWtype;
 	project_workload_assignment.charts.getPeriodAnchorLabel = formatPeriodAnchorLabel;
