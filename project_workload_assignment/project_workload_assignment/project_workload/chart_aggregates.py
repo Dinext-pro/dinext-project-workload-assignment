@@ -514,7 +514,8 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 				"date_to": a["date_to"],
 				"workload": a.get("workload"),
 				"wl_value": a.get("wl_value"),
-				"project_name": project_row.get("project_name") or project if project_row else project,
+				"project": project,
+				"project_name": project,
 			}
 			for a in assignments_raw
 		]
