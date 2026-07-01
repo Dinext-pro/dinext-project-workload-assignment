@@ -8,7 +8,7 @@
 	frappe.provide("project_workload_assignment.charts");
 
 	const ASSET_BASE = "/assets/project_workload_assignment";
-	const PWR_ASSET_VERSION = "20260701-utilization-gutter-checkbox";
+	const PWR_ASSET_VERSION = "20260702-utilization-forecast-z";
 	const SHARED_CSS = [
 		`${ASSET_BASE}/css/pwr-workload-cells.css`,
 		`${ASSET_BASE}/css/pwr-workload-participant-column.css`,
