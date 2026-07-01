@@ -997,9 +997,17 @@ function ensureProjectsWorkloadFiltersSection(frm) {
  * Создание единой строки фильтров и кнопок БЕЗ ЛЕЙБЛОВ
  */
 function createUnifiedFilterRow(frm, $wrapper) {
-    let controls = $('<div class="projects-workload-controls unified-filters-row"></div>').appendTo($wrapper);
+    let controls, $flow, buttonsContainer;
+    if (pwrShared().createPwrFilterRowShell) {
+        ({ controls, $flow, buttonsContainer } = pwrShared().createPwrFilterRowShell($wrapper, {
+            extraRowClass: 'pb-1',
+        }));
+    } else {
+        controls = $('<div class="projects-workload-controls unified-filters-row d-flex flex-nowrap align-items-start w-100 pb-1"></div>').appendTo($wrapper);
+        $flow = $('<div class="pwr-filters-flow d-flex flex-wrap align-items-center"></div>').appendTo(controls);
+        buttonsContainer = $('<div class="pwr-filters-group pwr-filters-group--right filter-buttons d-flex flex-shrink-0 align-items-center justify-content-end"></div>').appendTo(controls);
+    }
 
-    let $flow = $('<div class="pwr-filters-flow"></div>').appendTo(controls);
     createFormFilter(frm, 'user', __('User'), $flow);
     createFormFilter(frm, 'project', __('Project'), $flow);
     createFormFilter(frm, 'project_portfolio', __('Project Portfolio'), $flow); // ISS-2026-00625
@@ -1010,10 +1018,10 @@ function createUnifiedFilterRow(frm, $wrapper) {
     createViewTypeDropdown($flow);
     createPeriodRangeDropdown($flow);
 
-    let buttonsContainer = $('<div class="pwr-filters-group pwr-filters-group--right filter-buttons"></div>').appendTo(controls);
-    
+    const filterBtnClass = pwrShared().PWR_FILTER_BTN_CLASS || 'btn btn-default btn-sm';
+
     let refreshBtn = $(`
-        <button class="btn btn-default btn-sm" title="${__('Refresh Data')}">
+        <button class="${filterBtnClass}" title="${__('Refresh Data')}">
             ↻
         </button>
     `).appendTo(buttonsContainer);
@@ -1032,7 +1040,7 @@ function createUnifiedFilterRow(frm, $wrapper) {
     });
     
     let clearBtn = $(`
-        <button class="btn btn-default btn-sm" title="${__('Clear All Filters')}">
+        <button class="${filterBtnClass}" title="${__('Clear All Filters')}">
             ☒
         </button>
     `).appendTo(buttonsContainer);

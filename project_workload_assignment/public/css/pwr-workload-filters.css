@@ -1,4 +1,5 @@
-/* ISS-2026-00002: общие стили фильтров PWR / Project Workload */
+/* ISS-2026-00002: фильтры PWR / Project Workload.
+ * Раскладка: Bootstrap 4 utilities (d-flex, flex-shrink-0, …) в разметке + pwr-* для размеров и Frappe overrides. */
 
 .projects-workload-filters-section,
 .projects-workload-filters-section .form-section,
@@ -35,12 +36,21 @@
 	min-width: 0 !important;
 	min-height: 28px;
 	margin: 0 !important;
-	padding: 0 4px !important;
+	padding: 0 4px 0 !important;
 	box-sizing: border-box;
 	overflow: visible !important;
 	background: transparent !important;
 	border: none !important;
 	border-radius: 0 !important;
+}
+
+.projects-workload-filters-section .unified-filters-row {
+	padding-bottom: 4px !important;
+}
+
+.project_workload_container > .unified-filters-row {
+	padding-top: 4px !important;
+	padding-bottom: 4px !important;
 }
 
 /* Колонка 1: всё доступное пространство минус 120px у кнопок */
@@ -195,23 +205,15 @@
 	min-height: 28px !important;
 	min-width: 28px !important;
 	padding: 0 6px !important;
-	display: flex;
-	align-items: center;
-	justify-content: center;
 	font-size: 14px !important;
 	line-height: 1 !important;
 	border-radius: 3px !important;
 }
 
-.pwr-filter-field,
-.pwr-filter-show-fact label {
-	display: flex;
-	align-items: center;
+.pwr-filter-field {
 	gap: 6px;
-	margin: 0;
 	min-height: 28px;
 	line-height: 1.2;
-	flex: 0 0 auto;
 }
 
 .pwr-filter-worker-wtype {
@@ -232,23 +234,13 @@
 }
 
 .pwr-filter-period-nav {
-	display: inline-flex;
-	align-items: center;
 	gap: 4px;
-	flex: 0 0 auto;
 }
 
 .pwr-filter-period-nav .btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 	height: 28px !important;
 	min-height: 28px !important;
 	padding: 0 6px !important;
-}
-
-.pwr-filter-show-fact {
-	flex: 0 0 auto;
 }
 
 .pwr-filter-show-fact input {

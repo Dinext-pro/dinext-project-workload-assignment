@@ -20,16 +20,13 @@ body[data-route="Form/Project"] [data-fieldname="custom_workload"] .control-labe
 	width: 100% !important;
 	padding: 0 !important;
 	margin: 0 !important;
-	display: flex;
-	flex-direction: column;
-	gap: 0 !important;
 	min-height: calc(100vh - 200px);
 	height: auto !important;
 	box-sizing: border-box !important;
 }
 
-.project_workload_container > .unified-filters-row {
-	padding-top: 4px !important;
+.project_workload_container.d-flex {
+	gap: 0 !important;
 }
 
 .project_workload_container .project-workload-table {

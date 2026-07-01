@@ -1274,9 +1274,17 @@ function applyProjectWorkloadSectionLayout(frm) {
  * Создание строки фильтров с датами и выбором отображения
  */
 function createProjectFilterRow(frm, $wrapper) {
-    let controls = $('<div class="projects-workload-controls unified-filters-row"></div>').appendTo($wrapper);
+    let controls, $flow, buttonsContainer;
+    if (pwrShared().createPwrFilterRowShell) {
+        ({ controls, $flow, buttonsContainer } = pwrShared().createPwrFilterRowShell($wrapper, {
+            extraRowClass: 'pt-1 pb-1',
+        }));
+    } else {
+        controls = $('<div class="projects-workload-controls unified-filters-row d-flex flex-nowrap align-items-start w-100 pt-1 pb-1"></div>').appendTo($wrapper);
+        $flow = $('<div class="pwr-filters-flow d-flex flex-wrap align-items-center"></div>').appendTo(controls);
+        buttonsContainer = $('<div class="pwr-filters-group pwr-filters-group--right filter-buttons d-flex flex-shrink-0 align-items-center justify-content-end"></div>').appendTo(controls);
+    }
 
-    let $flow = $('<div class="pwr-filters-flow"></div>').appendTo(controls);
     createPwrWorkerTypeFilter($flow);
     createPwrShowFactFilter($flow);
 
@@ -1286,10 +1294,10 @@ function createProjectFilterRow(frm, $wrapper) {
     createViewTypeDropdown($flow);
     createPeriodRangeDropdown($flow);
 
-    let buttonsContainer = $('<div class="pwr-filters-group pwr-filters-group--right filter-buttons"></div>').appendTo(controls);
+    const filterBtnClass = pwrShared().PWR_FILTER_BTN_CLASS || 'btn btn-default btn-sm';
 
     let refreshBtn = $(`
-        <button class="btn btn-default btn-sm" title="${__('Refresh Data')}">
+        <button class="${filterBtnClass}" title="${__('Refresh Data')}">
             ↻
         </button>
     `).appendTo(buttonsContainer);
@@ -1429,7 +1437,7 @@ async function render_project_workload_table(frm) {
         return;
     }
     
-    $wrapper.addClass("project_workload_container");
+    $wrapper.addClass("project_workload_container d-flex flex-column");
     
     // Если таблица уже инициализирована - не создаем заново
     if (frm.project_workload_table_initialized) {
