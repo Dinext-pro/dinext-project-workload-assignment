@@ -83,6 +83,23 @@ doctype_js = {
                 ]
             }
 
+doctype_css = {
+	"Projects Workload Report": [
+		"public/css/pwr-workload-cells.css",
+		"public/css/pwr-workload-participant-column.css",
+		"public/css/pwr-workload-filters.css",
+		"public/css/pwr-workload-charts.css",
+		"public/css/pwr-workload-report-page.css",
+	],
+	"Project": [
+		"public/css/pwr-workload-cells.css",
+		"public/css/pwr-workload-participant-column.css",
+		"public/css/pwr-workload-filters.css",
+		"public/css/pwr-workload-charts.css",
+		"public/css/pwr-workload-project-tab.css",
+	],
+}
+
 # doctype_list_js = {
 #                "Task":"public/js/pwa_dialog.js"
 #                ,"Issue":"public/js/pwa_dialog.js"
