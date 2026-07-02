@@ -17,6 +17,7 @@ TARGET_NAMES = {
 	"Projects Workload Report_V4",
 	"Projects_Workload_Report_Style_V2",
 	"Project_Workload",
+	"Project_Workload_Style_V3",
 }
 
 # demodev/local parity: активные версии CS (см. ISS-2026-00002 / ISS-2026-00709).
@@ -29,6 +30,7 @@ ENABLE_ON_IMPORT = {
 
 DISABLE_ON_IMPORT = {
 	"Projects Workload Report_V6",
+	"Projects_Workload_Report_Style_V3",
 	"Projects_Workload_Report_Style_V4",
 	"Project_Workload_V4",
 	"Project_Workload_V5",
