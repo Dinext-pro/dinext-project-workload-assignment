@@ -2,6 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "creation": "2025-11-08 17:34:32.932645",
+ "custom": 1,
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -80,7 +81,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-27 16:22:00.085130",
+ "modified": "2026-07-02 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Project Workload Assignment",
  "name": "Projects Workload Report",
