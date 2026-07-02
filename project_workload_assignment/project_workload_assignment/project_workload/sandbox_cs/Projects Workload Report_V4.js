@@ -888,7 +888,7 @@ function applyProjectsWorkloadGridViewportHeight(frm) {
     });
 
     const gridTop = $gridSlot[0].getBoundingClientRect().top;
-    const gridHeight = Math.max(320, window.innerHeight - gridTop - 16);
+    const gridHeight = Math.max(720, window.innerHeight - gridTop - 16);
 
     $gridSlot.css({
         height: gridHeight,
@@ -900,7 +900,7 @@ function applyProjectsWorkloadGridViewportHeight(frm) {
     });
     $gridRoot.find('.projects-workload-ag-grid').css({
         height: gridHeight,
-        minHeight: 0,
+        minHeight: gridHeight,
         maxHeight: gridHeight,
         margin: 0,
         flex: '1 1 auto',
