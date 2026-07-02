@@ -11,15 +11,34 @@
 // === /Frappe Script Metadata ===
 
 // Основной скрипт - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ БЕЗ CSS В JS
+frappe.provide("project_workload_assignment.pwrShared");
+
 function pwrShared() {
-    return project_workload_assignment.pwrShared || {};
+    const root = window.project_workload_assignment || {};
+    return root.pwrShared || {};
 }
 
 function ensureProjectsWorkloadAgGrid() {
-    if (pwrShared().ensureAgGrid) {
-        return pwrShared().ensureAgGrid();
+    const shared = pwrShared();
+    if (shared.ensureAgGrid) {
+        return shared.ensureAgGrid();
     }
-    return Promise.reject(new Error('pwrShared.ensureAgGrid is not available'));
+    return new Promise((resolve, reject) => {
+        frappe.require(
+            [
+                "/assets/project_workload_assignment/js/pwr-plan-fact-cell.js",
+                "/assets/project_workload_assignment/js/pwr-shared.js",
+            ],
+            () => {
+                const retry = pwrShared();
+                if (retry.ensureAgGrid) {
+                    retry.ensureAgGrid().then(resolve).catch(reject);
+                    return;
+                }
+                reject(new Error("pwrShared.ensureAgGrid is not available"));
+            }
+        );
+    });
 }
 
 let isProjectsWorkloadLoading = false;
@@ -89,11 +108,9 @@ function renderPwrPlanFactCell(options) {
 
 function resetPwrPeriodAnchorForFilters() {
     window.pwrPeriodAnchorDate = frappe.datetime.get_today();
-    if (
-        project_workload_assignment.charts &&
-        typeof project_workload_assignment.charts.resetTeamPeriodAnchorToToday === "function"
-    ) {
-        project_workload_assignment.charts.resetTeamPeriodAnchorToToday();
+    const charts = (window.project_workload_assignment || {}).charts;
+    if (charts && typeof charts.resetTeamPeriodAnchorToToday === "function") {
+        charts.resetTeamPeriodAnchorToToday();
     }
 }
 
@@ -862,12 +879,9 @@ function normalizeProjectsWorkloadFiltersRow(frm) {
 }
 
 function applyProjectsWorkloadGridViewportHeight(frm) {
-    if (
-        project_workload_assignment &&
-        project_workload_assignment.charts &&
-        typeof project_workload_assignment.charts.syncGridViewportHeight === 'function'
-    ) {
-        project_workload_assignment.charts.syncGridViewportHeight(frm);
+    const charts = (window.project_workload_assignment || {}).charts;
+    if (charts && typeof charts.syncGridViewportHeight === "function") {
+        charts.syncGridViewportHeight(frm);
         return;
     }
 
