@@ -22,7 +22,7 @@ frappe.provide("project_workload_assignment.charts");
 	const CHART_TOTAL_HEIGHT_PX = CHART_DATA_HEIGHT_PX + LEGEND_BAND_PX;
 	const CHART_HEIGHT = `${CHART_TOTAL_HEIGHT_PX}px`;
 	const CHART_PLOT_HEIGHT = `${CHART_PLOT_HEIGHT_PX}px`;
-	const TEAM_WORKLOAD_GRID_MIN_HEIGHT_PX = 320;
+	const TEAM_WORKLOAD_GRID_MIN_HEIGHT_PX = 720;
 	const PROJECT_WORKLOAD_GRID_MIN_HEIGHT_PX = 480;
 	let pwrChartThemeObserver = null;
 
@@ -508,14 +508,8 @@ frappe.provide("project_workload_assignment.charts");
 		setElementBoxHeight($gridSlot, gridHeight);
 		$gridRoot.find(".projects-workload-ag-grid, .project-workload-ag-grid").each(function () {
 			const node = this;
-			const isProject =
-				isProjectGrid || node.classList.contains("project-workload-ag-grid");
 			node.style.setProperty("height", `${gridHeight}px`, "important");
-			node.style.setProperty(
-				"min-height",
-				isProject ? `${gridHeight}px` : "0",
-				"important"
-			);
+			node.style.setProperty("min-height", `${gridHeight}px`, "important");
 			node.style.setProperty("max-height", `${gridHeight}px`, "important");
 			node.style.setProperty("margin", "0", "important");
 			node.style.setProperty("flex", "1 1 auto");

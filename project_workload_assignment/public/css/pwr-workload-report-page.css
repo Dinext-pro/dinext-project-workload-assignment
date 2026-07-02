@@ -29,40 +29,40 @@ body[data-route="Form/Projects Workload Report"] .layout-main-section {
 	}
 }
 
-html[data-theme],
 body[data-route="Form/Projects Workload Report"] {
-	overflow: hidden !important;
-	height: 100% !important;
+	overflow-y: auto !important;
+	height: auto !important;
+	min-height: 100%;
 }
 
 body[data-route="Form/Projects Workload Report"] .page-container,
 body[data-route="Form/Projects Workload Report"] .main-section,
 body[data-route="Form/Projects Workload Report"] .container.page-body {
-	overflow: hidden !important;
-	max-height: 100vh !important;
+	overflow: visible !important;
+	max-height: none !important;
 }
 
 body[data-route="Form/Projects Workload Report"] .layout-main {
 	display: flex !important;
 	flex-direction: column !important;
-	height: calc(100vh - var(--navbar-height) - var(--page-head-height) - 5px) !important;
-	max-height: calc(100vh - var(--navbar-height) - var(--page-head-height) - 5px) !important;
-	min-height: 0 !important;
-	overflow: hidden !important;
+	min-height: calc(100vh - var(--navbar-height) - var(--page-head-height) - 5px) !important;
+	height: auto !important;
+	max-height: none !important;
+	overflow: visible !important;
 }
 
 body[data-route="Form/Projects Workload Report"] .layout-main-section-wrapper,
 body[data-route="Form/Projects Workload Report"] .layout-main-section,
 body[data-route="Form/Projects Workload Report"] .std-form-layout,
 body[data-route="Form/Projects Workload Report"] .form-layout {
-	overflow: hidden !important;
+	overflow: visible !important;
 }
 
 .projects_workload_report {
 	display: flex;
 	flex-direction: column;
-	min-height: 320px !important;
-	overflow: hidden !important;
+	min-height: 720px !important;
+	overflow: visible !important;
 	width: 100% !important;
 	max-width: 100% !important;
 	padding: 0 !important;
@@ -74,14 +74,21 @@ body[data-route="Form/Projects Workload Report"] .form-layout {
 	flex: 1 1 auto;
 	display: flex;
 	flex-direction: column;
-	min-height: 0 !important;
+	min-height: 720px !important;
 	overflow: hidden !important;
 }
 
 .projects_workload_report .projects-workload-ag-grid {
 	flex: 1 1 auto;
 	height: 100% !important;
-	min-height: 0 !important;
+	min-height: 720px !important;
 	overflow: hidden !important;
 	padding-bottom: 24px !important;
+}
+
+.projects_workload_report .projects-workload-ag-grid .ag-body-viewport,
+.projects_workload_report .projects-workload-ag-grid .ag-center-cols-viewport {
+	min-height: 0 !important;
+	max-height: 100% !important;
+	overflow: auto !important;
 }
