@@ -31,8 +31,27 @@ window.projectWorkloadViewType = currentViewType;
 window.currentPeriodRange = currentPeriodRange;
 window.pwrShowFact = !!window.pwrShowFact;
 
+frappe.provide("project_workload_assignment.pwrShared");
+
 function pwrShared() {
-    return project_workload_assignment.pwrShared || {};
+    const root = window.project_workload_assignment || {};
+    return root.pwrShared || {};
+}
+
+function ensurePwrAssets() {
+    if (pwrShared().ensureAgGrid) {
+        return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+        frappe.require(
+            [
+                "/assets/project_workload_assignment/js/pwr-plan-fact-cell.js",
+                "/assets/project_workload_assignment/js/pwr-shared.js",
+            ],
+            () => resolve(),
+            reject
+        );
+    });
 }
 
 function isPwrShowFactEnabled() {
@@ -96,11 +115,9 @@ function createPwrPeriodNavFilter(container, frm) {
         ? pwrShared().createPwrPeriodNavFilter(container, frm, {
             fallbackPeriodLabel: () => getPwrPeriodAnchorLabel(frm),
             onShiftPeriod: (activeFrm, direction) => {
-                if (
-                    project_workload_assignment.charts &&
-                    typeof project_workload_assignment.charts.shiftPeriod === "function"
-                ) {
-                    project_workload_assignment.charts.shiftPeriod(activeFrm, direction);
+                const charts = (window.project_workload_assignment || {}).charts;
+                if (charts && typeof charts.shiftPeriod === "function") {
+                    charts.shiftPeriod(activeFrm, direction);
                     return;
                 }
                 shiftProjectWorkloadPeriod(direction);
@@ -153,10 +170,13 @@ window.projectWorkloadMetadata = {};
 const performanceLog = {};
 
 function ensureProjectWorkloadAgGrid() {
-    if (pwrShared().ensureAgGrid) {
-        return pwrShared().ensureAgGrid();
-    }
-    return Promise.reject(new Error('pwrShared.ensureAgGrid is not available'));
+    return ensurePwrAssets().then(() => {
+        const shared = pwrShared();
+        if (shared.ensureAgGrid) {
+            return shared.ensureAgGrid();
+        }
+        return Promise.reject(new Error("pwrShared.ensureAgGrid is not available"));
+    });
 }
 
 function startTimer(name) {
