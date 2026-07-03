@@ -3,6 +3,9 @@
 
 ISS-2025-01239: миграция из Server Script в Python-модуль.
 API method: calculate_timesheet_limits
+
+Performance: bulk-load all Task / PWE / PWEA data upfront per project
+to avoid N+1 DB queries in the recursive helpers.
 """
 
 from __future__ import annotations
@@ -40,6 +43,88 @@ def _parse_limit_rows(rows: list[dict]) -> dict[str, float | None]:
     }
 
 
+def _bulk_load(
+    positions: list[TimesheetPositionInput],
+) -> tuple[dict, dict, dict, dict, dict]:
+    """Return (task_meta, children_map, pwe_by_task_role, pwe_amounts, limit_rows).
+
+    task_meta      : {task_name: {"subject", "parent_task", "custom_linked_issue"}}
+    children_map   : {(project, task_name): [child_name, ...]}  (direct children)
+    pwe_by_task_role: {(project, task, role): [pwe_name, ...]}
+    pwe_amounts    : {pwe_name: [{year, month, plan}]}
+    limit_rows     : {project: [{type, limit}]}
+    """
+    unique_projects: set[str] = set()
+    for pos in positions or []:
+        if pos.get("project"):
+            unique_projects.add(pos["project"])
+
+    task_meta: dict = {}
+    children_map: dict = {}
+
+    if unique_projects:
+        project_list = list(unique_projects)
+
+        # 1) All tasks in these projects
+        raw_tasks = frappe.db.get_all(
+            "Task",
+            filters={"project": ["in", project_list]},
+            fields=["name", "parent_task", "subject", "custom_linked_issue", "project"],
+        )
+        for t in raw_tasks:
+            task_meta[t.name] = {
+                "subject": t.subject or t.name,
+                "parent_task": t.parent_task or None,
+                "custom_linked_issue": bool(t.custom_linked_issue),
+            }
+            proj = t.project or ""
+            children_map.setdefault((proj, t.name), [])
+            if t.parent_task:
+                children_map.setdefault((proj, t.parent_task), [])
+                children_map[(proj, t.parent_task)].append(t.name)
+
+        # 2) All Project Work Efforts + amounts
+        all_pwe = frappe.db.get_all(
+            "Project Work Efforts",
+            filters={"pwe_project": ["in", project_list]},
+            fields=["name", "pwe_project", "pwe_task", "pwe_project_role"],
+        )
+        pwe_by_task_role: dict = {}
+        pwe_names = []
+        for p in all_pwe:
+            key = (p.pwe_project, p.pwe_task, p.pwe_project_role)
+            pwe_by_task_role.setdefault(key, []).append(p.name)
+            pwe_names.append(p.name)
+
+        pwe_amounts: dict = {}
+        if pwe_names:
+            raw_amounts = frappe.db.get_all(
+                "Project Work Efforts Amount",
+                filters={"parent": ["in", pwe_names]},
+                fields=["parent", "pwea_year", "pwea_month", "pwea_plan"],
+            )
+            for a in raw_amounts:
+                pwe_amounts.setdefault(a.parent, []).append(
+                    {"year": int(a.pwea_year), "month": int(a.pwea_month), "plan": frappe.utils.flt(a.pwea_plan or 0)}
+                )
+
+        # 3) Limit Control rows for all projects
+        limit_rows: dict = {}
+        raw_limits = frappe.db.get_all(
+            "Limit Control",
+            filters={"parent": ["in", project_list], "parenttype": "Project"},
+            fields=["parent", "type", "limit"],
+        )
+        for r in raw_limits:
+            limit_rows.setdefault(r.parent, []).append({"type": r.type, "limit": r.limit})
+    else:
+        pwe_by_task_role = {}
+        pwe_amounts = {}
+        limit_rows = {}
+
+    return task_meta, children_map, pwe_by_task_role, pwe_amounts, limit_rows
+
+
 def run_calculate_timesheet_limits(
     form_dict: TimesheetLimitsFormInput,
 ) -> TimesheetLimitsResponse:
@@ -52,64 +137,60 @@ def run_calculate_timesheet_limits(
             json.loads(form_dict["project_limits"])
         )
 
+    # ── Bulk-load all DB data upfront ────────────────────────────────────────
+    task_meta, children_map, pwe_by_task_role, pwe_amounts, limit_rows_by_project = (
+        _bulk_load(positions)
+    )
+
     cache: dict[str, dict] = {
-        "has_children": {},
-        "all_children": {},
         "plan_data": {},
-        "limits": {},
         "total_hours": {},
-        "roles": {},
         "project_settings": {},
-        "task_linked_issues": {},
         "root_task_with_issue": {},
+        "all_children": {},
     }
 
-    def has_children(project: str, task: str) -> bool:
-        if not task:
-            return False
-        cache_key = project + task
-        if cache_key in cache["has_children"]:
-            return cache["has_children"][cache_key]
-        children = frappe.db.get_all(
-            "Task", filters={"parent_task": task, "project": project}, limit=1
-        )
-        cache["has_children"][cache_key] = bool(children)
-        return cache["has_children"][cache_key]
+    # ── Helpers (now use pre-loaded data, no DB calls) ────────────────────────
 
-    def get_all_children(project: str, task: str) -> list[str]:
-        cache_key = project + task
-        if cache_key in cache["all_children"]:
-            return cache["all_children"][cache_key]
+    def _get_all_children_recursive(project: str, task: str) -> list[str]:
+        """Return all descendant task names (depth-first, project-scoped)."""
         result: list[str] = []
-        direct = frappe.db.get_all(
-            "Task",
-            filters={"parent_task": task, "project": project},
-            fields=["name"],
-        )
-        for row in direct:
-            result.append(row.name)
-            result = result + get_all_children(project, row.name)
-        cache["all_children"][cache_key] = result
+        for child in children_map.get((project, task), []):
+            result.append(child)
+            result.extend(_get_all_children_recursive(project, child))
         return result
 
+    def get_all_children(project: str, task: str) -> list[str]:
+        ck = project + task
+        if ck not in cache["all_children"]:
+            cache["all_children"][ck] = _get_all_children_recursive(project, task)
+        return cache["all_children"][ck]
+
+    def has_children(project: str, task: str) -> bool:
+        return bool(children_map.get((project, task)))
+
     def has_linked_issue(task_name: str) -> bool:
-        if task_name not in cache["task_linked_issues"]:
-            linked_issue = frappe.db.get_value("Task", task_name, "custom_linked_issue")
-            cache["task_linked_issues"][task_name] = bool(linked_issue)
-        return cache["task_linked_issues"][task_name]
+        return task_meta.get(task_name, {}).get("custom_linked_issue", False)
 
     def find_root_task_with_linked_issue(project: str, task: str) -> str | None:
-        cache_key = project + task
-        if cache_key in cache["root_task_with_issue"]:
-            return cache["root_task_with_issue"][cache_key]
-        current_task = task
-        while current_task:
-            if has_linked_issue(current_task):
-                cache["root_task_with_issue"][cache_key] = current_task
-                return current_task
-            current_task = frappe.db.get_value("Task", current_task, "parent_task")
-        cache["root_task_with_issue"][cache_key] = None
+        ck = project + task
+        if ck in cache["root_task_with_issue"]:
+            return cache["root_task_with_issue"][ck]
+        current = task
+        while current:
+            if has_linked_issue(current):
+                cache["root_task_with_issue"][ck] = current
+                return current
+            current = task_meta.get(current, {}).get("parent_task")
+        cache["root_task_with_issue"][ck] = None
         return None
+
+    def _pwe_planned(pwe_name: str, year: int, month: int) -> float:
+        return sum(
+            a["plan"]
+            for a in pwe_amounts.get(pwe_name, [])
+            if a["year"] == year and a["month"] == month
+        )
 
     def find_task_with_plan(
         project: str,
@@ -132,32 +213,22 @@ def run_calculate_timesheet_limits(
             if cache_key in cache["plan_data"]:
                 return cache["plan_data"][cache_key]
 
-            all_pwe = frappe.db.get_all(
-                "Project Work Efforts",
-                filters={"pwe_project": project},
-                fields=["name"],
-            )
-            pwe_names = [p["name"] for p in all_pwe]
-
-            periods: list[dict] = []
-            if pwe_names:
-                periods = frappe.db.get_all(
-                    "Project Work Efforts Amount",
-                    filters={"parent": ["in", pwe_names]},
-                    fields=["pwea_year", "pwea_month"],
-                    group_by="pwea_year, pwea_month",
-                )
+            # Find all unique (year, month) pairs for this project's PWE
+            pwe_keys = [k for k in pwe_by_task_role if k[0] == project]
+            period_set: set[tuple[int, int]] = set()
+            for key in pwe_keys:
+                for pwe_name in pwe_by_task_role[key]:
+                    for a in pwe_amounts.get(pwe_name, []):
+                        period_set.add((a["year"], a["month"]))
 
             total_planned = 0.0
-            for p in periods:
-                result = find_task_with_plan(
-                    project, task, role, int(p.pwea_year), int(p.pwea_month)
-                )
+            for yr, mo in period_set:
+                result = find_task_with_plan(project, task, role, yr, mo)
                 if result:
                     total_planned += result["planned_hours"]
 
             if total_planned > 0:
-                subj = frappe.db.get_value("Task", task, "subject") or task
+                subj = task_meta.get(task, {}).get("subject", task)
                 plan_data: PlanData = {
                     "task_name": task,
                     "planned_hours": total_planned,
@@ -180,28 +251,11 @@ def run_calculate_timesheet_limits(
             if ck in cache["plan_data"]:
                 return [cache["plan_data"][ck]["planned_hours"], cache["plan_data"][ck]]
 
-            pwe = frappe.db.get_all(
-                "Project Work Efforts",
-                filters={
-                    "pwe_task": t,
-                    "pwe_project": project,
-                    "pwe_project_role": role,
-                },
-                fields=["name"],
-            )
-
-            if pwe:
-                doc = frappe.get_doc("Project Work Efforts", pwe[0].name)
-                planned = sum(
-                    (
-                        frappe.utils.flt(r.pwea_plan or 0)
-                        for r in doc.pwe_amount
-                        if int(r.pwea_year) == year and int(r.pwea_month) == month
-                    ),
-                    0.0,
-                )
+            pwe_list = pwe_by_task_role.get((project, t, role), [])
+            if pwe_list:
+                planned = sum(_pwe_planned(pwe, year, month) for pwe in pwe_list)
                 if planned > 0:
-                    subj = frappe.db.get_value("Task", t, "subject") or t
+                    subj = task_meta.get(t, {}).get("subject", t)
                     plan_data: PlanData = {
                         "task_name": t,
                         "planned_hours": planned,
@@ -210,17 +264,12 @@ def run_calculate_timesheet_limits(
                     cache["plan_data"][ck] = plan_data
                     return [planned, plan_data]
 
-            children = frappe.db.get_all(
-                "Task",
-                filters={"parent_task": t, "project": project},
-                fields=["name"],
-            )
-            if children:
+            direct_children = children_map.get((project, t), [])
+            if direct_children:
                 total_plan = 0.0
                 found_any = False
-                for child in children:
-                    child_result = get_plan_for_task(child.name, visited.copy())
-                    child_plan = child_result[0]
+                for child in direct_children:
+                    child_plan, _ = get_plan_for_task(child, visited.copy())
                     if child_plan > 0:
                         total_plan += child_plan
                         found_any = True
@@ -228,12 +277,12 @@ def run_calculate_timesheet_limits(
                     plan_data: PlanData = {
                         "task_name": t,
                         "planned_hours": total_plan,
-                        "subject": frappe.db.get_value("Task", t, "subject") or t,
+                        "subject": task_meta.get(t, {}).get("subject", t),
                     }
                     cache["plan_data"][ck] = plan_data
                     return [total_plan, plan_data]
 
-            parent = frappe.db.get_value("Task", t, "parent_task")
+            parent = task_meta.get(t, {}).get("parent_task")
             if parent:
                 if (
                     requirement == "Обязательно для всех Запросов"
@@ -242,9 +291,7 @@ def run_calculate_timesheet_limits(
                     and not can_go_above_root_issue
                 ):
                     return [0.0, None]
-                parent_result = get_plan_for_task(parent, visited.copy())
-                parent_plan = parent_result[0]
-                parent_data = parent_result[1]
+                parent_plan, parent_data = get_plan_for_task(parent, visited.copy())
                 if parent_plan > 0 and parent_data:
                     plan_data: PlanData = {
                         "task_name": parent_data["task_name"],
@@ -269,18 +316,8 @@ def run_calculate_timesheet_limits(
     def get_project_limits(project: str) -> dict[str, float | None]:
         if session_limits_override is not None:
             return session_limits_override
-
-        if project in cache["limits"]:
-            return cache["limits"][project]
-
-        rows = frappe.db.get_all(
-            "Limit Control",
-            filters={"parent": project, "parenttype": "Project"},
-            fields=["type", "limit"],
-        )
-        limits = _parse_limit_rows(rows)
-        cache["limits"][project] = limits
-        return limits
+        rows = limit_rows_by_project.get(project, [])
+        return _parse_limit_rows(rows)
 
     def aggregate_hours(
         plan_task: str,
@@ -354,8 +391,6 @@ def run_calculate_timesheet_limits(
         return total
 
     def get_project_roles(project: str) -> set[str]:
-        if project in cache["roles"]:
-            return cache["roles"][project]
         roles: set[str] = set()
         project_roles = frappe.db.get_all(
             "Project Team Details",
@@ -364,7 +399,6 @@ def run_calculate_timesheet_limits(
         )
         for pr in project_roles:
             roles.add(pr.pt_role)
-        cache["roles"][project] = roles
         return roles
 
     def is_plan_required(position: TimesheetPositionInput) -> bool:
@@ -407,6 +441,8 @@ def run_calculate_timesheet_limits(
             project_roles.append(role)
         else:
             project_roles = list(get_project_roles(proj))
+
+        doc_subject = task_meta.get(doc, {}).get("subject", doc)
 
         for project_role in project_roles:
             plan = find_task_with_plan(proj, doc, project_role, year, month)
@@ -459,6 +495,8 @@ def run_calculate_timesheet_limits(
                 else:
                     limit_status = "normal"
 
+            plan_task_subject = (plan or {}).get("subject") or doc_subject
+
             results.append(
                 {
                     "project": proj,
@@ -474,11 +512,9 @@ def run_calculate_timesheet_limits(
                     "used_parent_for_plan": used_parent,
                     "used_children_for_actual": len(task_for_fact) > 1,
                     "child_tasks_count": max(len(task_for_fact) - 1, 0),
-                    "task_subject": frappe.db.get_value("Task", doc, "subject") or doc,
+                    "task_subject": doc_subject,
                     "plan_required": plan_required,
-                    "plan_task_subject": (plan or {}).get("subject")
-                    or frappe.db.get_value("Task", doc, "subject")
-                    or doc,
+                    "plan_task_subject": plan_task_subject,
                     "has_linked_issue": has_linked_issue(doc)
                     if cache["project_settings"].get(proj) == "Обязательно для всех Запросов"
                     else None,
