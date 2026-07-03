@@ -1154,7 +1154,7 @@ frappe.provide("project_workload_assignment.charts");
 
 	// const PWR_BAR_BORDER_RADIUS = [3, 3, 0, 0];
 	const PWR_FORECAST_BAR_WIDTH = "36%";
-	const PWR_ACTUAL_BAR_WIDTH = "36%";
+	const PWR_ACTUAL_BAR_WIDTH = "18%";
 
 	const PWR_LINE_COLORS = {
 		capacityLine: "#243660",
