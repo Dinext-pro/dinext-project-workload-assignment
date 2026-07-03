@@ -80,10 +80,14 @@ doctype_js = {
                     "public/js/pwa/form.js",
                 ]
                 ,"Projects Workload Report":[
-                    # api-methods / shared / form-loader moved here from app_include_js
+                    # api-methods / shared moved here from app_include_js.
+                    # form-loader.js is NOT included: it calls frappe.ready() synchronously
+                    # which triggers handleReportRoute() mid-bundle before form.js has
+                    # defined render_projects_workload_table, causing double-load.
+                    # All report scripts are now directly in doctype_js, so form-loader
+                    # is redundant — meta.__js always contains the full script set.
                     "public/js/core/api-methods.js",
                     "public/js/core/shared.js",
-                    "public/js/core/form-loader.js",
                     "public/js/core/plan-fact-cell.js",
                     "public/js/pwr-report/helpers.js",
                     "public/js/pwr-report/absences.js",
