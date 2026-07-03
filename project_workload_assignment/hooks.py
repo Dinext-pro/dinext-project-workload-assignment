@@ -48,11 +48,14 @@ fixtures = [
 
 # include js, css files in header of desk.html
 app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
-# app_include_js: core PWR files moved to doctype_js to avoid growing the
-# global Link preload header (causes 502 on Yandex Cloud ALB with large boots).
-# api-methods.js / shared.js → Projects Workload Report + Project doctype_js
-# dialog.js → Task + Issue + Project doctype_js (before pwa/form.js)
-# form-loader.js → Projects Workload Report doctype_js (route-change fallback)
+# form-loader.js kept in app_include_js: Projects Workload Report is a custom
+# DocType (is_custom=1), so Frappe skips add_code() and doctype_js has no effect.
+# form-loader is the ONLY mechanism that loads report scripts via frappe.require().
+# api-methods.js / shared.js / dialog.js moved to doctype_js for non-custom
+# doctypes (Project, Task, Issue) where doctype_js IS processed.
+app_include_js = [
+	"/assets/project_workload_assignment/js/core/form-loader.js",
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/project_workload_assignment/css/project_workload_assignment.css"
@@ -79,24 +82,10 @@ doctype_js = {
                     "public/js/pwa/dialog.js",
                     "public/js/pwa/form.js",
                 ]
-                ,"Projects Workload Report":[
-                    # api-methods / shared moved here from app_include_js.
-                    # form-loader.js is NOT included: it calls frappe.ready() synchronously
-                    # which triggers handleReportRoute() mid-bundle before form.js has
-                    # defined render_projects_workload_table, causing double-load.
-                    # All report scripts are now directly in doctype_js, so form-loader
-                    # is redundant — meta.__js always contains the full script set.
-                    "public/js/core/api-methods.js",
-                    "public/js/core/shared.js",
-                    "public/js/core/plan-fact-cell.js",
-                    "public/js/pwr-report/helpers.js",
-                    "public/js/pwr-report/absences.js",
-                    "public/js/pwr-report/filters.js",
-                    "public/js/pwr-report/columns.js",
-                    "public/js/pwr-report/data.js",
-                    "public/js/pwr-report/form.js",
-                    "public/js/charts/bootstrap.js",
-                ]
+                # "Projects Workload Report" doctype_js intentionally omitted:
+                # this is a custom DocType (is_custom=1), Frappe's add_code() skips
+                # custom doctypes, so doctype_js entries have NO EFFECT here.
+                # Scripts are loaded by form-loader.js (app_include_js) via frappe.require.
                 ,"Project":[
                     # api-methods / shared / dialog moved here from app_include_js
                     "public/js/core/api-methods.js",
