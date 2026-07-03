@@ -48,12 +48,11 @@ fixtures = [
 
 # include js, css files in header of desk.html
 app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
-app_include_js = [
-	"/assets/project_workload_assignment/js/core/api-methods.js",
-	"/assets/project_workload_assignment/js/core/shared.js",
-	"/assets/project_workload_assignment/js/pwa/dialog.js",
-	"/assets/project_workload_assignment/js/core/form-loader.js",
-]
+# app_include_js: core PWR files moved to doctype_js to avoid growing the
+# global Link preload header (causes 502 on Yandex Cloud ALB with large boots).
+# api-methods.js / shared.js → Projects Workload Report + Project doctype_js
+# dialog.js → Task + Issue + Project doctype_js (before pwa/form.js)
+# form-loader.js → Projects Workload Report doctype_js (route-change fallback)
 
 # include js, css files in header of web template
 # web_include_css = "/assets/project_workload_assignment/css/project_workload_assignment.css"
@@ -71,9 +70,20 @@ app_include_js = [
 
 # include js in doctype views
 doctype_js = {
-                "Task":"public/js/pwa/form.js"
-                ,"Issue":"public/js/pwa/form.js"
+                # dialog.js must precede form.js — form.js calls start_pwa_dialog()
+                "Task": [
+                    "public/js/pwa/dialog.js",
+                    "public/js/pwa/form.js",
+                ]
+                ,"Issue": [
+                    "public/js/pwa/dialog.js",
+                    "public/js/pwa/form.js",
+                ]
                 ,"Projects Workload Report":[
+                    # api-methods / shared / form-loader moved here from app_include_js
+                    "public/js/core/api-methods.js",
+                    "public/js/core/shared.js",
+                    "public/js/core/form-loader.js",
                     "public/js/core/plan-fact-cell.js",
                     "public/js/pwr-report/helpers.js",
                     "public/js/pwr-report/absences.js",
@@ -84,6 +94,10 @@ doctype_js = {
                     "public/js/charts/bootstrap.js",
                 ]
                 ,"Project":[
+                    # api-methods / shared / dialog moved here from app_include_js
+                    "public/js/core/api-methods.js",
+                    "public/js/core/shared.js",
+                    "public/js/pwa/dialog.js",
                     "public/js/work_efforts/calc.js",
                     "public/js/work_efforts/checks.js",
                     "public/js/work_efforts/styles.js",
