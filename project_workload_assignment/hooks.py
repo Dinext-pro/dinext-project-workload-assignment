@@ -49,7 +49,10 @@ fixtures = [
 # include js, css files in header of desk.html
 app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
 app_include_js = [
-	"/assets/project_workload_assignment/js/pwa_dialog.js",
+	"/assets/project_workload_assignment/js/core/api-methods.js",
+	"/assets/project_workload_assignment/js/core/shared.js",
+	"/assets/project_workload_assignment/js/pwa/dialog.js",
+	"/assets/project_workload_assignment/js/core/form-loader.js",
 ]
 
 # include js, css files in header of web template
@@ -68,18 +71,38 @@ app_include_js = [
 
 # include js in doctype views
 doctype_js = {
-                "Task":"public/js/pwa_form.js"
-                ,"Issue":"public/js/pwa_form.js"
+                "Task":"public/js/pwa/form.js"
+                ,"Issue":"public/js/pwa/form.js"
                 ,"Projects Workload Report":[
-                    "public/js/pwr-plan-fact-cell.js",
-                    "public/js/pwr-shared.js",
-                    "public/js/pwr-charts-bootstrap.js",
+                    "public/js/core/plan-fact-cell.js",
+                    "public/js/pwr-report/helpers.js",
+                    "public/js/pwr-report/absences.js",
+                    "public/js/pwr-report/filters.js",
+                    "public/js/pwr-report/columns.js",
+                    "public/js/pwr-report/data.js",
+                    "public/js/pwr-report/form.js",
+                    "public/js/charts/bootstrap.js",
                 ]
                 ,"Project":[
-                    "public/js/pwr-plan-fact-cell.js",
-                    "public/js/pwr-shared.js",
-                    "public/js/pwr-charts-bootstrap.js",
-                    "public/js/pwr-pl-forecast-from-we.js",
+                    "public/js/work_efforts/calc.js",
+                    "public/js/work_efforts/checks.js",
+                    "public/js/work_efforts/styles.js",
+                    "public/js/work_efforts/chart.js",
+                    "public/js/work_efforts/overload.js",
+                    "public/js/work_efforts/table/controls.js",
+                    "public/js/work_efforts/table/data-load.js",
+                    "public/js/work_efforts/table/columns.js",
+                    "public/js/work_efforts/table/cell-edit.js",
+                    "public/js/work_efforts/table/limits.js",
+                    "public/js/work_efforts/table/render.js",
+                    "public/js/core/plan-fact-cell.js",
+                    "public/js/forecast/pl-from-we.js",
+                    "public/js/pwr-project/helpers.js",
+                    "public/js/pwr-project/filters.js",
+                    "public/js/pwr-project/columns.js",
+                    "public/js/pwr-project/data.js",
+                    "public/js/pwr-project/form.js",
+                    "public/js/charts/bootstrap.js",
                 ]
             }
 
@@ -92,6 +115,7 @@ doctype_css = {
 		"public/css/pwr-workload-report-page.css",
 	],
 	"Project": [
+		"public/css/we-table.css",
 		"public/css/pwr-workload-cells.css",
 		"public/css/pwr-workload-participant-column.css",
 		"public/css/pwr-workload-filters.css",
@@ -101,12 +125,12 @@ doctype_css = {
 }
 
 # doctype_list_js = {
-#                "Task":"public/js/pwa_dialog.js"
-#                ,"Issue":"public/js/pwa_dialog.js"
+#                "Task":"public/js/pwa/dialog.js"
+#                ,"Issue":"public/js/pwa/dialog.js"
 #            }
 
-# doctype_tree_js = {"Task":"public/js/pwa_dialog.js"}
-# doctype_calendar_js = {"Task" : "public/js/pwa_dialog.js"}
+# doctype_tree_js = {"Task":"public/js/pwa/dialog.js"}
+# doctype_calendar_js = {"Task" : "public/js/pwa/dialog.js"}
 
 # Svg Icons
 # ------------------

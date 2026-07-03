@@ -7,10 +7,10 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, getdate, nowdate
 
-from project_workload_assignment.project_workload_assignment.project_workload.assignments import (
+from project_workload_assignment.project_workload_assignment.project_workload.core.assignments import (
 	fetch_flat_report_assignments,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.context_loaders import (
+from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
 	filter_assignments_by_permitted_workers,
 	load_holiday_data,
 	load_monthly_plan_cache,
@@ -20,10 +20,10 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 	load_users_with_worker_context,
 	load_working_hours_overrides,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.types import (
+from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
 	DEFAULT_HOURS_ON_DATE,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.workload_engine import (
+from project_workload_assignment.project_workload_assignment.project_workload.core.workload_engine import (
 	WorkloadContext,
 )
 

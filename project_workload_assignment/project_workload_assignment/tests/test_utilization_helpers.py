@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from frappe.tests.utils import FrappeTestCase
 
-from project_workload_assignment.project_workload_assignment.project_workload.types import (
+from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
 	UserWorkloadInfo,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.utilization_helpers import (
+from project_workload_assignment.project_workload_assignment.project_workload.utilization.utilization_helpers import (
 	is_utilization_eligible_worker,
 	is_worker_active_on_date,
 	project_util_included_on_date,
