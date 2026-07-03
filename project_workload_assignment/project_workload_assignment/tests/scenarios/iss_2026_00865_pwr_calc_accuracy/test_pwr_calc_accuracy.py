@@ -14,10 +14,10 @@ from project_workload_assignment.project_workload_api import (
 	pwr_run_project_workload_tree,
 	pwr_run_team_workload_grid,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.single_project_workload_tree import (
+from project_workload_assignment.project_workload_assignment.project_workload.project_report.single_project_workload_tree import (
 	run_get_project_workload_data,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.team_workload_grid import (
+from project_workload_assignment.project_workload_assignment.project_workload.team_report.team_workload_grid import (
 	run_get_projects_workload_data_v2,
 )
 

@@ -9,7 +9,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import flt
 
-from project_workload_assignment.project_workload_assignment.project_workload.chart_aggregates import (
+from project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates import (
 	run_get_team_workload_charts,
 )
 

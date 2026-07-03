@@ -10,14 +10,14 @@ from project_workload_assignment.project_workload_api import (
 	pwr_run_project_workload_charts,
 	pwr_run_team_workload_charts,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.chart_aggregates import (
+from project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates import (
 	_normalize_worker_wtype_filter,
 	_zero_series,
 	_zero_wtype_series,
 	run_get_project_workload_charts,
 	run_get_team_workload_charts,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.periods import (
+from project_workload_assignment.project_workload_assignment.project_workload.core.periods import (
 	generate_periods_for_project_window,
 	generate_periods_for_pwr_report,
 )

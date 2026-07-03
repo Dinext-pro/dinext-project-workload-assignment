@@ -1,0 +1,348 @@
+{
+  "_comment": "TC-01 baseline for get_work_efforts_consolidated_data on dependency project TEST-V15.106.0 (HEAD). Regenerate: capture_golden.py",
+  "project": "TEST-V15.106.0 (HEAD)",
+  "task_count": 21,
+  "tasks": [
+    {
+      "expandable": 1,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [
+        {
+          "fact_2026_4": 73.5,
+          "fact_2026_6": 38.6,
+          "forecast_2026_4": 0.0,
+          "forecast_2026_6": 120.0,
+          "forecast_2026_7": 120.0,
+          "plan_2026_4": 0.0,
+          "plan_2026_6": 120.0,
+          "plan_2026_7": 120.0,
+          "role": "Консультант"
+        },
+        {
+          "fact_2026_4": 3.2,
+          "forecast_2026_4": 0.0,
+          "plan_2026_4": 27.0,
+          "role": "Разработчик"
+        }
+      ],
+      "status": "Open",
+      "subject": "Анализ",
+      "type": " ",
+      "value": "TASK-2026-00137"
+    },
+    {
+      "expandable": 1,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [
+        {
+          "fact_2026_5": 48.0,
+          "forecast_2026_5": 39.0,
+          "plan_2026_5": 40.0,
+          "role": "Консультант"
+        },
+        {
+          "fact_2026_5": 77.5,
+          "role": "Разработчик"
+        },
+        {
+          "fact_2026_5": 75.2,
+          "forecast_2026_5": 60.0,
+          "plan_2026_5": 60.0,
+          "role": "Руководитель проекта"
+        }
+      ],
+      "status": "Open",
+      "subject": "Проектирование",
+      "type": " ",
+      "value": "TASK-2026-00138"
+    },
+    {
+      "expandable": 1,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [
+        {
+          "forecast_2026_6": 0.0,
+          "forecast_2026_7": 100.0,
+          "plan_2026_6": 0.0,
+          "plan_2026_7": 100.0,
+          "role": "Разработчик"
+        }
+      ],
+      "status": "Open",
+      "subject": "Разработка",
+      "type": " ",
+      "value": "TASK-2026-00139"
+    },
+    {
+      "expandable": 0,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [
+        {
+          "role": "Руководитель проекта"
+        }
+      ],
+      "status": "Open",
+      "subject": "Тестирование",
+      "type": " ",
+      "value": "TASK-2026-00140"
+    },
+    {
+      "expandable": 1,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [
+        {
+          "role": "Руководитель проекта"
+        }
+      ],
+      "status": "Open",
+      "subject": "Релиз",
+      "type": " ",
+      "value": "TASK-2026-00141"
+    },
+    {
+      "expandable": 1,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [
+        {
+          "fact_2026_6": 12.3,
+          "forecast_2026_6": 160.0,
+          "plan_2026_6": 160.0,
+          "role": "Консультант"
+        },
+        {
+          "fact_2026_5": 16.0,
+          "forecast_2026_5": 0.0,
+          "plan_2026_5": 32.0,
+          "role": "Разработчик"
+        }
+      ],
+      "status": "Open",
+      "subject": "ЗНИ",
+      "type": " ",
+      "value": "TASK-2026-00145"
+    },
+    {
+      "expandable": 0,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [],
+      "status": "Open",
+      "subject": "ISS-2025-02606 API SMOKE Top",
+      "type": "Stage",
+      "value": "TASK-2026-00161"
+    },
+    {
+      "expandable": 0,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [],
+      "status": "Open",
+      "subject": "Задача 1",
+      "type": "Issue",
+      "value": "TASK-2026-00166"
+    },
+    {
+      "expandable": 1,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [
+        {
+          "fact_2026_6": 38.4,
+          "forecast_2026_5": 60.0,
+          "plan_2026_5": 60.0,
+          "role": "Руководитель проекта"
+        }
+      ],
+      "status": "Open",
+      "subject": "Задача 2",
+      "type": "Issue",
+      "value": "TASK-2026-00167"
+    },
+    {
+      "expandable": 0,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [],
+      "status": "Open",
+      "subject": "Задача 1",
+      "type": "Issue",
+      "value": "TASK-2026-00172"
+    },
+    {
+      "expandable": 0,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [
+        {
+          "fact_2026_6": 8.7,
+          "forecast_2026_6": 150.0,
+          "plan_2026_6": 160.0,
+          "role": "Консультант"
+        }
+      ],
+      "status": "Open",
+      "subject": "Задача 2",
+      "type": "Issue",
+      "value": "TASK-2026-00173"
+    },
+    {
+      "expandable": 0,
+      "indent": 0,
+      "parent_task": null,
+      "role_data": [],
+      "status": "Open",
+      "subject": "UI smoke timesheet Анализ UI",
+      "type": "Issue",
+      "value": "TASK-2026-00175"
+    },
+    {
+      "expandable": 0,
+      "indent": 1,
+      "parent_task": "TASK-2026-00137",
+      "role_data": [
+        {
+          "fact_2026_4": 40.2,
+          "forecast_2026_4": 0.0,
+          "plan_2026_4": 20.0,
+          "role": "Консультант"
+        }
+      ],
+      "status": "Open",
+      "subject": "Задача 1",
+      "type": " ",
+      "value": "TASK-2026-00142"
+    },
+    {
+      "expandable": 0,
+      "indent": 1,
+      "parent_task": "TASK-2026-00137",
+      "role_data": [
+        {
+          "fact_2026_4": 33.3,
+          "forecast_2026_4": 0.0,
+          "plan_2026_4": 20.0,
+          "role": "Консультант"
+        }
+      ],
+      "status": "Open",
+      "subject": "Задача 2",
+      "type": " ",
+      "value": "TASK-2026-00143"
+    },
+    {
+      "expandable": 0,
+      "indent": 1,
+      "parent_task": "TASK-2026-00137",
+      "role_data": [
+        {
+          "fact_2026_4": 3.2,
+          "role": "Разработчик"
+        }
+      ],
+      "status": "Open",
+      "subject": "Задача 3",
+      "type": " ",
+      "value": "TASK-2026-00144"
+    },
+    {
+      "expandable": 0,
+      "indent": 1,
+      "parent_task": "TASK-2026-00145",
+      "role_data": [
+        {
+          "fact_2026_6": 12.3,
+          "forecast_2026_5": 10.0,
+          "forecast_2026_6": 8.0,
+          "plan_2026_5": 10.0,
+          "plan_2026_6": 0.0,
+          "role": "Консультант"
+        },
+        {
+          "fact_2026_5": 16.0,
+          "role": "Разработчик"
+        }
+      ],
+      "status": "Pending Review",
+      "subject": "Тестовый запрос поддержки",
+      "type": "Issue",
+      "value": "TASK-2026-00146"
+    },
+    {
+      "expandable": 1,
+      "indent": 1,
+      "parent_task": "TASK-2026-00167",
+      "role_data": [
+        {
+          "fact_2026_6": 38.4,
+          "forecast_2026_5": 50.0,
+          "plan_2026_5": 50.0,
+          "role": "Руководитель проекта"
+        }
+      ],
+      "status": "Open",
+      "subject": "Задача 1",
+      "type": "Issue",
+      "value": "TASK-2026-00168"
+    },
+    {
+      "expandable": 0,
+      "indent": 1,
+      "parent_task": "TASK-2026-00145",
+      "role_data": [],
+      "status": "Open",
+      "subject": "Запрос поддержки 2",
+      "type": "Issue",
+      "value": "TASK-2026-00170"
+    },
+    {
+      "expandable": 0,
+      "indent": 1,
+      "parent_task": "TASK-2026-00167",
+      "role_data": [],
+      "status": "Open",
+      "subject": "Задача 2",
+      "type": "Issue",
+      "value": "TASK-2026-00171"
+    },
+    {
+      "expandable": 0,
+      "indent": 1,
+      "parent_task": "TASK-2026-00167",
+      "role_data": [
+        {
+          "forecast_2026_5": 10.0,
+          "plan_2026_5": 10.0,
+          "role": "Руководитель проекта"
+        }
+      ],
+      "status": "Open",
+      "subject": "Задача 2",
+      "type": "Issue",
+      "value": "TASK-2026-00174"
+    },
+    {
+      "expandable": 0,
+      "indent": 2,
+      "parent_task": "TASK-2026-00168",
+      "role_data": [
+        {
+          "fact_2026_6": 38.4,
+          "forecast_2026_5": 10.0,
+          "plan_2026_5": 40.0,
+          "role": "Руководитель проекта"
+        }
+      ],
+      "status": "Open",
+      "subject": "Задача 1.1",
+      "type": "Issue",
+      "value": "TASK-2026-00169"
+    }
+  ],
+  "view_options": "Прогноз и факт"
+}

@@ -8,16 +8,16 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from project_workload_assignment.project_workload_assignment.project_workload.periods import (
+from project_workload_assignment.project_workload_assignment.project_workload.core.periods import (
 	build_date_to_period_key,
 	generate_periods_for_pwr_report,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.utp_actual import (
+from project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual import (
 	compute_team_actual_hours,
 	merge_user_actual_totals,
 	query_utp_daily_rows,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.windows import (
+from project_workload_assignment.project_workload_assignment.project_workload.core.windows import (
 	get_visible_window,
 )
 
@@ -38,7 +38,7 @@ class TestUtpActual(FrappeTestCase):
 		self.assertLess(str(start), frappe.utils.nowdate())
 
 	@patch(
-		"project_workload_assignment.project_workload_assignment.project_workload.utp_actual.query_utp_daily_rows"
+		"project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual.query_utp_daily_rows"
 	)
 	def test_compute_team_actual_hours_groups_by_project(self, mock_query):
 		periods = generate_periods_for_pwr_report("weekly", "quarter", "2026-06-01")
@@ -70,7 +70,7 @@ class TestUtpActual(FrappeTestCase):
 		self.assertEqual(result["user@example.com"]["PRJ-2"][week_key], 2.0)
 
 	@patch(
-		"project_workload_assignment.project_workload_assignment.project_workload.utp_actual.query_utp_daily_rows"
+		"project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual.query_utp_daily_rows"
 	)
 	def test_compute_team_actual_hours_includes_future_utp_in_period(self, mock_query):
 		periods = generate_periods_for_pwr_report("daily", "quarter", "2026-06-01")
@@ -94,7 +94,7 @@ class TestUtpActual(FrappeTestCase):
 		)
 
 	@patch(
-		"project_workload_assignment.project_workload_assignment.project_workload.utp_actual.query_utp_daily_rows"
+		"project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual.query_utp_daily_rows"
 	)
 	def test_compute_team_actual_hours_maps_past_utp_to_period(self, mock_query):
 		periods = generate_periods_for_pwr_report("weekly", "quarter", "2026-01-01")
@@ -118,7 +118,7 @@ class TestUtpActual(FrappeTestCase):
 		)
 
 	@patch(
-		"project_workload_assignment.project_workload_assignment.project_workload.utp_actual.query_utp_daily_rows"
+		"project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual.query_utp_daily_rows"
 	)
 	def test_compute_team_actual_hours_skips_pairs_outside_assignments(self, mock_query):
 		periods = generate_periods_for_pwr_report("weekly", "quarter", "2026-06-01")
