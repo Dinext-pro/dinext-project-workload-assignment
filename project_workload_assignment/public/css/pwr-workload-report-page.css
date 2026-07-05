@@ -86,9 +86,17 @@ body[data-route="Form/Projects Workload Report"] .form-layout {
 	padding-bottom: 24px !important;
 }
 
-.projects_workload_report .projects-workload-ag-grid .ag-body-viewport,
-.projects_workload_report .projects-workload-ag-grid .ag-center-cols-viewport {
+/* Vertical scroll only on body viewport — AG Grid syncs pinned-left with center rows. */
+.projects_workload_report .projects-workload-ag-grid .ag-body-viewport {
 	min-height: 0 !important;
 	max-height: 100% !important;
-	overflow: auto !important;
+	overflow-x: hidden !important;
+	overflow-y: auto !important;
+}
+
+/* Center cols: horizontal scroll only; vertical scroll here desyncs pinned column. */
+.projects_workload_report .projects-workload-ag-grid .ag-center-cols-viewport {
+	min-height: 0 !important;
+	overflow-x: auto !important;
+	overflow-y: hidden !important;
 }
