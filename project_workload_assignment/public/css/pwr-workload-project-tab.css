@@ -51,11 +51,17 @@ body[data-route="Form/Project"] [data-fieldname="custom_workload"] .control-labe
 	position: relative;
 }
 
-.project_workload_container .project-workload-table .project-workload-ag-grid .ag-body-viewport,
-.project_workload_container .project-workload-table .project-workload-ag-grid .ag-center-cols-viewport {
+.project_workload_container .project-workload-table .project-workload-ag-grid .ag-body-viewport {
 	min-height: 0 !important;
 	max-height: 100% !important;
-	overflow: auto !important;
+	overflow-x: hidden !important;
+	overflow-y: auto !important;
+}
+
+.project_workload_container .project-workload-table .project-workload-ag-grid .ag-center-cols-viewport {
+	min-height: 0 !important;
+	overflow-x: auto !important;
+	overflow-y: hidden !important;
 }
 
 .project_workload_container .level-user .workload-hours {
