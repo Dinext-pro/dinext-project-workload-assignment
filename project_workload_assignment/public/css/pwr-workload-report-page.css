@@ -86,17 +86,17 @@ body[data-route="Form/Projects Workload Report"] .form-layout {
 	padding-bottom: 24px !important;
 }
 
-/* Vertical scroll only on body viewport — AG Grid syncs pinned-left with center rows. */
+/* Both axes scroll on body-viewport — AG Grid native sync of pinned-left (vertical)
+   and header (horizontal) + column virtualization. Center cols must not scroll
+   independently, otherwise horizontal scroll desyncs from the grid engine and
+   non-pinned cells stop rendering. */
 .projects_workload_report .projects-workload-ag-grid .ag-body-viewport {
 	min-height: 0 !important;
 	max-height: 100% !important;
-	overflow-x: hidden !important;
+	overflow-x: auto !important;
 	overflow-y: auto !important;
 }
 
-/* Center cols: horizontal scroll only; vertical scroll here desyncs pinned column. */
 .projects_workload_report .projects-workload-ag-grid .ag-center-cols-viewport {
-	min-height: 0 !important;
-	overflow-x: auto !important;
-	overflow-y: hidden !important;
+	overflow: hidden !important;
 }

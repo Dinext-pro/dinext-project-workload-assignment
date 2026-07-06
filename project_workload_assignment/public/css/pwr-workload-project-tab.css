@@ -59,7 +59,6 @@ body[data-route="Form/Project"] [data-fieldname="custom_workload"] .control-labe
 }
 
 .project_workload_container .project-workload-table .project-workload-ag-grid .ag-center-cols-viewport {
-	min-height: 0 !important;
 	overflow-x: auto !important;
 	overflow-y: hidden !important;
 }
