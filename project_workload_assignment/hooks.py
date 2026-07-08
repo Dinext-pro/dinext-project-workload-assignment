@@ -136,7 +136,12 @@ doctype_css = {
 #                ,"Issue":"public/js/pwa/dialog.js"
 #            }
 
-# doctype_tree_js = {"Task":"public/js/pwa/dialog.js"}
+doctype_tree_js = {
+	"Task": [
+		"public/js/core/api-methods.js",
+		"public/js/pwa/dialog.js",
+	],
+}
 # doctype_calendar_js = {"Task" : "public/js/pwa/dialog.js"}
 
 # Svg Icons
