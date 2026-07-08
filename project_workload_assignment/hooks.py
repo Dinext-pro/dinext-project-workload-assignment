@@ -55,6 +55,8 @@ app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
 # doctypes (Project, Task, Issue) where doctype_js IS processed.
 app_include_js = [
 	"/assets/project_workload_assignment/js/core/form-loader.js",
+	"/assets/project_workload_assignment/js/core/api-methods.js",
+	"/assets/project_workload_assignment/js/pwa/dialog.js",
 ]
 
 # include js, css files in header of web template
@@ -131,10 +133,12 @@ doctype_css = {
 	],
 }
 
-# doctype_list_js = {
-#                "Task":"public/js/pwa/dialog.js"
-#                ,"Issue":"public/js/pwa/dialog.js"
-#            }
+doctype_list_js = {
+	"Task": [
+		"public/js/core/api-methods.js",
+		"public/js/pwa/dialog.js",
+	],
+}
 
 doctype_tree_js = {
 	"Task": [
