@@ -103,6 +103,7 @@ doctype_js = {
                     "public/js/work_efforts/table/columns.js",
                     "public/js/work_efforts/table/cell-edit.js",
                     "public/js/work_efforts/table/limits.js",
+                    "public/js/work_efforts/v2-preview-bridge.js",
                     "public/js/work_efforts/table/render.js",
                     "public/js/core/plan-fact-cell.js",
                     "public/js/forecast/pl-from-we.js",
@@ -125,6 +126,7 @@ doctype_css = {
 	],
 	"Project": [
 		"public/css/we-table.css",
+		"public/css/we-v2.css",
 		"public/css/pwr-workload-cells.css",
 		"public/css/pwr-workload-participant-column.css",
 		"public/css/pwr-workload-filters.css",

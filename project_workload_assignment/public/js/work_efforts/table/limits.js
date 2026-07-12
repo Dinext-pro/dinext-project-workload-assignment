@@ -91,12 +91,19 @@ function recalculatePeriodLimits(frm, periodType, callback) {
  * @param {WorkEffortsForm} frm
  */
 function refreshLimitHighlight(frm) {
-    if (!frm.work_efforts_dt || !frm.aggregatedTasks) {
-        return;
+    if (frm.work_efforts_dt && frm.aggregatedTasks) {
+        let periodType = frm._we_period_type || "month";
+        let unit = frm._we_unit || "hours";
+        project_workload_assignment.work_efforts.updateTable(frm, periodType, unit, true);
     }
-    let periodType = frm._we_period_type || "month";
-    let unit = frm._we_unit || "hours";
-    project_workload_assignment.work_efforts.updateTable(frm, periodType, unit, true);
+    // dual-table: пересчитать лимиты и обновить cellClassRules в v2
+    if (frm._we_v2_enabled && window.WorkEffortsV2?.refreshLimitHighlight) {
+        project_workload_assignment.work_efforts.recalculatePeriodLimits(
+            frm,
+            frm._we_period_type || "month",
+            () => window.WorkEffortsV2.refreshLimitHighlight(frm)
+        );
+    }
 }
 
 function setCellStyles() {

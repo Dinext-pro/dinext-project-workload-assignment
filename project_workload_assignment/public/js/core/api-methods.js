@@ -12,6 +12,7 @@ Object.assign(project_workload_assignment.pwrApi, {
 		"project_workload_assignment.project_workload_api.pwr_run_add_forecast_from_work_efforts",
 	CHECK_OVERLOAD: "project_workload_assignment.project_workload_api.pwr_run_check_workload_overload",
 	CONSOLIDATED_DATA: "project_workload_assignment.project_workload_api.get_work_efforts_consolidated_data",
+	GRID_V2: "project_workload_assignment.project_workload_api.get_work_efforts_grid_v2",
 	TIMESHEET_LIMITS: "project_workload_assignment.project_workload_api.calculate_timesheet_limits",
 	SAVE_FORECAST_PLAN: "project_workload_assignment.project_workload_api.save_forecast_as_plan",
 	UPDATE_FORECAST_ASSIGNMENTS:
