@@ -30,6 +30,8 @@ function buildTableOptions(frm, state) {
         // Dense cells via Quartz theme API (not .ag-cell padding hacks)
         theme: {
             cellHorizontalPadding: 6,
+            columnBorder: false,
+            headerColumnBorder: false,
         },
         onValidateCells: (ctx) => onValidateCells(frm, ctx),
         onSaveCells: (ctx) => onSaveCells(frm, ctx),
@@ -54,15 +56,29 @@ export async function initTable(frm) {
 
     if (!frm._we_v2_enabled || !state.container) return null;
     if (state.table) return state.table;
+    if (state._initPromise) return state._initPromise;
 
-    await frappe.require(["dinext-table.bundle.js"]);
-    await loadGridData(frm);
-    await Promise.all([ensurePeriodLimits(frm), ensureWorkloadPeriods(frm)]);
-    const table = await DinextTable.create(buildTableOptions(frm, state));
-    state.table = table;
-    applyRuntime(frm, table);
-    syncPlFromWe(frm);
-    return table;
+    state._initPromise = (async () => {
+        try {
+            await frappe.require(["dinext-table.bundle.js"]);
+            await loadGridData(frm);
+            await Promise.all([ensurePeriodLimits(frm), ensureWorkloadPeriods(frm)]);
+
+            if (state.table) {
+                return state.table;
+            }
+
+            const table = await DinextTable.create(buildTableOptions(frm, state));
+            state.table = table;
+            applyRuntime(frm, table);
+            syncPlFromWe(frm);
+            return table;
+        } finally {
+            state._initPromise = null;
+        }
+    })();
+
+    return state._initPromise;
 }
 
 export async function refreshRuntime(frm) {

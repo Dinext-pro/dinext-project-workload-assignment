@@ -20,5 +20,7 @@ export function destroyTable(frm) {
     if (state) {
         state.table = null;
         state.container = null;
+        state._mountPromise = null;
+        state._initPromise = null;
     }
 }
