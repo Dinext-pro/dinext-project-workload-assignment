@@ -21,10 +21,21 @@ export async function ensureMounted(frm) {
     const state = initState(frm);
     state.container = container;
 
-    if (state.table) {
-        await reloadTable(frm, initTable, refreshRuntime);
-        return;
+    if (state._mountPromise) {
+        return state._mountPromise;
     }
 
-    await initTable(frm);
+    state._mountPromise = (async () => {
+        try {
+            if (state.table) {
+                await reloadTable(frm, initTable, refreshRuntime);
+                return;
+            }
+            await initTable(frm);
+        } finally {
+            state._mountPromise = null;
+        }
+    })();
+
+    return state._mountPromise;
 }
