@@ -12,6 +12,7 @@ ISS-2026-00926: новый DinextAgGrid UI не меняет эти entrypoints;
 - pwr_run_add_forecast_from_work_efforts → add_forecast_from_work_efforts → forecast_from_work_efforts.run_add_forecast_from_work_efforts
 - pwr_run_check_workload_overload → check_workload_overload → overload_check.run_check_workload_overload
 - get_work_efforts_consolidated_data → work_efforts.consolidated_data
+- get_work_efforts_grid_v2 → work_efforts.v2.grid_data
 - calculate_timesheet_limits → work_efforts.timesheet_limits
 - save_forecast_as_plan → work_efforts.save_forecast_as_plan
 - update_forecast_from_assignments → forecast_from_assignments
@@ -69,6 +70,17 @@ from project_workload_assignment.project_workload_assignment.project_workload.wo
 )
 from project_workload_assignment.project_workload_assignment.project_workload.work_efforts.save_forecast_as_plan import (
 	run_save_forecast_as_plan,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.work_efforts.v2.grid_data import (
+	run_get_work_efforts_grid_v2,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.work_efforts.v2.models import (
+	WeV2GridFormInput,
+	WeV2GridResponse,
+	WeV2SaveForecastFormInput,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.work_efforts.v2.save import (
+	run_save_forecast_changes,
 )
 
 
@@ -215,6 +227,20 @@ def get_work_efforts_consolidated_data() -> ConsolidatedDataResponse:
 	"""Consolidated Work Efforts data for a project."""
 	form_input: ConsolidatedDataFormInput = frappe.form_dict
 	return run_get_work_efforts_consolidated_data(form_input)
+
+
+@frappe.whitelist()
+def get_work_efforts_grid_v2() -> WeV2GridResponse:
+	"""Scalar Work Efforts grid v2 (DinextTable)."""
+	form_input: WeV2GridFormInput = frappe.form_dict
+	return run_get_work_efforts_grid_v2(form_input)
+
+
+@frappe.whitelist()
+def we_v2_save_forecast_changes() -> dict:
+	"""Batch save forecast changes from WE grid v2."""
+	form_input: WeV2SaveForecastFormInput = frappe.form_dict
+	return run_save_forecast_changes(form_input)
 
 
 @frappe.whitelist()

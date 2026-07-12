@@ -27,11 +27,11 @@ def _to_float(value: object) -> float:
         return 0.0
 
 
-def run_get_work_efforts_consolidated_data(
-    form_dict: ConsolidatedDataFormInput,
-) -> ConsolidatedDataResponse:
-    project = form_dict.get("project")
+def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataResponse:
+    """Единая загрузка Task + PWE + UTP, rollup fact, tree order.
 
+    Используется legacy consolidated и WE grid v2 (без второго SQL-стека).
+    """
     Task = frappe.qb.DocType("Task")
     tasks_query = (
         frappe.qb.from_(Task)
@@ -247,3 +247,12 @@ def run_get_work_efforts_consolidated_data(
                 add_children(root_id)
 
     return result_list
+
+
+def run_get_work_efforts_consolidated_data(
+    form_dict: ConsolidatedDataFormInput,
+) -> ConsolidatedDataResponse:
+    project = form_dict.get("project")
+    if not project:
+        frappe.throw(frappe._("Project is required"))
+    return build_aggregated_work_efforts_tasks(project)

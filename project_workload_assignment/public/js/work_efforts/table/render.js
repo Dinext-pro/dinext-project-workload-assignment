@@ -27,6 +27,16 @@ function calc_we_column_total(frm, roles, period, calc_plan = true, calc_fact = 
     return project_workload_assignment.work_efforts.calc_we_column_total_optimized(frm, roles, period, calc_plan, calc_fact);
 }
 
+const WE_V2_PREVIEW = project_workload_assignment.workEffortsPreview;
+
+/**
+ * @param {WorkEffortsForm} frm
+ * @param {() => void} [callback]
+ */
+function with_we_v2_ready(frm, callback) {
+    WE_V2_PREVIEW?.whenReady(frm, callback);
+}
+
 /**
  * Отрисовка таблицы «Трудозатраты».
  * @param {WorkEffortsForm} frm
@@ -37,11 +47,15 @@ function render_work_efforts_table(frm) {
     }
 
     if (frm.last_loaded_project == frm.doc.name && (new Date() - frm.last_loaded_time) < 300000) {
+        with_we_v2_ready(frm);
         return;
     }
 
     let wrapper = frm.get_field("custom_work_efforts").$wrapper;
     wrapper.addClass("work_efforts_container");
+    if (WE_V2_PREVIEW?.destroy) {
+        WE_V2_PREVIEW.destroy(frm);
+    }
     wrapper.empty();
 
     frm.aggregatedTasks = null;
@@ -83,9 +97,15 @@ function render_work_efforts_table(frm) {
                 if (frm.show_assignments && !allAssignmentsLoaded) {
                     project_workload_assignment.work_efforts.load_all_assignments_if_needed(frm).then(() => {
                         project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
+                        with_we_v2_ready(frm, () => {
+                            WE_V2_PREVIEW.onAssignmentsToggle(frm);
+                        });
                     });
                 } else {
                     project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
+                    with_we_v2_ready(frm, () => {
+                        WE_V2_PREVIEW.onAssignmentsToggle(frm);
+                    });
                 }
             }
         },
@@ -113,6 +133,11 @@ function render_work_efforts_table(frm) {
     frm.hide_delta = frm.hide_delta || true;
 
     controls.find('#we_save_plan').on('click', function() {
+        if (frm._we_v2_enabled) {
+            WE_V2_PREVIEW?.saveForecastAsPlan?.(frm);
+            return;
+        }
+
         if (!frm.work_efforts_dt.rowmanager.getCheckedRows()?.length) {
             frappe.msgprint(__("Выберите задачи, для которых необходимо сохранить плановые данные."));
         } else {
@@ -133,21 +158,31 @@ function render_work_efforts_table(frm) {
         $(this).text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
         project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
         project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
+        with_we_v2_ready(frm, () => {
+            WE_V2_PREVIEW.onTogglePlanOrDelta(frm);
+        });
     });
 
     controls.find('#toggle_delta').on('click', function() {
         frm.hide_delta = !frm.hide_delta;
         $(this).text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
         project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
+        with_we_v2_ready(frm, () => {
+            WE_V2_PREVIEW.onTogglePlanOrDelta(frm);
+        });
     });
 
     controls.find('#check_plan_load').on('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
+        if (frm._we_v2_enabled) {
+            WE_V2_PREVIEW?.runMissingPlanCheck?.(frm);
+            return;
+        }
         project_workload_assignment.work_efforts.check_plan_load_for_percentage_assignments(frm);
     });
 
-    //ISS-2025-02858 + ст.186
+    //ISS-2025-02858 + ст.186 — overload API+dialog reuse as-is (v2 highlight deferred)
     controls.find('#check_workload_overload').on('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -254,6 +289,7 @@ function render_work_efforts_table(frm) {
     frm.last_loaded_time = new Date();
 
     project_workload_assignment.work_efforts.render_legend(legend_container);
+    with_we_v2_ready(frm);
 }
 
 /**
