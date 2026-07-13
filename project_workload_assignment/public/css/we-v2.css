@@ -14,6 +14,15 @@
 	min-height: 280px;
 	height: min(50vh, 560px);
 	max-height: 560px;
+	--we-v2-row-height: 28px;
+}
+
+/* Slightly stronger column lines than default Quartz 15% (dark theme readability). */
+.work-efforts-table-v2 [class*="ag-theme-"] {
+	--ag-border-color: color-mix(in srgb, var(--text-color) 28%, transparent);
+	--ag-column-border: solid 1px var(--ag-border-color);
+	--ag-header-column-border: solid 1px var(--ag-border-color);
+	--ag-pinned-column-border: solid 1px var(--ag-border-color);
 }
 
 .work-efforts-v2-badge {
@@ -25,6 +34,42 @@
 	background: var(--bg-light-gray);
 	border: 1px solid var(--border-color);
 	border-radius: var(--border-radius);
+}
+
+/*
+ * Merge-group (spanRows): legacy WE puts task / # / checkbox on the FIRST role line.
+ * DinextTable default centers content across the full span → looks like broken row height.
+ * Keep AG absolute wrapper intact; only pin inner content to first row band (rowHeight 28).
+ */
+.work-efforts-table-v2 .ag-spanned-cell-wrapper > .ag-spanned-cell {
+	display: flex;
+	align-items: flex-start;
+	height: 100%;
+	box-sizing: border-box;
+}
+
+.work-efforts-table-v2 .ag-spanned-cell-wrapper > .ag-spanned-cell > .ag-cell-wrapper,
+.work-efforts-table-v2 .ag-spanned-cell-wrapper > .ag-spanned-cell > .dinext-table-tree-cell,
+.work-efforts-table-v2 .ag-spanned-cell-wrapper > .ag-spanned-cell > .dinext-table-tree-cell--merge-group {
+	height: var(--we-v2-row-height, 28px) !important;
+	min-height: var(--we-v2-row-height, 28px) !important;
+	max-height: var(--we-v2-row-height, 28px) !important;
+	box-sizing: border-box;
+}
+
+.work-efforts-table-v2 .ag-spanned-cell-wrapper > .ag-spanned-cell > .ag-cell-wrapper {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.work-efforts-table-v2 .ag-cell[col-id="_selected"] .ag-spanned-cell-wrapper > .ag-spanned-cell > .ag-cell-wrapper {
+	justify-content: center;
+}
+
+/* serial is bare text in spanned cell (no wrapper) */
+.work-efforts-table-v2 .ag-spanned-cell-wrapper > .ag-spanned-cell[col-id="task_serial"] {
+	line-height: var(--we-v2-row-height, 28px);
 }
 
 /* Плановые / прогнозные сроки — те же CSS vars, что legacy we-table */

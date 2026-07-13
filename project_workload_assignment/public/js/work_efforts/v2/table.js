@@ -27,11 +27,13 @@ function buildTableOptions(frm, state) {
         edit: false,
         selection: { enabled: true },
         fillHandle: { enabled: true },
+        // Gutter DnD default-on in DinextTable; WE merge-groups are not reorder targets.
+        rowReorder: { enabled: false },
         // Dense cells via Quartz theme API (not .ag-cell padding hacks)
         theme: {
             cellHorizontalPadding: 6,
-            columnBorder: false,
-            headerColumnBorder: false,
+            columnBorder: true,
+            headerColumnBorder: true,
         },
         onValidateCells: (ctx) => onValidateCells(frm, ctx),
         onSaveCells: (ctx) => onSaveCells(frm, ctx),
