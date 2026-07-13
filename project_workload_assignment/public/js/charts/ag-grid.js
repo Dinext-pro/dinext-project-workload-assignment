@@ -345,6 +345,10 @@
             initPromise = loadBootstrap()
                 .then(() => window.DinextAgGrid.ensure())
                 .then(() => {
+                    // Legacy class-theme only — never load for DinextTable (Theming API).
+                    if (typeof window.DinextAgGrid.ensureLegacyThemeCss === "function") {
+                        window.DinextAgGrid.ensureLegacyThemeCss();
+                    }
                     injectProjectsWorkloadAgGridCss();
                 });
         }
