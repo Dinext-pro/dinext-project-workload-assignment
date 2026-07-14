@@ -47,6 +47,7 @@ fixtures = [
 # ------------------
 
 # include js, css files in header of desk.html
+# pwa_styles.css: PWA dialog opens from form + Task/Issue kanban
 app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
 app_include_js = "/assets/project_workload_assignment/js/pwa_dialog.js"
 
@@ -70,10 +71,11 @@ doctype_js = {
                 ,"Issue":"public/js/pwa_form.js"
             }
 
-# doctype_list_js = {
-#                "Task":"public/js/pwa_dialog.js"
-#                ,"Issue":"public/js/pwa_dialog.js"
-#            }
+# kanban assign click → start_pwa_dialog (needs pwa_dialog.js via app_include_js)
+doctype_list_js = {
+               "Task": "public/js/kanban.js"
+               ,"Issue": "public/js/kanban.js"
+           }
 
 # doctype_tree_js = {"Task":"public/js/pwa_dialog.js"}
 # doctype_calendar_js = {"Task" : "public/js/pwa_dialog.js"}
