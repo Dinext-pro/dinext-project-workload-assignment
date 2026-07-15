@@ -13,22 +13,51 @@ import {
     planPeriodClassRules,
 } from "./period-markers.js";
 
-/** Fixed period sub-column width — legacy group ~200px / 3 (+ AG Grid padding). */
-const PERIOD_COL_WIDTH = 72;
+/** Legacy period group width (StickyDataTable getter: 200 − 65 per hidden subcol). */
+const LEGACY_PERIOD_GROUP_WIDTH = 200;
+const LEGACY_HIDDEN_SUBCOL_WIDTH = 65;
 
 const ALIGN_CENTER = "dinext-table-cell--align-center";
+const HEADER_CENTER = "we-v2-header--center";
+const CELL_ZERO = "we-v2-cell--zero";
 
+/** Match legacy group width shared equally across visible plan/actual/delta. */
+function periodLeafWidth(hidePlan, hideDelta) {
+    let group = LEGACY_PERIOD_GROUP_WIDTH;
+    if (hidePlan) group -= LEGACY_HIDDEN_SUBCOL_WIDTH;
+    if (hideDelta) group -= LEGACY_HIDDEN_SUBCOL_WIDTH;
+    const visible = 1 + (hidePlan ? 0 : 1) + (hideDelta ? 0 : 1);
+    return Math.round(group / visible);
+}
+
+function toNumber(value) {
+    const n = typeof value === "number" ? value : parseFloat(String(value ?? ""));
+    return Number.isFinite(n) ? n : null;
+}
+
+/** Non-zero → 1 decimal; zero → bare "0" (legacy muted via cellClassRules). */
 function formatNumber(params) {
-    const value = params.value;
-    if (value == null || value === "") return "";
-    return Number(value).toFixed(0);
+    const n = toNumber(params.value);
+    if (n == null) return "";
+    if (n === 0) return "0";
+    return n.toFixed(1);
 }
 
 function formatDelta(params) {
-    const value = params.value;
-    if (value == null || value === "") return "";
-    return `${Number(value).toFixed(1)}%`;
+    const n = toNumber(params.value);
+    if (n == null) return "";
+    if (n === 0) return "0";
+    return `${n.toFixed(1)}%`;
 }
+
+function isZeroValue(params) {
+    const n = toNumber(params.value);
+    return n != null && n === 0;
+}
+
+const ZERO_CELL_CLASS_RULES = {
+    [CELL_ZERO]: isZeroValue,
+};
 
 function isSerialHead(row) {
     if (!row?.task_id || row.merge_group_id === SUMMARY_ROW_ID) {
@@ -89,23 +118,81 @@ function fixedWidth(width) {
     };
 }
 
-function withCenterAlign(col) {
-    const existing = col.cellClass;
+function mergeClassList(existing, next) {
     if (!existing) {
-        return { ...col, cellClass: ALIGN_CENTER };
+        return next;
     }
     if (typeof existing === "string") {
-        return { ...col, cellClass: `${existing} ${ALIGN_CENTER}` };
+        return `${existing} ${next}`;
     }
     if (Array.isArray(existing)) {
-        return { ...col, cellClass: [...existing, ALIGN_CENTER] };
+        return [...existing, next];
     }
+    return existing;
+}
+
+function withCenterAlign(col) {
+    return {
+        ...col,
+        cellClass: mergeClassList(col.cellClass, ALIGN_CENTER),
+        // AG has no headerAlign prop; headerClass + CSS. Beats number data-type right header.
+        headerClass: mergeClassList(col.headerClass, HEADER_CENTER),
+    };
+}
+
+function sumPeriodField(row, periods, fieldPrefix) {
+    let sum = 0;
+    for (const period of periods || []) {
+        sum += Number(row?.[`${fieldPrefix}_${period.key}`]) || 0;
+    }
+    return sum;
+}
+
+function totalPlanGetter(periods) {
+    return (params) => sumPeriodField(params.data, periods, "plan");
+}
+
+function totalActualGetter(periods) {
+    return (params) => sumPeriodField(params.data, periods, "actual");
+}
+
+function totalDeltaGetter(periods) {
+    return (params) => {
+        const plan = sumPeriodField(params.data, periods, "plan");
+        const actual = sumPeriodField(params.data, periods, "actual");
+        if (!plan) return 0;
+        return Math.round(((actual - plan) / plan) * 1000) / 10;
+    };
+}
+
+function buildPeriodLeaf(opts) {
+    const { field, colId, headerName, width, hide, edit, valueFormatter, valueGetter, cellClassRules } =
+        opts;
+    const col = withCenterAlign({
+        field,
+        colId,
+        headerName,
+        ...fixedWidth(width),
+        sortable: false,
+        suppressMovable: true,
+        tree: false,
+        type: "number",
+        hide: !!hide,
+        valueFormatter,
+        cellClassRules: {
+            ...ZERO_CELL_CLASS_RULES,
+            ...(cellClassRules || {}),
+        },
+    });
+    if (edit !== undefined) col.edit = edit;
+    if (valueGetter) col.valueGetter = valueGetter;
     return col;
 }
 
 function buildPeriodColumns(frm, periods) {
     const hidePlan = !!frm.hide_plan;
     const hideDelta = !!frm.hide_delta;
+    const leafWidth = periodLeafWidth(hidePlan, hideDelta);
 
     return (periods || []).map((period) => {
         const key = period.key;
@@ -114,17 +201,14 @@ function buildPeriodColumns(frm, periods) {
         return {
             colId: `period_${key}`,
             headerName: `${period.year} ${period.month}`,
+            headerClass: HEADER_CENTER,
             marryChildren: true,
             children: [
-                withCenterAlign({
+                buildPeriodLeaf({
                     field: `plan_${key}`,
                     colId: `plan_${key}`,
                     headerName: __("План"),
-                    ...fixedWidth(PERIOD_COL_WIDTH),
-                    sortable: false,
-                    suppressMovable: true,
-                    tree: false,
-                    type: "number",
+                    width: leafWidth,
                     hide: hidePlan,
                     valueFormatter: formatNumber,
                     cellClassRules: {
@@ -132,15 +216,11 @@ function buildPeriodColumns(frm, periods) {
                         ...missingPlanCellClassRules(frm, period),
                     },
                 }),
-                withCenterAlign({
+                buildPeriodLeaf({
                     field: `actual_${key}`,
                     colId: `actual_${key}`,
                     headerName: actualLabel,
-                    ...fixedWidth(PERIOD_COL_WIDTH),
-                    sortable: false,
-                    suppressMovable: true,
-                    tree: false,
-                    type: "number",
+                    width: leafWidth,
                     edit: (row) => !period.is_past && row?.merge_group_id !== SUMMARY_ROW_ID,
                     valueFormatter: formatNumber,
                     cellClassRules: {
@@ -148,15 +228,11 @@ function buildPeriodColumns(frm, periods) {
                         ...actualCellClassRules(frm, period),
                     },
                 }),
-                withCenterAlign({
+                buildPeriodLeaf({
                     field: `delta_${key}`,
                     colId: `delta_${key}`,
                     headerName: "Δ",
-                    ...fixedWidth(PERIOD_COL_WIDTH),
-                    sortable: false,
-                    suppressMovable: true,
-                    tree: false,
-                    type: "number",
+                    width: leafWidth,
                     hide: hideDelta,
                     valueFormatter: formatDelta,
                     cellClassRules: deltaPeriodClassRules(frm, period),
@@ -164,6 +240,48 @@ function buildPeriodColumns(frm, periods) {
             ],
         };
     });
+}
+
+/** Legacy column `total` — sum of plan/actual/Δ across displayed periods. */
+function buildTotalColumn(frm, periods) {
+    const hidePlan = !!frm.hide_plan;
+    const hideDelta = !!frm.hide_delta;
+    const leafWidth = periodLeafWidth(hidePlan, hideDelta);
+
+    return {
+        colId: "total",
+        headerName: __("Итого"),
+        headerClass: HEADER_CENTER,
+        marryChildren: true,
+        children: [
+            buildPeriodLeaf({
+                field: "total_plan",
+                colId: "total_plan",
+                headerName: __("План"),
+                width: leafWidth,
+                hide: hidePlan,
+                valueGetter: totalPlanGetter(periods),
+                valueFormatter: formatNumber,
+            }),
+            buildPeriodLeaf({
+                field: "total_actual",
+                colId: "total_actual",
+                headerName: __("Прогноз"),
+                width: leafWidth,
+                valueGetter: totalActualGetter(periods),
+                valueFormatter: formatNumber,
+            }),
+            buildPeriodLeaf({
+                field: "total_delta",
+                colId: "total_delta",
+                headerName: "Δ",
+                width: leafWidth,
+                hide: hideDelta,
+                valueGetter: totalDeltaGetter(periods),
+                valueFormatter: formatDelta,
+            }),
+        ],
+    };
 }
 
 export function getColumns(frm, periods) {
@@ -176,6 +294,7 @@ export function getColumns(frm, periods) {
             field: "_selected",
             colId: "_selected",
             headerName: "",
+            headerClass: HEADER_CENTER,
             ...fixedWidth(36),
             sortable: false,
             suppressMovable: true,
@@ -184,7 +303,7 @@ export function getColumns(frm, periods) {
             type: "checkbox",
             edit: true,
             spanRows,
-            // checkbox type already centers via dinext editors
+            // centering: core .dinext-table-cell--align-center (checkbox preset)
         },
         withCenterAlign({
             field: "task_serial",
@@ -201,6 +320,7 @@ export function getColumns(frm, periods) {
         {
             field: "task_subject",
             headerName: __("Задачи"),
+            headerClass: HEADER_CENTER,
             flex: 1,
             minWidth: 250,
             pinned: "left",
@@ -210,7 +330,8 @@ export function getColumns(frm, periods) {
         },
         {
             field: "role",
-            headerName: __("Роль"),
+            headerName: __("Роли"),
+            headerClass: HEADER_CENTER,
             width: 220,
             minWidth: 180,
             pinned: "left",
@@ -236,7 +357,7 @@ export function getColumns(frm, periods) {
         }),
     ];
 
-    return [...baseColumns, ...buildPeriodColumns(form || {}, periodList)];
+    return [...baseColumns, ...buildPeriodColumns(form || {}, periodList), buildTotalColumn(form || {}, periodList)];
 }
 
 export function refreshColumns(frm) {
@@ -247,36 +368,7 @@ export function refreshColumns(frm) {
     state.table.setOption("columns", getColumns(frm, state.periods));
 }
 
-/** Toggle plan/Δ без полной пересборки columnDefs (фаза 9). */
+/** Toggle plan/Δ: rebuild columns so leaf widths match legacy group (200 − 65×hidden). */
 export function applyPlanDeltaVisibility(frm) {
-    const state = frm.we_v2;
-    const api = state?.table?.api;
-    const periods = state?.periods || [];
-    if (!api || !periods.length) {
-        refreshColumns(frm);
-        return;
-    }
-
-    const planIds = periods.map((period) => `plan_${period.key}`);
-    const deltaIds = periods.map((period) => `delta_${period.key}`);
-    const showPlan = !frm.hide_plan;
-    const showDelta = !frm.hide_delta;
-
-    if (typeof api.setColumnsVisible === "function") {
-        api.setColumnsVisible(planIds, showPlan);
-        api.setColumnsVisible(deltaIds, showDelta);
-    } else {
-        refreshColumns(frm);
-        return;
-    }
-
-    for (const col of state.table.columns || []) {
-        for (const child of col.children || []) {
-            if (planIds.includes(child.colId || child.field)) {
-                child.hide = !showPlan;
-            } else if (deltaIds.includes(child.colId || child.field)) {
-                child.hide = !showDelta;
-            }
-        }
-    }
+    refreshColumns(frm);
 }
