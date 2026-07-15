@@ -8,6 +8,8 @@ export async function ensureMounted(frm) {
         return;
     }
 
+    project_workload_assignment.work_efforts?.applyWorkEffortsStyles?.();
+
     const field = frm.get_field("custom_work_efforts");
     if (!field?.$wrapper?.length) {
         return;

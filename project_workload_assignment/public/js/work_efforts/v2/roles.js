@@ -266,6 +266,9 @@ export function roleCellRenderer(frm) {
         label.textContent = row.role ? __(row.role) : "—";
         wrap.appendChild(label);
 
+        const actions = document.createElement("div");
+        actions.className = "we-v2-role-actions";
+
         const periods = frm.we_v2?.periods || [];
         if (row.role && !hasFactOnRow(row, periods)) {
             const del = document.createElement("button");
@@ -278,15 +281,19 @@ export function roleCellRenderer(frm) {
                 e.stopPropagation();
                 confirmDeleteRole(frm, row.task_id, row.role);
             });
-            wrap.appendChild(del);
+            actions.appendChild(del);
         }
 
-        // "+" opens native role dropdown (merge head only)
+        // "+" opens role dropdown (merge head only)
         if (row.merge_group_index === 0) {
             const add = buildAddRoleControl(frm, row.task_id);
             if (add) {
-                wrap.appendChild(add);
+                actions.appendChild(add);
             }
+        }
+
+        if (actions.childNodes.length) {
+            wrap.appendChild(actions);
         }
 
         return wrap;

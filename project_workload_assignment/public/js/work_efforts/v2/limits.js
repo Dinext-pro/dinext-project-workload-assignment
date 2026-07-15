@@ -4,18 +4,19 @@ function limitKey(row, period) {
     return `${row.task_id}_${row.role || ""}_${period.year}_${period.month}`;
 }
 
-/** cellClassRules для actual_{key}: UTP limit status (только past). */
+/** cellClassRules для actual_{key}: UTP limit status (только past).
+ * Parity legacy we-table.css: только normal / warning / block имеют визуал.
+ * message / no-plan в legacy класс ставят, но CSS для них нет — не красим.
+ */
 export function limitStatusCellClassRules(frm, period) {
     if (!period.is_past) {
         return {};
     }
 
-    // normal не стилизуем — иначе inset-обводка почти на всех past-ячейках
     return {
+        "we-v2-limit-normal": (params) => getLimitStatus(frm, params.data, period) === "normal",
         "we-v2-limit-warning": (params) => getLimitStatus(frm, params.data, period) === "warning",
         "we-v2-limit-block": (params) => getLimitStatus(frm, params.data, period) === "block",
-        "we-v2-limit-message": (params) => getLimitStatus(frm, params.data, period) === "message",
-        "we-v2-limit-no-plan": (params) => getLimitStatus(frm, params.data, period) === "no-plan",
     };
 }
 
