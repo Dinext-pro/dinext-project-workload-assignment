@@ -1,13 +1,34 @@
-import { isPreviewEnabled, resolvePreviewContainer } from "./dual-preview-mount.js";
 import { initState } from "./state.js";
 import { reloadTable } from "./data.js";
 import { initTable, refreshRuntime } from "./table.js";
 
-export async function ensureMounted(frm) {
-    if (!isPreviewEnabled(frm)) {
-        return;
+const TABLE_CLASS = "work-efforts-table";
+
+/**
+ * Host element for DinextTable (former StickyDataTable slot).
+ * @param {JQuery} wrapper
+ * @returns {HTMLElement|null}
+ */
+export function resolveTableContainer(wrapper) {
+    let table = wrapper.find(`.${TABLE_CLASS}`);
+    if (!table.length) {
+        const legend = wrapper.find(".work-efforts-legend");
+        table = $(`<div class="${TABLE_CLASS}"></div>`);
+        if (legend.length) {
+            table.insertBefore(legend);
+        } else {
+            wrapper.append(table);
+        }
     }
 
+    const containerEl = table[0];
+    containerEl.style.height = "min(50vh, 560px)";
+    containerEl.style.minHeight = "280px";
+    return containerEl;
+}
+
+/** Mount DinextTable into `.work-efforts-table`. */
+export async function ensureMounted(frm) {
     project_workload_assignment.work_efforts?.applyWorkEffortsStyles?.();
 
     const field = frm.get_field("custom_work_efforts");
@@ -15,7 +36,7 @@ export async function ensureMounted(frm) {
         return;
     }
 
-    const container = resolvePreviewContainer(frm, field.$wrapper);
+    const container = resolveTableContainer(field.$wrapper);
     if (!container) {
         return;
     }

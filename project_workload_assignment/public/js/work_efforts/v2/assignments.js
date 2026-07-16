@@ -31,7 +31,6 @@ export async function ensureAssignmentsLoaded(frm) {
     if (!we?.load_all_assignments_if_needed) {
         return;
     }
-    // dual-table: loader keys off aggregatedTasks; ensure present
     if (!frm.aggregatedTasks || !Object.keys(frm.aggregatedTasks).length) {
         return;
     }
@@ -78,22 +77,19 @@ export async function onAssignmentsToggle(frm) {
     }
 
     const api = state?.table?.api;
-    if (api && typeof api.setColumnsVisible === "function") {
-        api.setColumnsVisible(["assignments"], show);
-        // sync columnDefs hide flag
-        for (const col of state.table.columns || []) {
-            if ((col.colId || col.field) === "assignments") {
-                col.hide = !show;
-            }
-        }
-        if (show) {
-            refreshAssignmentsCells(frm);
-        }
+    if (!api || typeof api.setColumnsVisible !== "function") {
         return;
     }
 
-    // fallback: full column rebuild
-    window.WorkEffortsV2?.refreshColumns?.(frm);
+    api.setColumnsVisible(["assignments"], show);
+    for (const col of state.table.columns || []) {
+        if ((col.colId || col.field) === "assignments") {
+            col.hide = !show;
+        }
+    }
+    if (show) {
+        refreshAssignmentsCells(frm);
+    }
 }
 
 export function assignmentsCellRenderer(frm) {

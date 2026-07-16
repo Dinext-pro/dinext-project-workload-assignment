@@ -1,30 +1,4 @@
-function applyWEChartStyle() {
-    var styles = `
-        .we-chart-wrapper {
-            & .we-chart-container {
-                width:100%;
-                max-height:360px;
-            }
-            & .work-efforts-controls {
-                position: absolute;
-                right: 0px;
-                width: fit-content;
-            }
-        }
-        :root {
-            --charts-bg-block: #e0363622;
-            --charts-bg-warn: #edba1322;
-            --charts-bg-ok: #59ba8b22;
-            --charts-stroke: rgba(0,0,0,0);
-        }
-`;
-
-    var styleSheet = document.createElement("style");
-    styleSheet.textContent = styles;
-    document.head.appendChild(styleSheet);
-}
-
-applyWEChartStyle();
+// Chart layout / --charts-* tokens: we-v2.css (loaded via doctype_css + styles.js)
 
 frappe.ui.form.on("Project", {
     refresh: function(frm) {

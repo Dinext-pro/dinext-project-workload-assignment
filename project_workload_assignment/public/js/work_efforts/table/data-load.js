@@ -16,8 +16,7 @@ function load_work_efforts_data(frm, periodType, unit, updateRows) {
         return;
     }
 
-    frm.work_efforts_dt.freeze();
-
+    // W1: UI grid = DinextTable; this loader only fills aggregatedTasks for chart / P&L.
     project_workload_assignment.work_efforts.clearTaskIndexCacheFor(frm.aggregatedTasks);
 
     frappe.call({
@@ -39,25 +38,7 @@ function load_work_efforts_data(frm, periodType, unit, updateRows) {
                 });
 
                 function doContinue() {
-                    let table_data = tasksArray;
-                    let visibleRows;
-
-                    if (updateRows) {
-                        visibleRows = frm.work_efforts_dt.bodyRenderer.visibleRowIndices;
-                    }
-
                     project_workload_assignment.work_efforts.buildWorkloadPeriodsMap(frm).then(() => {
-                        frm.work_efforts_dt.refresh(table_data);
-                        frm.work_efforts_dt.rowmanager.collapseAllNodes();
-
-                        if (visibleRows) {
-                            frm.work_efforts_dt.rowmanager.showRows(visibleRows);
-                        }
-
-                        frm.work_efforts_dt.unfreeze();
-
-                        project_workload_assignment.work_efforts.setCellStyles();
-
                         if (typeof render_labour_percentage_chart === "function") {
                             render_labour_percentage_chart(frm);
                         }
@@ -76,7 +57,6 @@ function load_work_efforts_data(frm, periodType, unit, updateRows) {
         error: function(err) {
             console.error("Ошибка при загрузке данных:", err);
             frappe.msgprint(__("Ошибка при загрузке данных о трудозатратах"));
-            frm.work_efforts_dt.unfreeze();
         }
     });
 }

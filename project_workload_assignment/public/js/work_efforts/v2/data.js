@@ -99,118 +99,6 @@ function normalizeViewMode(viewOptions) {
     return "forecast_and_fact";
 }
 
-function getPeriodsFromForm(frm, periodType) {
-    const viewMode = normalizeViewMode(frm.view_options || __("Прогноз и факт"));
-    const legacy = project_workload_assignment.work_efforts;
-    const periods = legacy.get_display_periods(frm, periodType || frm._we_period_type || "month");
-
-    return periods.map((period) => {
-        let isPast = !!period.is_past;
-        if (viewMode === "forecast_only") {
-            isPast = false;
-        } else if (viewMode === "fact_only") {
-            isPast = true;
-        }
-        return {
-            year: period.year,
-            month: period.month,
-            key: `${period.year}_${period.month}`,
-            is_past: isPast,
-        };
-    });
-}
-
-function canReuseLegacyConsolidated(frm) {
-    return !!(
-        frm.aggregatedTasks &&
-        Object.keys(frm.aggregatedTasks).length > 0 &&
-        frm.last_loaded_project === frm.doc.name
-    );
-}
-
-function calcDeltaPct(plan, actual) {
-    if (!plan) {
-        return 0;
-    }
-    return Math.round(((actual - plan) / plan) * 1000) / 10;
-}
-
-function resolveActual(roleEntry, periodKey, isPast, viewMode) {
-    const forecast = Number(roleEntry[`forecast_${periodKey}`] || 0);
-    const fact = Number(roleEntry[`fact_${periodKey}`] || 0);
-    if (viewMode === "forecast_only") {
-        return forecast;
-    }
-    if (viewMode === "fact_only") {
-        return fact;
-    }
-    return isPast ? fact : forecast;
-}
-
-export function flattenFromLegacy(tasks, periods, viewMode) {
-    const parentHasChild = new Set();
-    for (const task of tasks) {
-        if (task.parent_task) {
-            parentHasChild.add(task.parent_task);
-        }
-    }
-
-    const flatRows = [];
-    for (const task of tasks) {
-        const taskId = task.value;
-        let roleRows = (task.role_data || []).filter((r) => (r.role || "").trim());
-        if (!roleRows.length) {
-            roleRows = [{ role: null }];
-        } else {
-            roleRows = [...roleRows].sort((a, b) => (a.role || "").localeCompare(b.role || ""));
-        }
-
-        const mergeSize = roleRows.length;
-        const hasChildren = !!task.expandable || parentHasChild.has(taskId);
-
-        roleRows.forEach((roleEntry, index) => {
-            const row = {
-                task_id: taskId,
-                task_subject: index === 0 ? task.subject || "" : null,
-                role: roleEntry.role || null,
-                parent_task_id: task.parent_task || null,
-                merge_group_id: `task-${taskId}`,
-                merge_group_index: index,
-                merge_group_size: mergeSize,
-                has_children: index === 0 && hasChildren,
-                exp_start_date: task.exp_start_date || null,
-                exp_end_date: task.exp_end_date || null,
-                custom_planned_start_date: task.custom_planned_start_date || null,
-                custom_planned_end_date: task.custom_planned_end_date || null,
-                act_start_date: task.act_start_date || null,
-                act_end_date: task.act_end_date || null,
-            };
-
-            for (const period of periods) {
-                const key = period.key;
-                const plan = Number(roleEntry[`plan_${key}`] || 0);
-                const forecast = Number(roleEntry[`forecast_${key}`] || 0);
-                const fact = Number(roleEntry[`fact_${key}`] || 0);
-                const actual = resolveActual(roleEntry, key, period.is_past, viewMode);
-
-                row[`plan_${key}`] = plan;
-                row[`forecast_${key}`] = forecast;
-                row[`fact_${key}`] = fact;
-                row[`actual_${key}`] = actual;
-                row[`delta_${key}`] = calcDeltaPct(plan, actual);
-                const utps = roleEntry[`fact_utps_${key}`];
-                if (utps?.length) {
-                    row[`fact_utps_${key}`] = utps;
-                }
-            }
-
-            flatRows.push(row);
-        });
-    }
-
-    return flatRows;
-}
-
 function applyGridResponse(frm, message) {
     const state = initState(frm);
     state.periods = message.periods || [];
@@ -221,20 +109,6 @@ function applyGridResponse(frm, message) {
 
 export async function loadGridData(frm, periodType) {
     const period_type = periodType || frm._we_period_type || "month";
-
-    if (canReuseLegacyConsolidated(frm)) {
-        const periods = getPeriodsFromForm(frm, period_type);
-        const view_mode = normalizeViewMode(frm.view_options || __("Прогноз и факт"));
-        const rows = flattenFromLegacy(Object.values(frm.aggregatedTasks), periods, view_mode);
-        return applyGridResponse(frm, {
-            project: frm.doc.name,
-            period_type,
-            view_mode,
-            periods,
-            rows,
-            summary_rows: buildSummaryRows(frm, periods),
-        });
-    }
 
     try {
         const message = await frappe.xcall(getGridApi(), {
@@ -256,10 +130,6 @@ export async function loadGridData(frm, periodType) {
 }
 
 export async function reloadTable(frm, initTable, refreshRuntime) {
-    if (!frm._we_v2_enabled) {
-        return null;
-    }
-
     const state = frm.we_v2;
     if (!state?.container) {
         return null;

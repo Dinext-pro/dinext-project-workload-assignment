@@ -75,7 +75,7 @@ app_include_js = [
 
 # include js in doctype views
 doctype_js = {
-                # dialog.js must precede form.js — form.js calls start_pwa_dialog()
+                # dialog.js must precede form.js тАФ form.js calls start_pwa_dialog()
                 "Task": [
                     "public/js/pwa/dialog.js",
                     "public/js/pwa/form.js",
@@ -100,10 +100,7 @@ doctype_js = {
                     "public/js/work_efforts/overload.js",
                     "public/js/work_efforts/table/controls.js",
                     "public/js/work_efforts/table/data-load.js",
-                    "public/js/work_efforts/table/columns.js",
-                    "public/js/work_efforts/table/cell-edit.js",
                     "public/js/work_efforts/table/limits.js",
-                    "public/js/work_efforts/v2-preview-bridge.js",
                     "public/js/work_efforts/table/render.js",
                     "public/js/core/plan-fact-cell.js",
                     "public/js/forecast/pl-from-we.js",
@@ -125,7 +122,6 @@ doctype_css = {
 		"public/css/pwr-workload-report-page.css",
 	],
 	"Project": [
-		"public/css/we-table.css",
 		"public/css/we-v2.css",
 		"public/css/pwr-workload-cells.css",
 		"public/css/pwr-workload-participant-column.css",
