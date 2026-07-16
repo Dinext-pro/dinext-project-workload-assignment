@@ -48,13 +48,11 @@ fixtures = [
 
 # include js, css files in header of desk.html
 app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
-# form-loader.js kept in app_include_js: Projects Workload Report is a custom
-# DocType (is_custom=1), so Frappe skips add_code() and doctype_js has no effect.
-# form-loader is the ONLY mechanism that loads report scripts via frappe.require().
-# api-methods.js / shared.js / dialog.js moved to doctype_js for non-custom
-# doctypes (Project, Task, Issue) where doctype_js IS processed.
+# Projects Workload Report is custom DocType → FormMeta.add_code() skipped
+# (no doctype_js). Form UI boots only via pwr-form-boot.js (app_include).
+# No Client Script / Server Script for this Form UI.
 app_include_js = [
-	"/assets/project_workload_assignment/js/core/form-loader.js",
+	"/assets/project_workload_assignment/js/core/pwr-form-boot.js",
 	"/assets/project_workload_assignment/js/core/api-methods.js",
 	"/assets/project_workload_assignment/js/pwa/dialog.js",
 ]
@@ -75,7 +73,7 @@ app_include_js = [
 
 # include js in doctype views
 doctype_js = {
-                # dialog.js must precede form.js тАФ form.js calls start_pwa_dialog()
+                # dialog.js must precede form.js — form.js calls start_pwa_dialog()
                 "Task": [
                     "public/js/pwa/dialog.js",
                     "public/js/pwa/form.js",
@@ -87,7 +85,7 @@ doctype_js = {
                 # "Projects Workload Report" doctype_js intentionally omitted:
                 # this is a custom DocType (is_custom=1), Frappe's add_code() skips
                 # custom doctypes, so doctype_js entries have NO EFFECT here.
-                # Scripts are loaded by form-loader.js (app_include_js) via frappe.require.
+                # Scripts are loaded by pwr-form-boot.js (app_include_js).
                 ,"Project":[
                     # api-methods / shared / dialog moved here from app_include_js
                     "public/js/core/api-methods.js",
@@ -104,21 +102,16 @@ doctype_js = {
                     "public/js/work_efforts/table/render.js",
                     "public/js/core/plan-fact-cell.js",
                     "public/js/forecast/pl-from-we.js",
-                    "public/js/pwr-project/helpers.js",
-                    "public/js/pwr-project/filters.js",
-                    "public/js/pwr-project/columns.js",
-                    "public/js/pwr-project/data.js",
-                    "public/js/pwr-project/form.js",
-                    "public/js/charts/bootstrap.js",
+                    "public/js/workload-reports/project-tab/entry.js",
                 ]
             }
 
 doctype_css = {
 	"Projects Workload Report": [
-		"public/css/pwr-workload-cells.css",
-		"public/css/pwr-workload-participant-column.css",
-		"public/css/pwr-workload-filters.css",
-		"public/css/pwr-workload-charts.css",
+		# v3 Form CSS + page chrome (hide sidebar)
+		"public/css/workload-reports-filters.css",
+		"public/css/workload-reports-charts.css",
+		"public/css/workload-reports-table.css",
 		"public/css/pwr-workload-report-page.css",
 	],
 	"Project": [

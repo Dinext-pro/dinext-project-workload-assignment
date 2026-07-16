@@ -3,6 +3,15 @@
 	const NS = project_workload_assignment.pwrProject;
 	const WL_DEBUG = NS.WL_DEBUG;
 
+	/** Kill-switch: localStorage.pwr_workload_legacy=1 → legacy AG Grid path. */
+	function useLegacyWorkload() {
+		try {
+			return localStorage.getItem("pwr_workload_legacy") === "1";
+		} catch (_err) {
+			return false;
+		}
+	}
+
 	async function render_project_workload_table(frm) {
 		if (WL_DEBUG) {
 			console.log("render_project_workload_table CALLED");
@@ -42,6 +51,29 @@
 
 		if (WL_DEBUG) {
 			console.log("CREATING NEW TABLE...");
+		}
+
+		// Phase 7: in-place DinextTable (default). Rollback: pwr_workload_legacy=1
+		if (!useLegacyWorkload()) {
+			try {
+				await frappe.require(["dinext-table.bundle.js", "workload.bundle.js"]);
+				const wl = project_workload_assignment.workload;
+				if (wl && wl.project && typeof wl.project.mount === "function") {
+					await wl.project.mount({ frm, wrapper: $wrapper });
+					NS.endTimer(timer);
+					return;
+				}
+				console.warn(
+					"[pwr-project] workload.project.mount missing; falling back to legacy AG Grid"
+				);
+			} catch (error) {
+				console.error("Error loading workload DinextTable path:", error);
+				frappe.msgprint(
+					__("Не удалось загрузить новую таблицу загрузки: {0}", [error.message])
+				);
+				NS.endTimer(timer);
+				return;
+			}
 		}
 
 		try {
@@ -153,6 +185,8 @@
 			if (frm.project_workload_dt) {
 				frm.project_workload_dt = null;
 			}
+			frm._pwrWorkloadV2 = false;
+			frm._pwrWorkloadState = null;
 
 			if (WL_DEBUG) {
 				console.log("Dates will be initialized when needed, table flag reset to false");
@@ -171,6 +205,8 @@
 			if (frm.project_workload_dt) {
 				frm.project_workload_dt = null;
 			}
+			frm._pwrWorkloadV2 = false;
+			frm._pwrWorkloadState = null;
 			render_project_workload_table(frm);
 		},
 

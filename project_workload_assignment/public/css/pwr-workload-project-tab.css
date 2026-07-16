@@ -1,17 +1,19 @@
-/* ISS-2026-00002: page chrome — Project → вкладка Загрузка */
+/* ISS-2026-00002 / v3: Project → вкладка Загрузка — full width (not Data input-max-width 50%) */
 
-body[data-route="Form/Project"] [data-fieldname="custom_workload"],
-body[data-route="Form/Project"] [data-fieldname="custom_workload"] .frappe-control,
-body[data-route="Form/Project"] [data-fieldname="custom_workload"] .control-input-wrapper,
-body[data-route="Form/Project"] [data-fieldname="custom_workload"] .control-input,
-body[data-route="Form/Project"] [data-fieldname="custom_workload"] .form-group {
+body[data-route^="Form/Project"] [data-fieldname="custom_workload"],
+body[data-route^="Form/Project"] [data-fieldname="custom_workload"].input-max-width,
+body[data-route^="Form/Project"] [data-fieldname="custom_workload"] .frappe-control,
+body[data-route^="Form/Project"] [data-fieldname="custom_workload"] .control-input-wrapper,
+body[data-route^="Form/Project"] [data-fieldname="custom_workload"] .control-input,
+body[data-route^="Form/Project"] [data-fieldname="custom_workload"] .form-group {
 	margin: 0 !important;
 	padding: 0 !important;
+	padding-right: 0 !important;
 	width: 100% !important;
-	max-width: 100% !important;
+	max-width: none !important;
 }
 
-body[data-route="Form/Project"] [data-fieldname="custom_workload"] .control-label {
+body[data-route^="Form/Project"] [data-fieldname="custom_workload"] .control-label {
 	display: none !important;
 }
 
