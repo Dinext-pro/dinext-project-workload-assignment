@@ -3,16 +3,17 @@ console.log("[PWR] eval pwr-api-methods.js");
 frappe.provide("project_workload_assignment.pwrApi");
 
 Object.assign(project_workload_assignment.pwrApi, {
-	TEAM_GRID: "project_workload_assignment.project_workload_api.pwr_run_team_workload_grid",
-	PROJECT_TREE: "project_workload_assignment.project_workload_api.pwr_run_project_workload_tree",
+	TEAM_GRID: "project_workload_assignment.project_workload_api.pwr_run_team_workload_grid_canonical",
+	PROJECT_TREE: "project_workload_assignment.project_workload_api.pwr_run_project_workload_tree_canonical",
 	TEAM_CHARTS: "project_workload_assignment.project_workload_api.pwr_run_team_workload_charts",
 	PROJECT_CHARTS: "project_workload_assignment.project_workload_api.pwr_run_project_workload_charts",
 	TASKS_FORECAST: "project_workload_assignment.project_workload_api.pwr_run_tasks_forecast_workload",
 	ADD_FORECAST_FROM_WE:
 		"project_workload_assignment.project_workload_api.pwr_run_add_forecast_from_work_efforts",
-	CHECK_OVERLOAD: "project_workload_assignment.project_workload_api.pwr_run_check_workload_overload",
+	CHECK_OVERLOAD: "project_workload_assignment.project_workload_api.check_workload_overload",
 	CONSOLIDATED_DATA: "project_workload_assignment.project_workload_api.get_work_efforts_consolidated_data",
-	GRID_V2: "project_workload_assignment.project_workload_api.get_work_efforts_grid_v2",
+	GRID: "project_workload_assignment.project_workload_api.get_work_efforts_grid",
+	SAVE_FORECAST: "project_workload_assignment.project_workload_api.we_save_forecast_changes",
 	TIMESHEET_LIMITS: "project_workload_assignment.project_workload_api.calculate_timesheet_limits",
 	SAVE_FORECAST_PLAN: "project_workload_assignment.project_workload_api.save_forecast_as_plan",
 	UPDATE_FORECAST_ASSIGNMENTS:

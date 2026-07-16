@@ -4,19 +4,19 @@ let allAssignmentsLoaded = false;
 let isLoadingAssignments = false;
 
 /**
- * Task ids: prefer we_v2, fallback aggregatedTasks.
+ * Task ids: prefer we, fallback aggregatedTasks.
  * @param {WorkEffortsForm} frm
  * @returns {string[]}
  */
 function get_assignment_task_ids(frm) {
-    const fromV2 = new Set();
+    const fromWe = new Set();
     const flat = [];
-    project_workload_assignment.work_efforts.flattenWeV2Rows?.(frm.we_v2?.rows, flat);
+    project_workload_assignment.work_efforts.flattenWeRows?.(frm.we?.rows, flat);
     flat.forEach((row) => {
-        if (row?.task_id) fromV2.add(row.task_id);
+        if (row?.task_id) fromWe.add(row.task_id);
     });
-    if (fromV2.size) {
-        return Array.from(fromV2);
+    if (fromWe.size) {
+        return Array.from(fromWe);
     }
     return Object.keys(frm.aggregatedTasks || {});
 }

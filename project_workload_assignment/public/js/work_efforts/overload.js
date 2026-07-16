@@ -377,8 +377,8 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
                 frm._overloadMap = {};
                 frm._missingPlanMap = {};
 
-                if (window.WorkEffortsV2?.refresh) {
-                    window.WorkEffortsV2.refresh(frm);
+                if (window.WorkEfforts?.refresh) {
+                    window.WorkEfforts.refresh(frm);
                 }
             } else if (r.message && r.message.error) {
                 frappe.msgprint(__("Ошибка при обновлении: {0}", [r.message.error]));

@@ -315,7 +315,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 						args: {
 							doctype: "Account",
 							txt: "",
-							query: "project_workload_assignment.project_workload_assignment.project_workload.forecast.forecast_utils.get_income_accounts_with_task_dimension",
+							query: "project_workload_assignment.project_workload_assignment.forecast.forecast_utils.get_income_accounts_with_task_dimension",
 							filters: { company: frm.doc.company },
 							page_length: 9999
 						},

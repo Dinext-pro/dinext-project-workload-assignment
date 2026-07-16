@@ -75,8 +75,8 @@ function addViewOptionsControl(frm, controls) {
                     frm.view_options = this.value;
                     project_workload_assignment.work_efforts.updateTable(frm, "month", "hours");
                     project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-                    project_workload_assignment.work_efforts.with_we_v2_ready(frm, () => {
-                        window.WorkEffortsV2.onViewOptionsChange(frm);
+                    project_workload_assignment.work_efforts.with_we_ready(frm, () => {
+                        window.WorkEfforts.onViewOptionsChange(frm);
                     });
                 }
             }
