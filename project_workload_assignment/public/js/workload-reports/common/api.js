@@ -3,7 +3,7 @@
  * Chart API: { periods, series, meta }.
  */
 
-const _path = "project_workload_assignment.project_workload_api.";
+const _path = "project_workload_assignment.api.";
 
 const PROJECTS_GRID = _path + "pwr_run_team_workload_grid_canonical";
 const PROJECT_TREE = _path + "pwr_run_project_workload_tree_canonical";

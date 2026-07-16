@@ -32,7 +32,7 @@ function ensure_aggregated_tasks(frm) {
         }
 
         frappe.call({
-            method: "project_workload_assignment.project_workload_api.get_work_efforts_consolidated_data",
+            method: "project_workload_assignment.api.get_work_efforts_consolidated_data",
             args: {
                 project: frm.doc.name,
                 view_options: frm.view_options || "Прогноз и факт",

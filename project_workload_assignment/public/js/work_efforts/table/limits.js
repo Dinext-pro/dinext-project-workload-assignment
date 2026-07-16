@@ -105,7 +105,7 @@ function recalculatePeriodLimits(frm, periodType, callback) {
 
     if (periodPositions.length > 0) {
         frappe.call({
-            method: "project_workload_assignment.project_workload_api.calculate_timesheet_limits",
+            method: "project_workload_assignment.api.calculate_timesheet_limits",
             args: apiArgs,
             callback: function (r) {
                 if (r.message) {

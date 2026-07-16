@@ -5,7 +5,7 @@ import { buildSummaryRows } from "./summary.js";
 function getGridApi() {
     return (
         project_workload_assignment.pwrApi?.GRID ||
-        "project_workload_assignment.project_workload_api.get_work_efforts_grid"
+        "project_workload_assignment.api.get_work_efforts_grid"
     );
 }
 

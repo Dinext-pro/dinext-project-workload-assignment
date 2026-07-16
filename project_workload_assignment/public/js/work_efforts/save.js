@@ -117,7 +117,7 @@ export async function onSaveCells(frm, { changes }) {
     if (!payload.length) return true;
 
     const res = await frappe.xcall(
-        "project_workload_assignment.project_workload_api.we_save_forecast_changes",
+        "project_workload_assignment.api.we_save_forecast_changes",
         {
             project: frm.doc.name,
             changes: JSON.stringify(payload),
