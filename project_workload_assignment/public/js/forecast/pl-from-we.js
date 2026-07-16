@@ -539,7 +539,11 @@ function ensureProjectWorkEffortsTasks(frm) {
 }
 
 function add_forecast_from_work_efforts_handler(frm, forecastMode = "cost") {
-	if (!frm.aggregatedBudget || Object.keys(frm.aggregatedBudget).length === 0) {
+	const plReady =
+		(typeof is_project_pl_ready === "function" && is_project_pl_ready(frm)) ||
+		Boolean(frm.pl_v2?.rows?.length) ||
+		(frm.aggregatedBudget && Object.keys(frm.aggregatedBudget).length > 0);
+	if (!plReady) {
 		frappe.msgprint(__("Wait for budget data to load first"));
 		return;
 	}
