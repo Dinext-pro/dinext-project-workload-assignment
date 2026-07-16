@@ -85,11 +85,17 @@ interface DinextProjectsWorkEfforts {
 		calc_plan?: boolean,
 		calc_fact?: boolean
 	) => ColumnTotal;
+	get_assignment_task_ids: (frm: WorkEffortsForm) => string[];
 	load_all_assignments_if_needed: (frm: WorkEffortsForm) => Promise<void>;
 	get_task_assignments: (task_id: string) => WorkloadAssignment[];
 	check_plan_load_for_percentage_assignments: (frm: WorkEffortsForm) => void;
 	load_detailed_assignments: (frm: WorkEffortsForm) => Promise<void>;
 	clear_assignments_cache: () => void;
+	flattenWeV2Rows: (rows: object[] | undefined, out?: object[]) => object[];
+	ensure_aggregated_tasks: (
+		frm: WorkEffortsForm
+	) => Promise<Record<string, ConsolidatedTaskEntry>>;
+	clear_aggregated_tasks: (frm: WorkEffortsForm) => void;
 	expandParents: (frm: WorkEffortsForm, missingPlanMap: Record<string, string[]>) => void;
 	initCustomTooltip: () => void;
 	showCustomTooltip: (target: Element, text: string) => void;
@@ -129,23 +135,12 @@ interface DinextProjectsWorkEfforts {
 		periodType: string,
 		unit: string,
 		updateRows?: boolean
-	) => void;
-	rollup_fact_data: (aggregatedTasks: Record<string, ConsolidatedTaskEntry>) => void;
-	get_columns_definition: (frm: WorkEffortsForm, periodType: string, unit: string) => object[];
-	updateForecastValue: (
-		task: string,
-		role: string,
-		year: number | string,
-		month: number | string,
-		new_value: number
-	) => void;
-	save_forecast_as_plan: (frm: WorkEffortsForm) => void;
+	) => void | Promise<void>;
 	recalculatePeriodLimits: (
 		frm: WorkEffortsForm,
 		periodType: string,
 		callback?: () => void
 	) => void;
-	setCellStyles: () => void;
 	render_work_efforts_table: (frm: WorkEffortsForm) => void;
 	updateTable: (
 		frm: WorkEffortsForm,

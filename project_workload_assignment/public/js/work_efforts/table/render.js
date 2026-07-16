@@ -113,7 +113,7 @@ function render_work_efforts_table(frm) {
                     });
                 };
 
-                if (frm.show_assignments && !allAssignmentsLoaded) {
+                if (frm.show_assignments) {
                     project_workload_assignment.work_efforts.load_all_assignments_if_needed(frm).then(notifyV2);
                 } else {
                     notifyV2();
@@ -182,9 +182,8 @@ function render_work_efforts_table(frm) {
         project_workload_assignment.work_efforts.perform_overload_check(frm);
     });
 
-    // Legacy consolidated → aggregatedTasks (chart / P&L); UI grid = v2
-    project_workload_assignment.work_efforts.load_work_efforts_data(frm, selectedPeriodType, selectedUnit);
-
+    // W3b: GRID_V2 only on boot. Chart/limits/P&L sync run after we_v2 load.
+    // Consolidated (aggregatedTasks) — lazy for overload / pl-from-we dialogs.
     frm.last_loaded_project = frm.doc.name;
     frm.last_loaded_time = new Date();
 

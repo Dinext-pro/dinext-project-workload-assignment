@@ -15,28 +15,44 @@ function headRowId(taskId, role) {
     return `${taskId}${ROW_ID_SEP}${role || ""}`;
 }
 
+function headRowsByTask(frm) {
+    const headByTask = new Map();
+    for (const row of flattenTree(frm.we_v2?.rows || [])) {
+        if (row.merge_group_index === 0 && row.merge_group_id !== SUMMARY_ROW_ID) {
+            headByTask.set(row.task_id, row);
+        }
+    }
+    return headByTask;
+}
+
+function roleRowsByTask(frm) {
+    /** @type {Map<string, Map<string, object>>} */
+    const byTask = new Map();
+    for (const row of flattenTree(frm.we_v2?.rows || [])) {
+        if (!row?.task_id || row.merge_group_id === SUMMARY_ROW_ID) continue;
+        if (!byTask.has(row.task_id)) {
+            byTask.set(row.task_id, new Map());
+        }
+        byTask.get(row.task_id).set(row.role || "", row);
+    }
+    return byTask;
+}
+
 /**
  * Expand ancestors of tasks with missing plan; collapse other parents.
- * Uses DinextTable expandRow/collapseRow — no DOM synthetic click.
  */
 export async function expandParentsV2(frm, missingPlanMap) {
     const table = frm.we_v2?.table;
     if (!table?.expandRow) return;
 
-    const flat = flattenTree(frm.we_v2?.rows || []);
-    const headByTask = new Map();
-    for (const row of flat) {
-        if (row.merge_group_index === 0 && row.merge_group_id !== SUMMARY_ROW_ID) {
-            headByTask.set(row.task_id, row);
-        }
-    }
+    const headByTask = headRowsByTask(frm);
 
     const parentsToExpand = new Set();
     for (const taskId of Object.keys(missingPlanMap || {})) {
-        let current = frm.aggregatedTasks?.[taskId];
-        while (current?.parent_task) {
-            parentsToExpand.add(current.parent_task);
-            current = frm.aggregatedTasks[current.parent_task];
+        let current = headByTask.get(taskId);
+        while (current?.parent_task_id) {
+            parentsToExpand.add(current.parent_task_id);
+            current = headByTask.get(current.parent_task_id);
         }
     }
 
@@ -67,12 +83,10 @@ function computeMissingPlanMaps(frm) {
     const periods =
         frm.we_v2?.periods ||
         project_workload_assignment.work_efforts.get_display_periods(frm, "month");
-    const taskIds = Object.keys(frm.aggregatedTasks || {});
+    const roleRows = roleRowsByTask(frm);
+    const taskIds = Array.from(roleRows.keys());
 
     for (const taskId of taskIds) {
-        const taskData = frm.aggregatedTasks[taskId];
-        if (!taskData) continue;
-
         const detailed = frm._detailedAssignments?.[taskId] || [];
         const hasPct = detailed.some((a) => a.workload === "В % от трудоемкости задачи");
         if (!hasPct) continue;
@@ -111,8 +125,10 @@ function computeMissingPlanMaps(frm) {
             });
         });
 
+        const taskRoleRows = roleRows.get(taskId) || new Map();
+
         Object.keys(rolePeriodLoad).forEach((roleName) => {
-            const roleEntry = (taskData.role_data || []).find((r) => r && r.role === roleName);
+            const gridRow = taskRoleRows.get(roleName);
             const loadedPeriods = Array.from(rolePeriodLoad[roleName]);
             if (!loadedPeriods.length) return;
 
@@ -120,7 +136,7 @@ function computeMissingPlanMaps(frm) {
             const missingPeriods = [];
 
             loadedPeriods.forEach((periodKey) => {
-                const planValue = roleEntry ? parseFloat(roleEntry[`plan_${periodKey}`]) || 0 : 0;
+                const planValue = gridRow ? parseFloat(gridRow[`plan_${periodKey}`]) || 0 : 0;
                 if (planValue > 0) {
                     hasPlan = true;
                 } else {
@@ -158,7 +174,7 @@ export function refreshCheckHighlight(frm) {
 
 /** Missing plan check (highlight + expand parents in DinextTable). */
 export async function runMissingPlanCheck(frm) {
-    if (!frm.aggregatedTasks || !Object.keys(frm.aggregatedTasks).length) {
+    if (!frm.we_v2?.rows?.length) {
         frappe.msgprint(__("Сначала дождитесь загрузки данных таблицы трудозатрат"));
         return;
     }

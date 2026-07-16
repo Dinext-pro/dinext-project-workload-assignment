@@ -1,44 +1,11 @@
-import { SUMMARY_ROW_ID } from "./constants.js";
-
-function calcDeltaPct(plan, actual) {
-	return plan ? Math.round(((actual - plan) / plan) * 1000) / 10 : 0;
-}
-
+/**
+ * Summary rows from GRID_V2 API only.
+ */
 export function buildSummaryRows(frm, periods, apiSummaryRows) {
-    if (apiSummaryRows?.length) return apiSummaryRows;
-    if (!frm.aggregatedTasks || !Object.keys(frm.aggregatedTasks).length) return [];
-
-    const legacy = project_workload_assignment.work_efforts;
-    const allRoles = legacy.get_project_roles(frm).filter((r) => r);
-    if (!allRoles.length) return [];
-
-    const row = {
-        id: SUMMARY_ROW_ID,
-        task_id: SUMMARY_ROW_ID,
-        task_subject: __("Итого"),
-        role: null,
-        parent_task_id: null,
-        merge_group_id: SUMMARY_ROW_ID,
-        merge_group_index: 0,
-        merge_group_size: 1,
-        has_children: false,
-    };
-
-    for (const period of periods || []) {
-        const totals = legacy.calc_we_column_total_optimized(
-            frm,
-            allRoles,
-            { year: period.year, month: period.month, is_past: period.is_past },
-            !frm.hide_plan
-        );
-        const plan = totals.plan;
-        const actual = totals.actual;
-        row[`plan_${period.key}`] = plan;
-        row[`actual_${period.key}`] = actual;
-        row[`delta_${period.key}`] = calcDeltaPct(plan, actual);
+    if (apiSummaryRows?.length) {
+        return apiSummaryRows;
     }
-
-    return [row];
+    return [];
 }
 
 export function syncExpandedIds(frm) {

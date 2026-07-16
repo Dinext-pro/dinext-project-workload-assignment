@@ -123,6 +123,10 @@ export async function initTable(frm) {
             state.table = table;
             applyRuntime(frm, table);
             syncPlFromWe(frm);
+            project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm);
+            if (typeof render_labour_percentage_chart === "function") {
+                render_labour_percentage_chart(frm);
+            }
             return table;
         } finally {
             state._initPromise = null;
@@ -130,6 +134,14 @@ export async function initTable(frm) {
     })();
 
     return state._initPromise;
+}
+
+function afterWeV2DataReady(frm) {
+    syncPlFromWe(frm);
+    project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm, false);
+    if (typeof render_labour_percentage_chart === "function") {
+        render_labour_percentage_chart(frm);
+    }
 }
 
 export async function refreshRuntime(frm) {
@@ -151,7 +163,7 @@ export async function refreshRuntime(frm) {
     if (state.table.refresh) {
         state.table.refresh(state.rows);
     }
-    syncPlFromWe(frm);
+    afterWeV2DataReady(frm);
 }
 
 export function refreshSummary(frm) {

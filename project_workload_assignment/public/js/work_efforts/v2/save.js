@@ -112,29 +112,6 @@ function buildSavePayload(changes) {
         });
 }
 
-function updateLegacyAggregatedTasks(frm, changes) {
-    if (!frm.aggregatedTasks) return;
-
-    for (const change of changes) {
-        const field = change.field;
-        if (!field?.startsWith("actual_")) continue;
-        const periodKey = field.slice(7);
-        const taskId = change.row?.task_id;
-        const role = change.row?.role || "";
-        const newValue = Number(change.newValue || 0);
-
-        const taskData = frm.aggregatedTasks[taskId];
-        if (!taskData?.role_data) continue;
-
-        let roleEntry = taskData.role_data.find((r) => r.role === role);
-        if (!roleEntry) {
-            roleEntry = { role };
-            taskData.role_data.push(roleEntry);
-        }
-        roleEntry[`forecast_${periodKey}`] = newValue;
-    }
-}
-
 export async function onSaveCells(frm, { changes }) {
     const payload = buildSavePayload(changes);
     if (!payload.length) return true;
@@ -153,11 +130,7 @@ export async function onSaveCells(frm, { changes }) {
 
     frappe.show_alert(__("Данные успешно обновлены"), 5);
 
-    updateLegacyAggregatedTasks(frm, changes);
-
-    if (project_workload_assignment.work_efforts?.clearTaskIndexCacheFor) {
-        project_workload_assignment.work_efforts.clearTaskIndexCacheFor(frm.aggregatedTasks);
-    }
+    project_workload_assignment.work_efforts?.clear_aggregated_tasks?.(frm);
     if (project_workload_assignment.work_efforts?.clear_assignments_cache) {
         project_workload_assignment.work_efforts.clear_assignments_cache();
     }
@@ -168,10 +141,8 @@ export async function onSaveCells(frm, { changes }) {
     if (project_workload_assignment.work_efforts?.updateTable) {
         project_workload_assignment.work_efforts.updateTable(frm, "month", "hours");
     }
-    if (project_workload_assignment.work_efforts?.render_work_efforts_chart) {
-        project_workload_assignment.work_efforts.render_work_efforts_chart(frm, false);
-    }
 
+    // refreshRuntime → chart from we_v2
     if (window.WorkEffortsV2?.refresh) {
         await window.WorkEffortsV2.refresh(frm);
     }

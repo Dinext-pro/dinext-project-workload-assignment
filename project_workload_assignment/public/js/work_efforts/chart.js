@@ -49,14 +49,49 @@ function add_role_filter_control(frm, controls) {
    cumulative_plan, cumulative_actual_forecast, periods, plan_by_period
 */
 /**
+ * Task map for chart: prefer we_v2.rows, fallback aggregatedTasks.
+ * @param {WorkEffortsForm} frm
+ * @returns {Record<string, {value: string, parent_task: string|null, role_data: object[]}>}
+ */
+function get_chart_task_map(frm) {
+    const fromV2 = {};
+    const flat = [];
+    project_workload_assignment.work_efforts.flattenWeV2Rows?.(frm.we_v2?.rows, flat);
+    if (flat.length) {
+        flat.forEach((row) => {
+            const taskId = row.task_id;
+            if (!taskId) return;
+            if (!fromV2[taskId]) {
+                fromV2[taskId] = {
+                    value: taskId,
+                    parent_task: row.parent_task_id || null,
+                    role_data: [],
+                };
+            }
+            if (!fromV2[taskId].role_data.some((r) => (r.role || "") === (row.role || ""))) {
+                fromV2[taskId].role_data.push(row);
+            }
+        });
+        return fromV2;
+    }
+    return frm.aggregatedTasks || {};
+}
+
+/**
  * @param {WorkEffortsForm} frm
  * @param {string} selectedRole
  * @returns {object}
  */
 function build_chart_data(frm, selectedRole) {
-    let aggregatedTasks = frm.aggregatedTasks || {};
-    let periods = project_workload_assignment.work_efforts.get_display_periods(frm, "month");
+    let aggregatedTasks = get_chart_task_map(frm);
+    let periods =
+        (frm.we_v2?.periods?.length && frm.we_v2.periods) ||
+        project_workload_assignment.work_efforts.get_display_periods(frm, "month");
     let labels = periods.map(p => `${p.year}-${String(p.month).padStart(2,'0')}`);
+
+    function periodField(prefix, period) {
+        return `${prefix}_${period.key || `${period.year}_${period.month}`}`;
+    }
 
     // Вспомогательная рекурсивная функция: возвращает { plan, actual } для заданной задачи и роли за период
     function sumForTaskByPeriod(taskId, period, roleFilter, planRoles, actualRoles) {
@@ -77,7 +112,7 @@ function build_chart_data(frm, selectedRole) {
                 const actualIndex = actualRoles.indexOf(r.role);
                 
                 if (planIndex > -1) {
-                    let curr_plan = parseFloat(r[`plan_${period.year}_${period.month}`]) || 0;
+                    let curr_plan = parseFloat(r[periodField("plan", period)]) || 0;
                     
                     if ( curr_plan ) {
                         plan += curr_plan;
@@ -89,9 +124,10 @@ function build_chart_data(frm, selectedRole) {
                     let curr_actual = 0;
                     
                     if (period.is_past) {
-                        curr_actual = parseFloat(r[`fact_${period.year}_${period.month}`]) || 0;
+                        curr_actual = parseFloat(r[periodField("fact", period)]) || 0;
                     } else {
-                        curr_actual = parseFloat(r[`forecast_${period.year}_${period.month}`]) || 0;
+                        curr_actual = parseFloat(r[periodField("forecast", period)]) ||
+                            parseFloat(r[periodField("actual", period)]) || 0;
                     }
                     
                     if ( curr_actual ) {
