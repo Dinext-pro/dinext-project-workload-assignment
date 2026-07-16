@@ -111,7 +111,7 @@ doctype_css = {
 		"public/css/pwr-workload-report-page.css",
 	],
 	"Project": [
-		"public/css/we-v2.css",
+		"public/css/work-efforts.css",
 		"public/css/pwr-workload-project-tab.css",
 	],
 }

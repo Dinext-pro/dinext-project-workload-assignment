@@ -6,13 +6,13 @@
  * @param {object[]} out
  * @returns {object[]}
  */
-function flattenWeV2Rows(rows, out) {
+function flattenWeRows(rows, out) {
     const acc = out || [];
     for (const row of rows || []) {
         if (!row || row.merge_group_id === "summary-total") continue;
         acc.push(row);
         if (row.children?.length) {
-            flattenWeV2Rows(row.children, acc);
+            flattenWeRows(row.children, acc);
         }
     }
     return acc;
@@ -20,7 +20,7 @@ function flattenWeV2Rows(rows, out) {
 
 /**
  * Lazy-fill frm.aggregatedTasks via consolidated API (overload / pl-from-we).
- * Does not run chart/limits — those use we_v2 after GRID load.
+ * Does not run chart/limits — those use we after GRID load.
  * @param {WorkEffortsForm} frm
  * @returns {Promise<Record<string, ConsolidatedTaskEntry>>}
  */
@@ -85,14 +85,14 @@ function load_work_efforts_data(frm, periodType, unit, updateRows) {
     project_workload_assignment.work_efforts.clear_assignments_cache?.();
     clear_aggregated_tasks(frm);
     return ensure_aggregated_tasks(frm).then(() => {
-        if (updateRows && window.WorkEffortsV2?.refresh) {
-            return window.WorkEffortsV2.refresh(frm);
+        if (updateRows && window.WorkEfforts?.refresh) {
+            return window.WorkEfforts.refresh(frm);
         }
     });
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
-    flattenWeV2Rows,
+    flattenWeRows,
     ensure_aggregated_tasks,
     clear_aggregated_tasks,
     load_work_efforts_data,

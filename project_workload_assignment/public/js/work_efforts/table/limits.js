@@ -1,5 +1,5 @@
 // we-table/limits.js — recalculatePeriodLimits, refreshLimitHighlight
-// ISS-2025-01239 — W3b: positions from we_v2.rows (aggregatedTasks fallback)
+// ISS-2025-01239 — W3b: positions from we.rows (aggregatedTasks fallback)
 
 /**
  * @param {WorkEffortsForm} frm
@@ -17,7 +17,7 @@ function getProjectLimitsOverride(frm) {
 
 /**
  * Past-period fact positions for timesheet limits API.
- * Prefer we_v2; fallback aggregatedTasks (lazy dialogs / transition).
+ * Prefer we; fallback aggregatedTasks (lazy dialogs / transition).
  * @param {WorkEffortsForm} frm
  * @param {DisplayPeriod[]} periods
  * @returns {TimesheetPositionInput[]}
@@ -25,7 +25,7 @@ function getProjectLimitsOverride(frm) {
 function collectPeriodPositions(frm, periods) {
     /** @type {TimesheetPositionInput[]} */
     const periodPositions = [];
-    const weRows = project_workload_assignment.work_efforts.flattenWeV2Rows?.(frm.we_v2?.rows, []) || [];
+    const weRows = project_workload_assignment.work_efforts.flattenWeRows?.(frm.we?.rows, []) || [];
 
     if (weRows.length) {
         weRows.forEach((row) => {
@@ -88,7 +88,7 @@ function collectPeriodPositions(frm, periods) {
  */
 function recalculatePeriodLimits(frm, periodType, callback) {
     const periods =
-        (frm.we_v2?.periods?.length && frm.we_v2.periods) ||
+        (frm.we?.periods?.length && frm.we.periods) ||
         project_workload_assignment.work_efforts.get_display_periods(frm, periodType);
     const periodPositions = collectPeriodPositions(frm, periods);
 
@@ -131,13 +131,13 @@ function recalculatePeriodLimits(frm, periodType, callback) {
  * @param {WorkEffortsForm} frm
  */
 function refreshLimitHighlight(frm) {
-    if (!window.WorkEffortsV2?.refreshLimitHighlight) {
+    if (!window.WorkEfforts?.refreshLimitHighlight) {
         return;
     }
     project_workload_assignment.work_efforts.recalculatePeriodLimits(
         frm,
         frm._we_period_type || "month",
-        () => window.WorkEffortsV2.refreshLimitHighlight(frm)
+        () => window.WorkEfforts.refreshLimitHighlight(frm)
     );
 }
 

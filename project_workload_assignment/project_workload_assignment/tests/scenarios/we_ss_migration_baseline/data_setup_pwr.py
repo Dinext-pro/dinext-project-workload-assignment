@@ -326,7 +326,7 @@ def call_check_workload_overload_python(project: str, periods: list, view_option
 
 def call_update_forecast_from_assignments_python(project: str, updates: list[dict]) -> dict:
 	"""Прямой вызов Python-модуля forecast_from_assignments (без SS)."""
-	from project_workload_assignment.project_workload_assignment.project_workload.forecast.forecast_from_assignments import (
+	from project_workload_assignment.project_workload_assignment.forecast.forecast_from_assignments import (
 		run_update_forecast_from_assignments,
 	)
 

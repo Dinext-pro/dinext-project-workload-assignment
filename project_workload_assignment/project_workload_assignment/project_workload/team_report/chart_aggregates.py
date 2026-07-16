@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
-
 import frappe
 from frappe.utils import flt, getdate
 
@@ -29,59 +27,19 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 	resolve_wtype,
 )
 
+from project_workload_assignment.project_workload_assignment.project_workload.models import (
+	ChartSeries,
+	ChartMeta,
+	ChartResponse,
+	TeamChartFormDict,
+	ProjectChartFormDict,
+)
+
+
 # Backward-compatible aliases for tests and external imports.
 _normalize_worker_wtype_filter = normalize_worker_wtype_filter
 _filter_users_by_wtype = filter_users_by_wtype
 _resolve_wtype = resolve_wtype
-
-
-class ChartSeries(TypedDict, total=False):
-	capacity_hours: list[float]
-	utilization_plan_hours: list[float]
-	utilization_forecast_hours: list[float]
-	workload_forecast_hours_by_wtype: dict[str, list[float]]
-	project_plan_hours: list[float]
-	team_capacity_hours: list[float]
-	actual_hours_by_wtype: dict[str, list[float]]
-
-
-class ChartMeta(TypedDict, total=False):
-	worker_wtype_filter: str
-	utilization_loaded: bool
-	actual_loaded: bool
-	users_in_scope: int
-	project: str
-
-
-class ChartResponse(TypedDict, total=False):
-	periods: list[PWRPeriod]
-	series: ChartSeries
-	meta: ChartMeta
-	error: str
-	message: str
-
-
-class TeamChartFormDict(TypedDict, total=False):
-	user: str | None
-	project: str | None
-	project_portfolio: str | None
-	user_group: str | None
-	view_type: Literal["daily", "weekly", "monthly"]
-	period_range: Literal["quarter", "half_year", "year"]
-	period_anchor_date: str | None
-	worker_wtype: str | None
-	load_utilization: bool | str | int
-	load_actual: bool | str | int
-
-
-class ProjectChartFormDict(TypedDict, total=False):
-	project: str
-	view_type: Literal["daily", "weekly", "monthly"]
-	date_from: str | None
-	date_to: str | None
-	worker_wtype: str | None
-	load_actual: bool | str | int
-	load_utilization: bool | str | int
 
 
 def _parse_bool(value, default: bool = False) -> bool:

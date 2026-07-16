@@ -1,4 +1,4 @@
-// Chart layout / --charts-* tokens: we-v2.css (loaded via doctype_css + styles.js)
+// Chart layout / --charts-* tokens: work-efforts.css (loaded via doctype_css + styles.js)
 
 frappe.ui.form.on("Project", {
     refresh: function(frm) {
@@ -49,30 +49,30 @@ function add_role_filter_control(frm, controls) {
    cumulative_plan, cumulative_actual_forecast, periods, plan_by_period
 */
 /**
- * Task map for chart: prefer we_v2.rows, fallback aggregatedTasks.
+ * Task map for chart: prefer we.rows, fallback aggregatedTasks.
  * @param {WorkEffortsForm} frm
  * @returns {Record<string, {value: string, parent_task: string|null, role_data: object[]}>}
  */
 function get_chart_task_map(frm) {
-    const fromV2 = {};
+    const fromWe = {};
     const flat = [];
-    project_workload_assignment.work_efforts.flattenWeV2Rows?.(frm.we_v2?.rows, flat);
+    project_workload_assignment.work_efforts.flattenWeRows?.(frm.we?.rows, flat);
     if (flat.length) {
         flat.forEach((row) => {
             const taskId = row.task_id;
             if (!taskId) return;
-            if (!fromV2[taskId]) {
-                fromV2[taskId] = {
+            if (!fromWe[taskId]) {
+                fromWe[taskId] = {
                     value: taskId,
                     parent_task: row.parent_task_id || null,
                     role_data: [],
                 };
             }
-            if (!fromV2[taskId].role_data.some((r) => (r.role || "") === (row.role || ""))) {
-                fromV2[taskId].role_data.push(row);
+            if (!fromWe[taskId].role_data.some((r) => (r.role || "") === (row.role || ""))) {
+                fromWe[taskId].role_data.push(row);
             }
         });
-        return fromV2;
+        return fromWe;
     }
     return frm.aggregatedTasks || {};
 }
@@ -85,7 +85,7 @@ function get_chart_task_map(frm) {
 function build_chart_data(frm, selectedRole) {
     let aggregatedTasks = get_chart_task_map(frm);
     let periods =
-        (frm.we_v2?.periods?.length && frm.we_v2.periods) ||
+        (frm.we?.periods?.length && frm.we.periods) ||
         project_workload_assignment.work_efforts.get_display_periods(frm, "month");
     let labels = periods.map(p => `${p.year}-${String(p.month).padStart(2,'0')}`);
 

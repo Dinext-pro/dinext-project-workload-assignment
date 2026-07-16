@@ -2,157 +2,35 @@
 """Сетка загрузки команды: ответ API get_projects_workload_data_v2 (бывший Exp_V2).
 
 Ядро вынесено из Server Script в это приложение (ISS-2026-00865):
-`project_workload_assignment.project_workload_api.pwr_run_team_workload_grid` → этот модуль.
-Тонкие обёртки остаются в Server Script на сайте (api_method без тела расчёта).
+`pwr_run_team_workload_grid_canonical` → reshape → `run_get_projects_workload_data_v2` (этот модуль).
 
 ISS-2026-00926: при merge DinextAgGrid не откатывать `_userHolidays` в project-row и пропорциональный
 сплит «В рабочих часах»; UI-календарь для % — в CS (`getHolidaysForRow`). См.
 `.issues/ISS-2026-00926/cross-ref-iss-2026-00865.md`.
 """
 
-from typing import TypedDict, Literal
 from datetime import date, datetime
 
 import frappe
 
 from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
-	AbsenceEntry,
-	HolidayEntry,
 	ProjectWorkloadInfo,
 	UserWorkloadInfo,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.models import (
+	TeamWorkloadFormDict,
+	TeamWorkloadPeriod,
+	TeamWorkloadResponse,
+	ErrorTeamWorkloadResponse,
+	TreeDataUserRow,
+	TreeDataProjectRow,
+	UserDataSummary,
+	PerformanceInfo,
 )
 
 # Алиасы для обратной совместимости TypedDict в этом модуле.
 UserInfo = UserWorkloadInfo
 ProjectInfo = ProjectWorkloadInfo
-
-
-# ==================== TypedDict определения ====================
-
-class TeamWorkloadFormDict(TypedDict, total=False):
-	"""Параметры запроса из frappe.form_dict."""
-	user: str | None
-	project: str | None
-	project_portfolio: str | None
-	user_group: str | None
-	view_type: Literal['daily', 'weekly', 'monthly']
-	period_range: Literal['quarter', 'half_year', 'year']
-	period_anchor_date: str | None
-	load_actual: bool | str | int
-	mode: Literal['full', 'user_totals', 'user_projects']
-	detail_user: str | None
-	limit: int | str
-	offset: int | str
-
-
-class TeamWorkloadPeriodDaily(TypedDict):
-	"""Дневной период для отчёта команды."""
-	key: str
-	date: str
-	year: int
-	month: int
-	day: int
-	weekday: int
-
-
-class TeamWorkloadPeriodWeekly(TypedDict):
-	"""Недельный период для отчёта команды."""
-	key: str
-	year: int
-	week: int
-	start_date: str
-	end_date: str
-
-
-class TeamWorkloadPeriodMonthly(TypedDict):
-	"""Месячный период для отчёта команды."""
-	key: str
-	year: int
-	month: int
-	start_date: str
-	end_date: str
-
-
-TeamWorkloadPeriod = TeamWorkloadPeriodDaily | TeamWorkloadPeriodWeekly | TeamWorkloadPeriodMonthly
-
-
-class UserDataSummary(TypedDict):
-	"""Краткие данные пользователя для tree_data."""
-	full_name: str | None
-	user_image: str | None
-	email: str
-	name: str
-
-
-class TreeDataUserRow(TypedDict, total=False):
-	"""Строка пользователя в tree_data."""
-	participant: str
-	user_data: UserDataSummary
-	indent: int
-	expandable: bool
-	_isUser: bool
-	_detailsLoaded: bool
-	_email: str
-	_workingHours: dict[str, float]
-	_absences: list[AbsenceEntry]
-	_userHolidays: list[HolidayEntry]
-	workload_total: str
-
-
-class TreeDataProjectRow(TypedDict, total=False):
-	"""Строка проекта в tree_data."""
-	participant: str
-	user_data: UserDataSummary
-	project: str
-	project_name: str
-	indent: int
-	expandable: bool
-	_isProject: bool
-	_email: str
-	_project: str
-	_workingHours: dict[str, float]
-	_absences: list[AbsenceEntry]
-	_userHolidays: list[HolidayEntry]
-	_projectHolidays: list[HolidayEntry]
-	workload_total: str
-
-
-class PerformanceInfo(TypedDict):
-	"""Информация о производительности."""
-	calculation_time_ms: float
-	assignments: int
-	date_calculations: int
-	working_day_cache_size: int
-	trace: list[str]
-
-
-class TeamWorkloadResponse(TypedDict):
-	"""Основной ответ API get_projects_workload_data_v2."""
-	tree_data: list[TreeDataUserRow | TreeDataProjectRow]
-	periods: list[TeamWorkloadPeriod]
-	users_count: int
-	projects_count: int
-	assignments_count: int
-	mode: str
-	limit: int
-	offset: int
-	next_offset: int | None
-	has_more: bool
-	total_users: int
-	message: str
-	performance: PerformanceInfo
-
-
-class ErrorTeamWorkloadResponse(TypedDict):
-	"""Ответ при ошибке."""
-	tree_data: list
-	periods: list
-	users_count: int
-	projects_count: int
-	assignments_count: int
-	mode: str
-	error: str
-	message: str
 
 
 def _parse_bool_form_value(value, default: bool = False) -> bool:

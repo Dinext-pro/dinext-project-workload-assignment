@@ -91,7 +91,7 @@ interface DinextProjectsWorkEfforts {
 	check_plan_load_for_percentage_assignments: (frm: WorkEffortsForm) => void;
 	load_detailed_assignments: (frm: WorkEffortsForm) => Promise<void>;
 	clear_assignments_cache: () => void;
-	flattenWeV2Rows: (rows: object[] | undefined, out?: object[]) => object[];
+	flattenWeRows: (rows: object[] | undefined, out?: object[]) => object[];
 	ensure_aggregated_tasks: (
 		frm: WorkEffortsForm
 	) => Promise<Record<string, ConsolidatedTaskEntry>>;

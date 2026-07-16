@@ -29,36 +29,36 @@ function calc_we_column_total(frm, roles, period, calc_plan = true, calc_fact = 
 }
 
 /**
- * Require we-v2.bundle and mount DinextTable.
+ * Require work-efforts.bundle and mount DinextTable.
  * @param {WorkEffortsForm} frm
  * @param {() => void} [callback]
  */
-function with_we_v2_ready(frm, callback) {
+function with_we_ready(frm, callback) {
     const run = () => {
-        window.WorkEffortsV2.ensureMounted(frm);
+        window.WorkEfforts.ensureMounted(frm);
         callback?.();
     };
 
-    if (window.WorkEffortsV2?.isReady?.()) {
+    if (window.WorkEfforts?.isReady?.()) {
         run();
         return;
     }
 
-    frappe.require([frappe.assets.bundled_asset("we-v2.bundle.js")], () => {
-        if (!window.WorkEffortsV2?.isReady?.()) {
-            console.error("[WorkEfforts] we-v2.bundle.js did not register WorkEffortsV2");
+    frappe.require([frappe.assets.bundled_asset("work-efforts.bundle.js")], () => {
+        if (!window.WorkEfforts?.isReady?.()) {
+            console.error("[WorkEfforts] work-efforts.bundle.js did not register WorkEfforts");
             return;
         }
         run();
     });
 }
 
-function destroy_we_v2(frm) {
-    window.WorkEffortsV2?.destroy?.(frm);
+function destroy_we(frm) {
+    window.WorkEfforts?.destroy?.(frm);
 }
 
 /**
- * Отрисовка таблицы «Трудозатраты» — shell + DinextTable (v2).
+ * Отрисовка таблицы «Трудозатраты» — shell + DinextTable.
  * @param {WorkEffortsForm} frm
  */
 function render_work_efforts_table(frm) {
@@ -67,13 +67,13 @@ function render_work_efforts_table(frm) {
     }
 
     if (frm.last_loaded_project == frm.doc.name && (new Date() - frm.last_loaded_time) < 300000) {
-        with_we_v2_ready(frm);
+        with_we_ready(frm);
         return;
     }
 
     let wrapper = frm.get_field("custom_work_efforts").$wrapper;
     wrapper.addClass("work_efforts_container");
-    destroy_we_v2(frm);
+    destroy_we(frm);
     wrapper.empty();
 
     frm.aggregatedTasks = null;
@@ -107,16 +107,16 @@ function render_work_efforts_table(frm) {
             onchange: function() {
                 frm.show_assignments = this.get_value();
 
-                const notifyV2 = () => {
-                    with_we_v2_ready(frm, () => {
-                        window.WorkEffortsV2.onAssignmentsToggle(frm);
+                const notifyWe = () => {
+                    with_we_ready(frm, () => {
+                        window.WorkEfforts.onAssignmentsToggle(frm);
                     });
                 };
 
                 if (frm.show_assignments) {
-                    project_workload_assignment.work_efforts.load_all_assignments_if_needed(frm).then(notifyV2);
+                    project_workload_assignment.work_efforts.load_all_assignments_if_needed(frm).then(notifyWe);
                 } else {
-                    notifyV2();
+                    notifyWe();
                 }
             }
         },
@@ -143,8 +143,8 @@ function render_work_efforts_table(frm) {
     frm.hide_delta = frm.hide_delta || true;
 
     controls.find('#we_save_plan').on('click', function() {
-        with_we_v2_ready(frm, () => {
-            window.WorkEffortsV2.saveForecastAsPlan(frm);
+        with_we_ready(frm, () => {
+            window.WorkEfforts.saveForecastAsPlan(frm);
         });
     });
 
@@ -153,8 +153,8 @@ function render_work_efforts_table(frm) {
         $(this).text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
         project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
         project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-        with_we_v2_ready(frm, () => {
-            window.WorkEffortsV2.onTogglePlanOrDelta(frm);
+        with_we_ready(frm, () => {
+            window.WorkEfforts.onTogglePlanOrDelta(frm);
         });
     });
 
@@ -162,16 +162,16 @@ function render_work_efforts_table(frm) {
         frm.hide_delta = !frm.hide_delta;
         $(this).text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
         project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
-        with_we_v2_ready(frm, () => {
-            window.WorkEffortsV2.onTogglePlanOrDelta(frm);
+        with_we_ready(frm, () => {
+            window.WorkEfforts.onTogglePlanOrDelta(frm);
         });
     });
 
     controls.find('#check_plan_load').on('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        with_we_v2_ready(frm, () => {
-            window.WorkEffortsV2.runMissingPlanCheck(frm);
+        with_we_ready(frm, () => {
+            window.WorkEfforts.runMissingPlanCheck(frm);
         });
     });
 
@@ -182,18 +182,18 @@ function render_work_efforts_table(frm) {
         project_workload_assignment.work_efforts.perform_overload_check(frm);
     });
 
-    // W3b: GRID_V2 only on boot. Chart/limits/P&L sync run after we_v2 load.
+    // W3b: GRID only on boot. Chart/limits/P&L sync run after we load.
     // Consolidated (aggregatedTasks) — lazy for overload / pl-from-we dialogs.
     frm.last_loaded_project = frm.doc.name;
     frm.last_loaded_time = new Date();
 
     project_workload_assignment.work_efforts.render_legend(legend_container);
-    with_we_v2_ready(frm);
+    with_we_ready(frm);
 }
 
 /**
  * Side-effects for toggles: limits + workload map (+ assignments cache).
- * Grid UI refresh is WorkEffortsV2 (not StickyDataTable).
+ * Grid UI refresh is WorkEfforts (not StickyDataTable).
  * @param {WorkEffortsForm} frm
  * @param {string} periodType
  * @param {string} unit
@@ -218,7 +218,7 @@ Object.assign(project_workload_assignment.work_efforts, {
     updateTable,
     syncPlTaskDimensionFromWe,
     calc_we_column_total,
-    with_we_v2_ready,
+    with_we_ready,
 });
 
 frappe.ui.form.on("Project", {
