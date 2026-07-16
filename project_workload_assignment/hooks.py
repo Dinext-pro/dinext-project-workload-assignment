@@ -47,14 +47,13 @@ fixtures = [
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
+app_include_css = "/assets/project_workload_assignment/css/assignment_styles.css"
 # Projects Workload Report is custom DocType → FormMeta.add_code() skipped
-# (no doctype_js). Form UI boots only via pwr-form-boot.js (app_include).
+# (no doctype_js). Form UI boots via report-form/entry.js (app_include, route-gated).
 # No Client Script / Server Script for this Form UI.
 app_include_js = [
-	"/assets/project_workload_assignment/js/core/pwr-form-boot.js",
-	"/assets/project_workload_assignment/js/core/api-methods.js",
-	"/assets/project_workload_assignment/js/pwa/dialog.js",
+	"/assets/project_workload_assignment/js/workload-reports/report-form/entry.js",
+	"/assets/project_workload_assignment/js/assignment/dialog.js",
 ]
 
 # include js, css files in header of web template
@@ -75,29 +74,20 @@ app_include_js = [
 doctype_js = {
                 # dialog.js must precede form.js — form.js calls start_pwa_dialog()
                 "Task": [
-                    "public/js/pwa/dialog.js",
-                    "public/js/pwa/form.js",
+                    "public/js/assignment/dialog.js",
+                    "public/js/assignment/form.js",
                 ]
                 ,"Issue": [
-                    "public/js/pwa/dialog.js",
-                    "public/js/pwa/form.js",
+                    "public/js/assignment/dialog.js",
+                    "public/js/assignment/form.js",
                 ]
                 # "Projects Workload Report" doctype_js intentionally omitted:
                 # this is a custom DocType (is_custom=1), Frappe's add_code() skips
                 # custom doctypes, so doctype_js entries have NO EFFECT here.
-                # Scripts are loaded by pwr-form-boot.js (app_include_js).
+                # Scripts: workload-reports/report-form/entry.js (app_include_js).
                 ,"Project":[
-                    "public/js/core/api-methods.js",
-                    "public/js/pwa/dialog.js",
-                    "public/js/work_efforts/calc.js",
-                    "public/js/work_efforts/checks.js",
-                    "public/js/work_efforts/styles.js",
-                    "public/js/work_efforts/table/data-load.js",
-                    "public/js/work_efforts/table/limits.js",
-                    "public/js/work_efforts/chart.js",
-                    "public/js/work_efforts/overload.js",
-                    "public/js/work_efforts/table/controls.js",
-                    "public/js/work_efforts/table/render.js",
+                    "public/js/assignment/dialog.js",
+                    "public/js/work_efforts/entry.js",
                     "public/js/forecast/pl-from-we.js",
                     "public/js/workload-reports/project-tab/entry.js",
                 ]
@@ -118,18 +108,16 @@ doctype_css = {
 
 doctype_list_js = {
 	"Task": [
-		"public/js/core/api-methods.js",
-		"public/js/pwa/dialog.js",
+		"public/js/assignment/dialog.js",
 	],
 }
 
 doctype_tree_js = {
 	"Task": [
-		"public/js/core/api-methods.js",
-		"public/js/pwa/dialog.js",
+		"public/js/assignment/dialog.js",
 	],
 }
-# doctype_calendar_js = {"Task" : "public/js/pwa/dialog.js"}
+# doctype_calendar_js = {"Task" : "public/js/assignment/dialog.js"}
 
 # Svg Icons
 # ------------------

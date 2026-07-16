@@ -1,7 +1,7 @@
 // Оптимизированный модуль для подсчёта сумм трудозатрат
 // https://erp.dinord.ru/app/issue/ISS-2025-02915
-// ISS-2025-01239: первый файл в doctype_js Project (Work Efforts).
-// Публичный API модуля — project_workload_assignment.work_efforts.* (см. Object.assign в конце каждого файла).
+// ISS-2025-01239: первый модуль shell (work_efforts/entry.js → work-efforts.bundle).
+// Публичный API — project_workload_assignment.work_efforts.* (Object.assign в конце каждого файла).
 
 frappe.provide("project_workload_assignment.work_efforts");
 
