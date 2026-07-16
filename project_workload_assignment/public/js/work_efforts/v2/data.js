@@ -36,6 +36,7 @@ function toGridRow(apiRow, index) {
         task_id: apiRow.task_id,
         task_subject: index === 0 ? apiRow.task_subject || "" : "",
         role: apiRow.role || "",
+        parent_task_id: apiRow.parent_task_id || null,
         _selected: false,
         merge_group_id: apiRow.merge_group_id,
         merge_group_index: apiRow.merge_group_index,
@@ -104,6 +105,8 @@ function applyGridResponse(frm, message) {
     state.periods = message.periods || [];
     state.rows = buildTreeData(message.rows || []);
     state.summaryRows = buildSummaryRows(frm, state.periods, message.summary_rows);
+    // Force limits recompute from fresh we_v2 facts.
+    frm.periodLimitStatuses = null;
     return message;
 }
 

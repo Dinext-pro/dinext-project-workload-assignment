@@ -48,26 +48,15 @@ async function postRoleMutationRefresh(frm) {
     if (frm._tasksByParent) {
         frm._tasksByParent = null;
     }
-    if (project_workload_assignment.work_efforts?.clearTaskIndexCacheFor) {
-        project_workload_assignment.work_efforts.clearTaskIndexCacheFor(frm.aggregatedTasks);
-    }
+    project_workload_assignment.work_efforts?.clear_aggregated_tasks?.(frm);
 
     frm.last_loaded_time = null;
     frm.last_loaded_project = null;
 
-    if (project_workload_assignment.work_efforts?.load_work_efforts_data) {
-        project_workload_assignment.work_efforts.load_work_efforts_data(
-            frm,
-            frm._we_period_type || "month",
-            "hours",
-            true
-        );
-    } else if (project_workload_assignment.work_efforts?.updateTable) {
-        project_workload_assignment.work_efforts.updateTable(frm, "month", "hours");
-    }
-
     if (window.WorkEffortsV2?.refresh) {
         await window.WorkEffortsV2.refresh(frm);
+    } else if (project_workload_assignment.work_efforts?.updateTable) {
+        project_workload_assignment.work_efforts.updateTable(frm, "month", "hours");
     }
 }
 
@@ -93,14 +82,6 @@ export async function addRole(frm, taskId, role) {
             pwe_task: taskId,
             pwe_project_role: role,
         });
-    }
-
-    const taskData = frm.aggregatedTasks?.[taskId];
-    if (taskData) {
-        if (!taskData.role_data) taskData.role_data = [];
-        if (!taskData.role_data.some((r) => r?.role === role)) {
-            taskData.role_data.push({ role });
-        }
     }
 
     frappe.show_alert({ message: __("Роль {0} добавлена", [role]), indicator: "green" }, 3);
@@ -131,11 +112,6 @@ export async function deleteRole(frm, taskId, role) {
                 })
             )
         );
-    }
-
-    const taskData = frm.aggregatedTasks?.[taskId];
-    if (taskData?.role_data) {
-        taskData.role_data = taskData.role_data.filter((r) => r.role !== role);
     }
 
     frappe.show_alert({ message: __("Роль удалена"), indicator: "green" }, 3);

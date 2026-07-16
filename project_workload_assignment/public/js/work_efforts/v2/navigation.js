@@ -2,21 +2,12 @@
  * Фаза 15.3 — dblclick past fact → List User Timesheet Position.
  */
 
-function resolveUtps(frm, row, periodKey) {
+function resolveUtps(row, periodKey) {
     const fromRow = row[`fact_utps_${periodKey}`];
-    if (Array.isArray(fromRow) && fromRow.length) {
-        return fromRow;
-    }
-
-    const roleEntry = (frm.aggregatedTasks?.[row.task_id]?.role_data || []).find(
-        (r) => (r.role || "") === (row.role || "")
-    );
-    const fromLegacy = roleEntry?.[`fact_utps_${periodKey}`];
-    return Array.isArray(fromLegacy) ? fromLegacy : [];
+    return Array.isArray(fromRow) ? fromRow : [];
 }
 
 export function onCellDoubleClicked(frm, params) {
-    // DinextTable: onCellDoubleClicked(params, table) — table unused
     const field = params?.colDef?.field || params?.column?.getColDef?.()?.field || "";
     const match = /^actual_(.+)$/.exec(field);
     if (!match) return;
@@ -31,7 +22,7 @@ export function onCellDoubleClicked(frm, params) {
     const value = Number(row[`actual_${periodKey}`] || row[`fact_${periodKey}`] || 0);
     if (!value) return;
 
-    const utps = resolveUtps(frm, row, periodKey);
+    const utps = resolveUtps(row, periodKey);
     if (!utps.length) {
         frappe.show_alert(__("Нет связанных User Timesheet Position"), 3);
         return;
@@ -41,7 +32,7 @@ export function onCellDoubleClicked(frm, params) {
     frappe.set_route("List", "User Timesheet Position");
 }
 
-/** Dual-table: sync P&L task dimension after WE data ready. */
+/** Sync P&L after WE data ready. */
 export function syncPlFromWe(frm) {
     project_workload_assignment.work_efforts?.syncPlTaskDimensionFromWe?.(frm);
 }

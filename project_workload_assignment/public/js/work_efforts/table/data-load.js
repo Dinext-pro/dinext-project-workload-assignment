@@ -1,104 +1,99 @@
-// we-table/data-load.js — load_work_efforts_data, rollup_fact_data
+// we-table/data-load.js — lazy consolidated for dialogs (W3b: no dual boot)
 // ISS-2025-01239
 
 /**
- * Загружает consolidated data через work_efforts_api.get_work_efforts_consolidated_data.
+ * @param {object[]} rows
+ * @param {object[]} out
+ * @returns {object[]}
+ */
+function flattenWeV2Rows(rows, out) {
+    const acc = out || [];
+    for (const row of rows || []) {
+        if (!row || row.merge_group_id === "summary-total") continue;
+        acc.push(row);
+        if (row.children?.length) {
+            flattenWeV2Rows(row.children, acc);
+        }
+    }
+    return acc;
+}
+
+/**
+ * Lazy-fill frm.aggregatedTasks via consolidated API (overload / pl-from-we).
+ * Does not run chart/limits — those use we_v2 after GRID load.
+ * @param {WorkEffortsForm} frm
+ * @returns {Promise<Record<string, ConsolidatedTaskEntry>>}
+ */
+function ensure_aggregated_tasks(frm) {
+    return new Promise((resolve, reject) => {
+        if (frm.aggregatedTasks && Object.keys(frm.aggregatedTasks).length) {
+            resolve(frm.aggregatedTasks);
+            return;
+        }
+
+        frappe.call({
+            method: "project_workload_assignment.project_workload_api.get_work_efforts_consolidated_data",
+            args: {
+                project: frm.doc.name,
+                view_options: frm.view_options || "Прогноз и факт",
+            },
+            freeze: true,
+            freeze_message: __("Загрузка данных о трудозатратах..."),
+            callback: function (r) {
+                if (!r.message) {
+                    frappe.msgprint(__("Ошибка при загрузке данных о трудозатратах"));
+                    reject(new Error("empty consolidated response"));
+                    return;
+                }
+
+                frm.aggregatedTasks = {};
+                (r.message || []).forEach((task) => {
+                    if (task && task.value) {
+                        frm.aggregatedTasks[task.value] = task;
+                    }
+                });
+                resolve(frm.aggregatedTasks);
+            },
+            error: function (err) {
+                console.error("Ошибка при загрузке данных:", err);
+                frappe.msgprint(__("Ошибка при загрузке данных о трудозатратах"));
+                reject(err);
+            },
+        });
+    });
+}
+
+/**
+ * Invalidate cached aggregatedTasks (after mutations that change PWE tree).
+ * @param {WorkEffortsForm} frm
+ */
+function clear_aggregated_tasks(frm) {
+    if (frm?.aggregatedTasks) {
+        project_workload_assignment.work_efforts.clearTaskIndexCacheFor?.(frm.aggregatedTasks);
+        frm.aggregatedTasks = null;
+    }
+}
+
+/**
+ * @deprecated Boot dual-load removed (W3b). Kept as alias for rare callers → ensure + no side effects.
  * @param {WorkEffortsForm} frm
  * @param {string} periodType
  * @param {string} unit
  * @param {boolean} [updateRows]
  */
 function load_work_efforts_data(frm, periodType, unit, updateRows) {
-    // Очистка кэша назначений при загрузке новых данных
-    project_workload_assignment.work_efforts.clear_assignments_cache();
-
-    if (frm.last_loaded_project == frm.doc.name && (new Date() - frm.last_loaded_time) < 300000) {
-        return;
-    }
-
-    // W1: UI grid = DinextTable; this loader only fills aggregatedTasks for chart / P&L.
-    project_workload_assignment.work_efforts.clearTaskIndexCacheFor(frm.aggregatedTasks);
-
-    frappe.call({
-        method: "project_workload_assignment.project_workload_api.get_work_efforts_consolidated_data",
-        args: {
-            project: frm.doc.name,
-            view_options: frm.view_options || "Прогноз и факт"
-        },
-        freeze_message: __("Загрузка данных о трудозатратах..."),
-        callback: function(r) {
-            if (r.message) {
-                let tasksArray = r.message;
-                frm.aggregatedTasks = {};
-
-                tasksArray.forEach(task => {
-                    if (task && task.value) {
-                        frm.aggregatedTasks[task.value] = task;
-                    }
-                });
-
-                function doContinue() {
-                    project_workload_assignment.work_efforts.buildWorkloadPeriodsMap(frm).then(() => {
-                        if (typeof render_labour_percentage_chart === "function") {
-                            render_labour_percentage_chart(frm);
-                        }
-
-                        project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-                        project_workload_assignment.work_efforts.syncPlTaskDimensionFromWe(frm);
-
-                        frm.last_loaded_project = frm.doc.name;
-                        frm.last_loaded_time = new Date();
-                    });
-                }
-
-                project_workload_assignment.work_efforts.recalculatePeriodLimits(frm, periodType, doContinue);
-            }
-        },
-        error: function(err) {
-            console.error("Ошибка при загрузке данных:", err);
-            frappe.msgprint(__("Ошибка при загрузке данных о трудозатратах"));
-        }
-    });
-}
-
-/**
- * Свёртка (rollup) фактических данных:
- * для каждой задачи суммируются fact_* из дочерних задач с той же ролью.
- * @param {Record<string, ConsolidatedTaskEntry>} aggregatedTasks
- */
-function rollup_fact_data(aggregatedTasks) {
-    let tasksArray = Object.values(aggregatedTasks).sort((a, b) => b.indent - a.indent);
-    tasksArray.forEach(child => {
-        if (child.parent_task && aggregatedTasks[child.parent_task]) {
-            let parent = aggregatedTasks[child.parent_task];
-            child.role_data.forEach(childRoleEntry => {
-                let role = childRoleEntry.role;
-                let parentRoleEntry = parent.role_data.find(r => r.role === role);
-                for (let prop in childRoleEntry) {
-                    if (prop.startsWith("fact_")) {
-                        if (!parentRoleEntry) {
-                            parentRoleEntry = { role: role };
-                            parent.role_data.push(parentRoleEntry);
-                        }
-                        if (prop.startsWith("fact_utps")) {
-                            if (!parentRoleEntry[prop]) {
-                                parentRoleEntry[prop] = [];
-                            }
-                            parentRoleEntry[prop].push(...(childRoleEntry[prop] || []));
-                        } else {
-                            let childFact = parseFloat(childRoleEntry[prop]) || 0;
-                            if (childFact) {
-                                parentRoleEntry[prop] = (parseFloat(parentRoleEntry[prop]) || 0) + childFact;
-                            }
-                        }
-                    }
-                }
-            });
+    project_workload_assignment.work_efforts.clear_assignments_cache?.();
+    clear_aggregated_tasks(frm);
+    return ensure_aggregated_tasks(frm).then(() => {
+        if (updateRows && window.WorkEffortsV2?.refresh) {
+            return window.WorkEffortsV2.refresh(frm);
         }
     });
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
+    flattenWeV2Rows,
+    ensure_aggregated_tasks,
+    clear_aggregated_tasks,
     load_work_efforts_data,
-    rollup_fact_data,
 });

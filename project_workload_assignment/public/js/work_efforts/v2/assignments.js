@@ -31,10 +31,18 @@ export async function ensureAssignmentsLoaded(frm) {
     if (!we?.load_all_assignments_if_needed) {
         return;
     }
-    if (!frm.aggregatedTasks || !Object.keys(frm.aggregatedTasks).length) {
+    const taskIds = we.get_assignment_task_ids?.(frm) || [];
+    if (!taskIds.length) {
         return;
     }
     await we.load_all_assignments_if_needed(frm);
+}
+
+function resolveTaskSubject(frm, row) {
+    if (row?.task_subject) return row.task_subject;
+    const flat = project_workload_assignment.work_efforts.flattenWeV2Rows?.(frm.we_v2?.rows, []) || [];
+    const head = flat.find((r) => r.task_id === row?.task_id && r.merge_group_index === 0);
+    return head?.task_subject || "";
 }
 
 function openPwaDialog(frm, row) {
@@ -46,7 +54,7 @@ function openPwaDialog(frm, row) {
     const task = {
         name: row.task_id,
         project: frm.doc.name,
-        subject: row.task_subject || frm.aggregatedTasks?.[row.task_id]?.subject,
+        subject: resolveTaskSubject(frm, row),
         exp_start_date: row.exp_start_date,
         exp_end_date: row.exp_end_date,
     };

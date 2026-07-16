@@ -48,7 +48,14 @@ function perform_overload_check(frm) {
                     }
                 });
                 
-                project_workload_assignment.work_efforts.show_overload_details_dialog(overloads, frm);
+                project_workload_assignment.work_efforts
+                    .ensure_aggregated_tasks(frm)
+                    .then(() => {
+                        project_workload_assignment.work_efforts.show_overload_details_dialog(overloads, frm);
+                    })
+                    .catch(() => {
+                        frappe.msgprint(__("Не удалось загрузить данные для диалога перегрузки"));
+                    });
             } else if (r.message && r.message.error) {
                 console.error("Server error:", r.message.error);
                 frappe.msgprint(__("Ошибка при проверке: {0}", [r.message.error]));
@@ -364,13 +371,15 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
                 if (dialog) dialog.hide();
                 
                 project_workload_assignment.work_efforts.clear_assignments_cache();
-                project_workload_assignment.work_efforts.clearTaskIndexCacheFor(frm.aggregatedTasks);
+                project_workload_assignment.work_efforts.clear_aggregated_tasks?.(frm);
                 frm.last_loaded_time = null;
                 frm.last_loaded_project = null;
                 frm._overloadMap = {};
                 frm._missingPlanMap = {};
-                
-                project_workload_assignment.work_efforts.load_work_efforts_data(frm, "month", "hours", true);
+
+                if (window.WorkEffortsV2?.refresh) {
+                    window.WorkEffortsV2.refresh(frm);
+                }
             } else if (r.message && r.message.error) {
                 frappe.msgprint(__("Ошибка при обновлении: {0}", [r.message.error]));
             } else {

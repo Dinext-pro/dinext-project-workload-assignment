@@ -81,17 +81,10 @@ async function postSaveRefresh(frm) {
     frm.last_loaded_time = null;
     frm.last_loaded_project = null;
 
-    if (project_workload_assignment.work_efforts?.clearTaskIndexCacheFor) {
-        project_workload_assignment.work_efforts.clearTaskIndexCacheFor(frm.aggregatedTasks);
-    }
+    project_workload_assignment.work_efforts?.clear_aggregated_tasks?.(frm);
 
     frm._missingPlanMap = {};
     frm._missingPlanPeriodsMap = {};
-
-    const periodType = frm._we_period_type || "month";
-    if (project_workload_assignment.work_efforts?.load_work_efforts_data) {
-        project_workload_assignment.work_efforts.load_work_efforts_data(frm, periodType, "hours", true);
-    }
 
     if (typeof load_and_render_project_dashboard === "function") {
         load_and_render_project_dashboard(frm);

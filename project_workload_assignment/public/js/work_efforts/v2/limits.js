@@ -30,8 +30,8 @@ export function actualCellClassRules(frm, period) {
 }
 
 /**
- * Гарантирует frm.periodLimitStatuses (reuse legacy recalculatePeriodLimits).
- * Dual-table: если legacy уже посчитал — skip.
+ * Гарантирует frm.periodLimitStatuses (shared recalculatePeriodLimits).
+ * Источник фактов — we_v2.rows (или aggregatedTasks fallback внутри).
  */
 export function ensurePeriodLimits(frm) {
     return new Promise((resolve) => {
@@ -44,7 +44,9 @@ export function ensurePeriodLimits(frm) {
             resolve(frm.periodLimitStatuses);
             return;
         }
-        if (!frm.aggregatedTasks || !Object.keys(frm.aggregatedTasks).length) {
+        const hasV2 = !!(frm.we_v2?.rows && frm.we_v2.rows.length);
+        const hasAgg = !!(frm.aggregatedTasks && Object.keys(frm.aggregatedTasks).length);
+        if (!hasV2 && !hasAgg) {
             frm.periodLimitStatuses = frm.periodLimitStatuses || {};
             resolve(frm.periodLimitStatuses);
             return;
