@@ -14,10 +14,53 @@ import { ensureWorkloadPeriods } from "./period-markers.js";
 import { onAssignmentsToggle } from "./assignments.js";
 import { onCellDoubleClicked, syncPlFromWe } from "./navigation.js";
 
+const FS_SHELL_CLASS = "work_efforts_container--fullscreen";
+
+/** Fullscreen shell = .work_efforts_container (controls + table), same as P&L. */
+function resolveFullscreenOpts(container) {
+    const shell = container?.closest?.(".work_efforts_container");
+    if (!shell) {
+        return null;
+    }
+
+    const afterLayout = () => {
+        requestAnimationFrame(() => {
+            window.dispatchEvent(new Event("resize"));
+        });
+    };
+
+    return {
+        target: "shell",
+        shell,
+        onEnter: ({ element }) => {
+            element?.classList.add(FS_SHELL_CLASS);
+            if (container) {
+                container.dataset.weV2PrevHeight = container.style.height || "";
+                container.dataset.weV2PrevMinHeight = container.style.minHeight || "";
+                container.style.height = "auto";
+                container.style.minHeight = "0";
+                container.style.flex = "1 1 auto";
+            }
+            afterLayout();
+        },
+        onExit: ({ element }) => {
+            element?.classList.remove(FS_SHELL_CLASS);
+            if (container) {
+                container.style.height = container.dataset.weV2PrevHeight || "min(50vh, 560px)";
+                container.style.minHeight = container.dataset.weV2PrevMinHeight || "280px";
+                container.style.flex = "";
+                delete container.dataset.weV2PrevHeight;
+                delete container.dataset.weV2PrevMinHeight;
+            }
+            afterLayout();
+        },
+    };
+}
+
 function buildTableOptions(frm, state) {
     const summaryRows = buildSummaryRows(frm, state.periods, state.summaryRows);
 
-    return {
+    const opts = {
         container: state.container,
         data: state.rows,
         columns: getColumns(frm, state.periods),
@@ -47,6 +90,12 @@ function buildTableOptions(frm, state) {
             groupHeaderHeight: 28,
         },
     };
+
+    const fullscreen = resolveFullscreenOpts(state.container);
+    if (fullscreen) {
+        opts.fullscreen = fullscreen;
+    }
+    return opts;
 }
 
 function applyRuntime(frm, table) {
@@ -56,7 +105,7 @@ function applyRuntime(frm, table) {
 export async function initTable(frm) {
     const state = initState(frm);
 
-    if (!frm._we_v2_enabled || !state.container) return null;
+    if (!state.container) return null;
     if (state.table) return state.table;
     if (state._initPromise) return state._initPromise;
 

@@ -156,14 +156,14 @@ export function refreshCheckHighlight(frm) {
     api.refreshCells({ force: true });
 }
 
-/** Фаза 14.1 — missing plan check для v2 (+ dual legacy update). */
+/** Missing plan check (highlight + expand parents in DinextTable). */
 export async function runMissingPlanCheck(frm) {
     if (!frm.aggregatedTasks || !Object.keys(frm.aggregatedTasks).length) {
         frappe.msgprint(__("Сначала дождитесь загрузки данных таблицы трудозатрат"));
         return;
     }
 
-    if (!frm.we_v2?.table && !frm.work_efforts_dt) {
+    if (!frm.we_v2?.table) {
         frappe.msgprint(__("Таблица трудозатрат еще не инициализирована"));
         return;
     }
@@ -181,21 +181,9 @@ export async function runMissingPlanCheck(frm) {
     frm._missingPlanMap = missingPlanMap;
     frm._missingPlanPeriodsMap = missingPlanPeriodsMap;
 
-    // dual-table: legacy HTML highlight
     we.updateTable?.(frm, "month", "hours");
-
     refreshCheckHighlight(frm);
     await expandParentsV2(frm, missingPlanMap);
-
-    // legacy expand (if sticky table present)
-    if (frm.work_efforts_dt?.datamanager) {
-        setTimeout(() => {
-            const rows = frm.work_efforts_dt.datamanager.getRows?.();
-            if (rows?.length) {
-                we.expandParents?.(frm, missingPlanMap);
-            }
-        }, 300);
-    }
 
     const problemsCount = Object.values(missingPlanMap).reduce((sum, roles) => sum + roles.length, 0);
     if (problemsCount > 0) {

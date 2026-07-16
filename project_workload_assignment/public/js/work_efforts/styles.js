@@ -1,15 +1,13 @@
-// we-styles.js — подключает WE CSS на форме Project (паттерн как PWR).
-// doctype_css для Project есть, но link-inject остаётся источником правды:
-// при уже загруженном we-table.css раньше early-return глотал we-v2.css.
+// we-styles.js — подключает WE CSS на форме Project.
+// W2: только we-v2.css (shell + DinextTable); we-table.css снят.
 
 const WE_STYLESHEETS = [
-	"/assets/project_workload_assignment/css/we-table.css",
 	"/assets/project_workload_assignment/css/we-v2.css",
 ];
 
 function ensureStylesheet(href) {
 	if (document.querySelector(`link[href^="${href}"]`)) return;
-	
+
 	const link = document.createElement("link");
 	link.rel = "stylesheet";
 	link.href = href;

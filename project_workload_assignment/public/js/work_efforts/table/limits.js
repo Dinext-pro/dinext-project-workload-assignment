@@ -1,4 +1,4 @@
-// we-table/limits.js — recalculatePeriodLimits, refreshLimitHighlight, setCellStyles
+// we-table/limits.js — recalculatePeriodLimits, refreshLimitHighlight
 // ISS-2025-01239
 
 /**
@@ -91,29 +91,19 @@ function recalculatePeriodLimits(frm, periodType, callback) {
  * @param {WorkEffortsForm} frm
  */
 function refreshLimitHighlight(frm) {
-    if (frm.work_efforts_dt && frm.aggregatedTasks) {
-        let periodType = frm._we_period_type || "month";
-        let unit = frm._we_unit || "hours";
-        project_workload_assignment.work_efforts.updateTable(frm, periodType, unit, true);
+    if (!window.WorkEffortsV2?.refreshLimitHighlight) {
+        return;
     }
-    // dual-table: пересчитать лимиты и обновить cellClassRules в v2
-    if (frm._we_v2_enabled && window.WorkEffortsV2?.refreshLimitHighlight) {
-        project_workload_assignment.work_efforts.recalculatePeriodLimits(
-            frm,
-            frm._we_period_type || "month",
-            () => window.WorkEffortsV2.refreshLimitHighlight(frm)
-        );
-    }
-}
-
-function setCellStyles() {
-    $(".work-efforts-table .datatable .dt-scrollable").addClass("dt-fit-height");
+    project_workload_assignment.work_efforts.recalculatePeriodLimits(
+        frm,
+        frm._we_period_type || "month",
+        () => window.WorkEffortsV2.refreshLimitHighlight(frm)
+    );
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
     recalculatePeriodLimits,
     refreshLimitHighlight,
-    setCellStyles,
 });
 
 frappe.ui.form.on("Limit Control", "limit", function(frm) {

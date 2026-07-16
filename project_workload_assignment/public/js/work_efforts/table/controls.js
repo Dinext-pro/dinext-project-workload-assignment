@@ -75,9 +75,8 @@ function addViewOptionsControl(frm, controls) {
                     frm.view_options = this.value;
                     project_workload_assignment.work_efforts.updateTable(frm, "month", "hours");
                     project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-                    // dual-table: v2 periods/actual зависят от view_mode
-                    project_workload_assignment.workEffortsPreview?.whenReady?.(frm, () => {
-                        project_workload_assignment.workEffortsPreview.onViewOptionsChange(frm);
+                    project_workload_assignment.work_efforts.with_we_v2_ready(frm, () => {
+                        window.WorkEffortsV2.onViewOptionsChange(frm);
                     });
                 }
             }
