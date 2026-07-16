@@ -6,13 +6,14 @@
  * @param {WorkEffortsForm} frm
  */
 function syncPlTaskDimensionFromWe(frm) {
-    if (typeof updateTaskDimension !== 'function') return;
-    if (!frm.aggregatedBudget || !frm.aggregatedTasks) return;
-    const budgetsArr = Object.values(frm.aggregatedBudget);
-    const tasksArr = Object.values(frm.aggregatedTasks);
-    if (!budgetsArr.length || !tasksArr.length) return;
-    if (budgetsArr.some(row => row && row.task)) return;
-    updateTaskDimension(frm);
+    // P&L v2 owns task x account tree server-side; refresh grid after WE changes.
+    if (typeof updateTaskDimension === "function") {
+        updateTaskDimension(frm);
+        return;
+    }
+    if (window.ProjectPlV2?.refresh) {
+        window.ProjectPlV2.refresh(frm);
+    }
 }
 
 /**
