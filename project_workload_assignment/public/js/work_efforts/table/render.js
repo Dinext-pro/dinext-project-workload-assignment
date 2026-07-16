@@ -6,13 +6,13 @@
  * @param {WorkEffortsForm} frm
  */
 function syncPlTaskDimensionFromWe(frm) {
-    // P&L v2 owns task x account tree server-side; refresh grid after WE changes.
+    // Project Budget owns task x account tree server-side; refresh grid after WE changes.
     if (typeof updateTaskDimension === "function") {
         updateTaskDimension(frm);
         return;
     }
-    if (window.ProjectPlV2?.refresh) {
-        window.ProjectPlV2.refresh(frm);
+    if (window.ProjectBudget?.refresh) {
+        window.ProjectBudget.refresh(frm);
     }
 }
 
