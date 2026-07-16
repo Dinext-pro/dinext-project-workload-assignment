@@ -6,7 +6,6 @@ import {
 	getProjectCharts,
 } from "./api.js";
 import {
-	mountProjectsFilters,
 	mountProjectFilters,
 	mountProjectsFiltersFromForm,
 	getFormFiltersSection,
@@ -60,7 +59,6 @@ frappe.provide("project_workload_assignment.workloadReports.common");
 
 project_workload_assignment.workloadReports.common = {
 	mountLayout: _mountLayout,
-	mountProjectsFilters,
 	mountProjectFilters,
 	mountProjectsFiltersFromForm,
 	getFormFiltersSection,
