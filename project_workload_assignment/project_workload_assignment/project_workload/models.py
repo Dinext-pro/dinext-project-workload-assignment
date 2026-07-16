@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Dinext
 """TypedDict для Project Workload API (form_dict + response).
 
-Whitelist entrypoints — `project_workload_api.py`.
+Whitelist entrypoints — `api.py`.
 Ядро расчёта импортирует типы отсюда.
 """
 

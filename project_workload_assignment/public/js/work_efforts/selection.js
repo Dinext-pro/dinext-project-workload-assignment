@@ -14,7 +14,7 @@ function flattenTree(rows) {
 function getSavePlanApi() {
     return (
         project_workload_assignment.pwrApi?.SAVE_FORECAST_PLAN ||
-        "project_workload_assignment.project_workload_api.save_forecast_as_plan"
+        "project_workload_assignment.api.save_forecast_as_plan"
     );
 }
 
