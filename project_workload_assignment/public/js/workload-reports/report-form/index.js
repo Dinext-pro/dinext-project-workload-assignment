@@ -97,21 +97,6 @@ function _applyFormLayout(frm) {
 	}
 }
 
-function _stripLegacyGrid(frm) {
-	if (frm.projects_workload_dt && typeof frm.projects_workload_dt.destroy === "function") {
-		try {
-			frm.projects_workload_dt.destroy();
-		} catch (_e) {
-			/* ignore */
-		}
-	}
-	frm.projects_workload_dt = null;
-	frm.projects_workload_table_initialized = false;
-	frm.get_field(FIELD)?.$wrapper
-		?.find(".projects-workload-ag-grid, .projects-workload-table")
-		.remove();
-}
-
 function _reloadNow(frm) {
 	const { common } = project_workload_assignment.workloadReports;
 	const state = frm._wrForm;
@@ -172,7 +157,6 @@ function _needsRemount(frm, hostEl) {
 	if (frm._wrForm.version !== MOUNT_VERSION) return true;
 	if (!frm._wrForm.zones?.filters) return true;
 	if (!hostEl?.querySelector?.(":scope > .workload-reports-filters")) return true;
-	if (hostEl.querySelector(".projects-workload-ag-grid")) return true;
 	return false;
 }
 
@@ -210,7 +194,6 @@ function mount(frm, attempt = 0) {
 
 	if (_needsRemount(frm, hostEl)) {
 		_destroyWrForm(frm);
-		_stripLegacyGrid(frm);
 		common.parkFormLinkFields?.(frm);
 		field.$wrapper.empty();
 
@@ -248,7 +231,6 @@ function bindForm() {
 			frm.page?.clear_menu?.();
 			// Previous SPA visit only — never race a mount that ran before onload.
 			_destroyWrForm(frm);
-			_stripLegacyGrid(frm);
 		},
 		refresh(frm) {
 			mount(frm);
