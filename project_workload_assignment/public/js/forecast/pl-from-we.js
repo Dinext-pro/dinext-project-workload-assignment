@@ -358,8 +358,10 @@ function reserveDimensionsEqual(dim1, dim2) {
 }
 
 function reloadForecastBudgetView(frm) {
-	if (typeof load_budget_data === 'function') {
-		load_budget_data(frm, 'month', true);
+	if (typeof refresh_project_pl === "function") {
+		refresh_project_pl(frm);
+	} else if (window.ProjectPlV2?.refresh) {
+		window.ProjectPlV2.refresh(frm);
 	}
 }
 
