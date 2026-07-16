@@ -2,13 +2,6 @@ import { PERIOD_FIELD_RE, ROW_ID_SEP } from "./constants.js";
 import { initState } from "./state.js";
 import { buildSummaryRows } from "./summary.js";
 
-function getGridApi() {
-    return (
-        project_workload_assignment.pwrApi?.GRID ||
-        "project_workload_assignment.api.get_work_efforts_grid"
-    );
-}
-
 function rowId(apiRow) {
     return `${apiRow.task_id}${ROW_ID_SEP}${apiRow.role || ""}`;
 }
@@ -114,7 +107,7 @@ export async function loadGridData(frm, periodType) {
     const period_type = periodType || frm._we_period_type || "month";
 
     try {
-        const message = await frappe.xcall(getGridApi(), {
+        const message = await frappe.xcall("project_workload_assignment.api.get_work_efforts_grid", {
             project: frm.doc.name,
             period_type,
             view_options: frm.view_options || __("Прогноз и факт"),

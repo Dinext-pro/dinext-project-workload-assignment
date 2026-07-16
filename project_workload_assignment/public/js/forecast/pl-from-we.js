@@ -59,7 +59,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 	}, 5);
 
 	frappe.call({
-		method: project_workload_assignment.pwrApi.TASKS_FORECAST,
+		method: "project_workload_assignment.api.pwr_run_tasks_forecast_workload",
 		args: {
 			project: frm.doc.name,
 			periods: periods,
@@ -386,7 +386,7 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 	}, 10);
 
 	frappe.call({
-		method: project_workload_assignment.pwrApi.ADD_FORECAST_FROM_WE,
+		method: "project_workload_assignment.api.pwr_run_add_forecast_from_work_efforts",
 		args: {
 			project: frm.doc.name,
 			tasks: selectedTasks,
@@ -510,7 +510,7 @@ function ensureProjectWorkEffortsTasks(frm) {
 		}
 
 		frappe.call({
-			method: project_workload_assignment.pwrApi.CONSOLIDATED_DATA,
+			method: "project_workload_assignment.api.get_work_efforts_consolidated_data",
 			args: {
 				project: frm.doc.name,
 				view_options: frm.view_options || frm.budget_view_options || __("Forecast and actual"),

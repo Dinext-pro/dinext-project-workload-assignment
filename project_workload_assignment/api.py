@@ -1,28 +1,23 @@
 # Copyright (c) 2026, Dinext
 """Whitelisted API для вызова из Desk / Server Script через frappe.call.
-
-Пакеты ядра (siblings под `project_workload_assignment`):
-- `project_workload` — PWR (core/reports/canonical/utilization)
-- `work_efforts` — PWE grid / limits / save
-- `forecast` — PWE/PWA → P&L
-
-Ops (FormMeta / disable CS): `.sandbox/local/scripts/pwr_*.py`
 """
 
 from __future__ import annotations
 
 import frappe
 
-from project_workload_assignment.project_workload_assignment.forecast.forecast_from_assignments import (
-	run_update_forecast_from_assignments,
-)
-from project_workload_assignment.project_workload_assignment.forecast.forecast_from_work_efforts import (
-	run_add_forecast_from_work_efforts,
-)
-from project_workload_assignment.project_workload_assignment.project_workload.canonical import (
-	run_project_workload_tree_canonical,
-	run_team_workload_grid_canonical,
-)
+from project_workload_assignment.project_workload_assignment.forecast.forecast_from_assignments import run_update_forecast_from_assignments
+from project_workload_assignment.project_workload_assignment.forecast.forecast_from_work_efforts import run_add_forecast_from_work_efforts
+from project_workload_assignment.project_workload_assignment.project_workload.canonical import run_project_workload_tree_canonical, run_team_workload_grid_canonical
+from project_workload_assignment.project_workload_assignment.project_workload.project_report.overload_check import run_check_workload_overload
+from project_workload_assignment.project_workload_assignment.project_workload.project_report.tasks_forecast_workload import run_get_tasks_forecast_and_workload
+from project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates import run_get_project_workload_charts, run_get_team_workload_charts
+from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import run_get_work_efforts_consolidated_data
+from project_workload_assignment.project_workload_assignment.work_efforts.grid_data import run_get_work_efforts_grid
+from project_workload_assignment.project_workload_assignment.work_efforts.models import ConsolidatedDataFormInput, ConsolidatedDataResponse, SaveForecastAsPlanFormInput, TimesheetLimitsFormInput, TimesheetLimitsResponse, WeGridFormInput, WeGridResponse, WeSaveForecastFormInput
+from project_workload_assignment.project_workload_assignment.work_efforts.save_changes import run_save_forecast_changes
+from project_workload_assignment.project_workload_assignment.work_efforts.save_forecast_as_plan import run_save_forecast_as_plan
+from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits import run_calculate_timesheet_limits
 from project_workload_assignment.project_workload_assignment.project_workload.models import (
 	ChartResponse,
 	ErrorOverloadResponse,
@@ -37,42 +32,6 @@ from project_workload_assignment.project_workload_assignment.project_workload.mo
 	TeamWorkloadFormInput,
 	UpdateForecastFromAssignmentsFormInput,
 )
-from project_workload_assignment.project_workload_assignment.project_workload.project_report.overload_check import (
-	run_check_workload_overload,
-)
-from project_workload_assignment.project_workload_assignment.project_workload.project_report.tasks_forecast_workload import (
-	run_get_tasks_forecast_and_workload,
-)
-from project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates import (
-	run_get_project_workload_charts,
-	run_get_team_workload_charts,
-)
-from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import (
-	run_get_work_efforts_consolidated_data,
-)
-from project_workload_assignment.project_workload_assignment.work_efforts.grid_data import (
-	run_get_work_efforts_grid,
-)
-from project_workload_assignment.project_workload_assignment.work_efforts.models import (
-	ConsolidatedDataFormInput,
-	ConsolidatedDataResponse,
-	SaveForecastAsPlanFormInput,
-	TimesheetLimitsFormInput,
-	TimesheetLimitsResponse,
-	WeGridFormInput,
-	WeGridResponse,
-	WeSaveForecastFormInput,
-)
-from project_workload_assignment.project_workload_assignment.work_efforts.save_changes import (
-	run_save_forecast_changes,
-)
-from project_workload_assignment.project_workload_assignment.work_efforts.save_forecast_as_plan import (
-	run_save_forecast_as_plan,
-)
-from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits import (
-	run_calculate_timesheet_limits,
-)
-
 
 @frappe.whitelist()
 def pwr_run_team_workload_grid_canonical(**kwargs) -> dict:

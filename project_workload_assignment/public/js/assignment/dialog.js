@@ -32,8 +32,7 @@ function start_pwa_dialog(cbfunc, task) {
         limit: 0
     }).then(pwas => {
         frappe.call({
-            method: (project_workload_assignment.pwrApi && project_workload_assignment.pwrApi.TIMESHEET_LIMITS) ||
-                "project_workload_assignment.api.calculate_timesheet_limits",
+            method: "project_workload_assignment.api.calculate_timesheet_limits",
             args: {
                 timesheet_name: "",
                 positions: [ {

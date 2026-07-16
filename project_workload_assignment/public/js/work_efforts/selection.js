@@ -11,13 +11,6 @@ function flattenTree(rows) {
     return result;
 }
 
-function getSavePlanApi() {
-    return (
-        project_workload_assignment.pwrApi?.SAVE_FORECAST_PLAN ||
-        "project_workload_assignment.api.save_forecast_as_plan"
-    );
-}
-
 export function getSelectedTaskIds(frm) {
     const flat = flattenTree(frm.we?.rows || []);
     const taskIds = [];
@@ -96,7 +89,7 @@ async function postSaveRefresh(frm) {
 }
 
 async function executeSaveForecastAsPlan(frm, data) {
-    const res = await frappe.xcall(getSavePlanApi(), {
+    const res = await frappe.xcall("project_workload_assignment.api.save_forecast_as_plan", {
         project: frm.doc.name,
         data: JSON.stringify(data),
     });
