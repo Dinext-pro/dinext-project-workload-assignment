@@ -8,6 +8,8 @@ ISS-2026-00926: новый DinextAgGrid UI не меняет эти entrypoints;
 Четыре точки входа (whitelist → api_method Server Script → модуль ядра):
 - pwr_run_team_workload_grid → get_projects_workload_data_v2 → team_workload_grid.run_get_projects_workload_data_v2
 - pwr_run_project_workload_tree → get_project_workload_data → single_project_workload_tree.run_get_project_workload_data
+- pwr_run_team_workload_grid_canonical / pwr_run_project_workload_tree_canonical
+  → same calc + canonical.reshape (nested rows, hours_<key>; legacy wire unchanged)
 - pwr_run_tasks_forecast_workload → get_tasks_forecast_and_workload_v2 → tasks_forecast_workload.run_get_tasks_forecast_and_workload
 - pwr_run_add_forecast_from_work_efforts → add_forecast_from_work_efforts → forecast_from_work_efforts.run_add_forecast_from_work_efforts
 - pwr_run_check_workload_overload → check_workload_overload → overload_check.run_check_workload_overload
@@ -36,6 +38,10 @@ from project_workload_assignment.project_workload_assignment.project_workload.te
 	run_get_projects_workload_data_v2,
 	TeamWorkloadResponse,
 	ErrorTeamWorkloadResponse,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.canonical import (
+	run_team_workload_grid_canonical,
+	run_project_workload_tree_canonical,
 )
 from project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates import (
 	run_get_team_workload_charts,
@@ -173,6 +179,29 @@ def pwr_run_project_workload_tree() -> ProjectWorkloadResponse | ErrorResponse:
 	"""Дерево загрузки одного проекта (форма Project). API method: get_project_workload_data."""
 	form_input: ProjectWorkloadFormInput = frappe.form_dict
 	return run_get_project_workload_data(form_input)
+
+
+@frappe.whitelist()
+def pwr_run_team_workload_grid_canonical(**kwargs) -> dict:
+	"""Team grid for DinextTable: same calc as pwr_run_team_workload_grid, canonical GridResponse.
+
+	Returns ``{ periods, rows, meta }``. Mode ``user_projects`` → project children in ``rows``.
+	"""
+	form_input: TeamWorkloadFormInput = frappe._dict(frappe.form_dict)
+	for key, value in kwargs.items():
+		if value is not None:
+			form_input[key] = value
+	return run_team_workload_grid_canonical(form_input)
+
+
+@frappe.whitelist()
+def pwr_run_project_workload_tree_canonical(**kwargs) -> dict:
+	"""Project tree for DinextTable: same calc as pwr_run_project_workload_tree, nested rows."""
+	form_input: ProjectWorkloadFormInput = frappe._dict(frappe.form_dict)
+	for key, value in kwargs.items():
+		if value is not None:
+			form_input[key] = value
+	return run_project_workload_tree_canonical(form_input)
 
 
 @frappe.whitelist()

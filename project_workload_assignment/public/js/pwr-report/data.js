@@ -487,6 +487,10 @@ frappe.provide("project_workload_assignment.pwrReport");
 	}
 
 	async function render_projects_workload_table(frm) {
+		// Dead path while Form uses workload-reports; keep no-op until pwr-report deleted.
+		if (frm?._wrForm?.zones) {
+			return;
+		}
 		if (frm._pwrRenderTablePromise) {
 			return frm._pwrRenderTablePromise;
 		}

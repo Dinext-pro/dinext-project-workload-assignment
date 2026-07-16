@@ -345,7 +345,7 @@
             initPromise = loadBootstrap()
                 .then(() => window.DinextAgGrid.ensure())
                 .then(() => {
-                    // Legacy class-theme only — never load for DinextTable (Theming API).
+                    // Class-theme CSS for this adapter only (DinextTable uses Theming API).
                     if (typeof window.DinextAgGrid.ensureLegacyThemeCss === "function") {
                         window.DinextAgGrid.ensureLegacyThemeCss();
                     }
