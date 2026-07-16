@@ -402,7 +402,11 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 					indicator: 'green'
 				}, 5);
 
-				if (typeof buildParentAdjustments === 'function' && frm.aggregatedBudget && r.message.results) {
+				const canAdjustParents =
+					window.ProjectPlV2?.buildParentAdjustments &&
+					frm.pl_v2?.rows?.length &&
+					r.message.results;
+				if (canAdjustParents) {
 					var reserveUpdates = r.message.results.map(function(item) {
 						var dimensions = [];
 						if (item.task) {
@@ -418,7 +422,10 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 						};
 					});
 
-					var parentResult = buildParentAdjustments(frm, reserveUpdates);
+					var parentResult = window.ProjectPlV2.buildParentAdjustments(
+						frm,
+						reserveUpdates
+					);
 					if (parentResult.parent_adjustments && parentResult.parent_adjustments.length > 0) {
 						frappe.call({
 							method: 'dinext_risk_management.dinext_risk_management.bulk_save_reserve_budgets',
@@ -489,7 +496,7 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 function clearBudgetCache() {
 	_sum_cache = {};
 	if (cur_frm) {
-		cur_frm.aggregatedBudget = null;
+		cur_frm.pl_v2 = null;
 	}
 }
 
@@ -541,8 +548,7 @@ function ensureProjectWorkEffortsTasks(frm) {
 function add_forecast_from_work_efforts_handler(frm, forecastMode = "cost") {
 	const plReady =
 		(typeof is_project_pl_ready === "function" && is_project_pl_ready(frm)) ||
-		Boolean(frm.pl_v2?.rows?.length) ||
-		(frm.aggregatedBudget && Object.keys(frm.aggregatedBudget).length > 0);
+		Boolean(frm.pl_v2?.rows?.length);
 	if (!plReady) {
 		frappe.msgprint(__("Wait for budget data to load first"));
 		return;
