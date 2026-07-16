@@ -99,24 +99,3 @@ export function addButton(parent, { title, text, onClick, className }) {
 	parent.appendChild(btn);
 	return btn;
 }
-
-export function addLink(parent, { options, fieldname, placeholder, onChange }) {
-	const wrap = document.createElement("div");
-	wrap.className = "wr-filter-field wr-filter-link";
-	parent.appendChild(wrap);
-
-	const control = frappe.ui.form.make_control({
-		parent: wrap,
-		df: {
-			fieldtype: "Link",
-			options,
-			fieldname,
-			placeholder: placeholder || "",
-			only_select: true,
-			change: () => onChange(control.get_value() || ""),
-		},
-		render_input: true,
-	});
-
-	return control;
-}
