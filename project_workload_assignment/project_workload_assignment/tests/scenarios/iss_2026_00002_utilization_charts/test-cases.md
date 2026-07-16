@@ -9,7 +9,7 @@
   - `project_workload_assignment` (Project Workload Assignment)
 - primary_surface: `Python` (`team_report/chart_aggregates.run_get_team_workload_charts`)
 - secondary_surfaces:
-  - `public/js/charts/workload-charts.js` (кнопка «Добавить утилизацию»; UI через app, не CS)
+  - `public/js/workload-reports/common/charts/` (кнопка «Добавить утилизацию»; UI через app)
 - scenario_dir: `project_workload_assignment/project_workload_assignment/tests/scenarios/iss_2026_00002_utilization_charts/`
 - data_helper: `data_setup.py`
 - source_of_truth:

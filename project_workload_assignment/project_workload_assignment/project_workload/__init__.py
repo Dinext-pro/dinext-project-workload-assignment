@@ -8,5 +8,5 @@
 - utilization/ — утилизация и факт UTP
 - forecast/ — P&L-прогноз из PWE и обновление из PWA
 - work_efforts/ — consolidated data, limits, save plan
-- ops/ — миграция CS/SS, sandbox_cs, refresh form meta
+- ops/ — disable leftover Form CS, refresh FormMeta cache
 """

@@ -1,5 +1,5 @@
 # Copyright (c) 2026, Dinext
-"""Сброс кэша FormMeta для PWR doctypes после изменения doctype_js hooks."""
+"""Сброс кэша FormMeta для PWR doctypes после изменения doctype_js / CSS hooks."""
 
 import frappe
 
@@ -28,10 +28,12 @@ def _refresh_doctype_form_meta(doctype: str) -> dict:
 		"has_api_methods": "PROJECT_TREE" in js and "pwrApi" in js,
 	}
 	if doctype == "Projects Workload Report":
-		result["has_render"] = "render_projects_workload_table" in js
-		result["has_form_registered"] = "form.js registered" in js
+		# custom DocType: FormMeta __js usually empty; UI via app_include.
+		result["custom_doctype"] = bool(meta.get("custom"))
+		result["note"] = "Form UI: pwr-form-boot.js → workload-reports"
 	if doctype == "Project":
-		result["has_project_workload"] = "get_project_workload_data" in js
+		result["has_workload_reports"] = "workload-reports" in js or "workloadReports" in js
+		result["has_work_efforts"] = "work_efforts" in js or "we-v2" in js
 	return result
 
 

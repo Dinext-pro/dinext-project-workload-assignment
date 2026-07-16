@@ -87,9 +87,7 @@ doctype_js = {
                 # custom doctypes, so doctype_js entries have NO EFFECT here.
                 # Scripts are loaded by pwr-form-boot.js (app_include_js).
                 ,"Project":[
-                    # api-methods / shared / dialog moved here from app_include_js
                     "public/js/core/api-methods.js",
-                    "public/js/core/shared.js",
                     "public/js/pwa/dialog.js",
                     "public/js/work_efforts/calc.js",
                     "public/js/work_efforts/checks.js",
@@ -100,7 +98,6 @@ doctype_js = {
                     "public/js/work_efforts/table/data-load.js",
                     "public/js/work_efforts/table/limits.js",
                     "public/js/work_efforts/table/render.js",
-                    "public/js/core/plan-fact-cell.js",
                     "public/js/forecast/pl-from-we.js",
                     "public/js/workload-reports/project-tab/entry.js",
                 ]
@@ -108,7 +105,6 @@ doctype_js = {
 
 doctype_css = {
 	"Projects Workload Report": [
-		# v3 Form CSS + page chrome (hide sidebar)
 		"public/css/workload-reports-filters.css",
 		"public/css/workload-reports-charts.css",
 		"public/css/workload-reports-table.css",
@@ -116,10 +112,6 @@ doctype_css = {
 	],
 	"Project": [
 		"public/css/we-v2.css",
-		"public/css/pwr-workload-cells.css",
-		"public/css/pwr-workload-participant-column.css",
-		"public/css/pwr-workload-filters.css",
-		"public/css/pwr-workload-charts.css",
 		"public/css/pwr-workload-project-tab.css",
 	],
 }
