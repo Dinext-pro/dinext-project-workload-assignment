@@ -59,9 +59,10 @@
 	max-height: none !important;
 }
 
+/* Legend under table — out of fullscreen (WR charts pattern). */
 .work_efforts_container:fullscreen .work-efforts-legend,
 .work_efforts_container.work_efforts_container--fullscreen .work-efforts-legend {
-	flex: 0 0 auto;
+	display: none !important;
 }
 
 .work_efforts_container .work-efforts-controls .frappe-control {
