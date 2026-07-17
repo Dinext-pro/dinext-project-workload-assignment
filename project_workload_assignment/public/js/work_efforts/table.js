@@ -16,7 +16,7 @@ import { onCellDoubleClicked, syncPlFromWe } from "./navigation.js";
 
 const FS_SHELL_CLASS = "work_efforts_container--fullscreen";
 
-/** Fullscreen shell = .work_efforts_container (controls + table), same as P&L. */
+/** Fullscreen shell = .work_efforts_container (controls + table; legend hidden via CSS). */
 function resolveFullscreenOpts(container) {
     const shell = container?.closest?.(".work_efforts_container");
     if (!shell) {
