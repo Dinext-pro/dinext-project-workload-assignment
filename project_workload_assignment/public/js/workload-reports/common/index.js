@@ -12,6 +12,7 @@ import {
 	parkFormLinkFields,
 } from "./filters/index.js";
 import { loadTable, destroyTable, createProjectsExpandHandler, PAGE_SIZE } from "./table/index.js";
+import { consumeOpenWorkloadTab } from "./table/navigation.js";
 import {
 	mountCharts,
 	scheduleChartsReload,
@@ -79,4 +80,5 @@ project_workload_assignment.workloadReports.common = {
 	destroyCharts,
 	mountChartVisibilityToggle,
 	flushChartsWhenVisible,
+	consumeOpenWorkloadTab,
 };

@@ -36,13 +36,15 @@ const _bindChartsTab = () => {
 
 function mount(frm) {
 	const { common } = project_workload_assignment.workloadReports;
+
 	const field = frm.get_field(FIELD);
 	if (!field?.$wrapper?.length) {
 		return;
 	}
 
 	const el = field.$wrapper.get(0);
-	if (!el._wr) {
+	const isNew = !el._wr;
+	if (isNew) {
 		field.$wrapper
 			.empty()
 			.addClass("workload-reports-project-tab")
@@ -61,6 +63,7 @@ function mount(frm) {
 	}
 
 	_reload(frm, el);
+	common.consumeOpenWorkloadTab?.(frm, FIELD);
 }
 
 let bound = false;
