@@ -1,4 +1,4 @@
-// Chart layout / --charts-* tokens: work-efforts.css (loaded via doctype_css + styles.js)
+// Chart layout / --charts-* tokens: work-efforts.css (loaded via work_efforts/entry.js)
 
 frappe.ui.form.on("Project", {
     refresh: function(frm) {

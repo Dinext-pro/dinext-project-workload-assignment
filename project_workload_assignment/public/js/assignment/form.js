@@ -10,26 +10,7 @@ frappe.ui.form.on('Issue', {
 	}
 });
 
-/*const original_init = frappe.views.KanbanView.prototype.init;
-frappe.views.KanbanView.prototype.init = function() {
-	console.log('Kanban init bind');
-    return original_init.call(this).then(() => {
-        if (this.doctype === 'Issue' || this.doctype === 'Task') {
-            const original_KanbanBoardColumn = frappe.views.KanbanBoardColumn;
-            frappe.views.KanbanBoardColumn = function(column, wrapper, board_perms) {
-                const self = original_KanbanBoardColumn.call(this, column, wrapper, board_perms);
-                const original_make_cards = self.make_cards;
-                self.make_cards = function() {
-					console.log('make cards 1');
-                    original_make_cards.call(this);
-                    //setupListViewAssignmentFilter(this.cur_list);
-                };
-
-                return self;
-            };
-        }
-    });
-};/* */
+/* Kanban monkey-patch removed (was debug-only). */
 
 function setuFormPWA(frm) {
     if (!frm.doc.project) return;

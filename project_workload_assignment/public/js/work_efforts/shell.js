@@ -5,7 +5,6 @@
  */
 import "./calc.js";
 import "./checks.js";
-import "./styles.js";
 import "./table/data-load.js";
 import "./table/limits.js";
 import "./chart.js";

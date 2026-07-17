@@ -53,9 +53,8 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 	PERF_TOTAL_START = frappe.utils.now_datetime()
 
 	def perf_log(message):
-		line = "[PWR V2 PERF] " + str(message)
-		PERF_TRACE.append(line)
-		frappe.log(line)
+		# Keep in-memory trace for log_error on failure; no noisy frappe.log.
+		PERF_TRACE.append("[PWR V2 PERF] " + str(message))
 
 	def perf_start(label):
 		perf_log("START " + label)
@@ -109,7 +108,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    # Для детализации считаем только одного пользователя, сохраняя остальные фильтры.
 		    user = detail_user
 		
-		frappe.log("Filter values - user: " + str(user) + ", project: " + str(project) + ", project_portfolio: " + str(project_portfolio) + ", user_group: " + str(user_group) + ", mode: " + str(mode))
 		perf_log("PARAMS mode=" + str(mode) + ", limit=" + str(limit) + ", offset=" + str(offset) + ", detail_user=" + str(detail_user) + ", view_type=" + str(view_type) + ", period_range=" + str(period_range) + ", worker_wtype=" + str(worker_wtype_filter) + ", user=" + str(user) + ", project=" + str(project) + ", project_portfolio=" + str(project_portfolio) + ", user_group=" + str(user_group))
 		
 		# ISS-2026-00865 V2: для user_totals сначала выбираем только страницу пользователей,
@@ -255,8 +253,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        'message': 'No assignments after worker permission filter',
 		    }
 		
-		frappe.log("Found " + str(len(assignments)) + " assignments")
-		
 		# 1.2 Собираем уникальные сущности
 		users_set = {}
 		projects_set = {}
@@ -367,9 +363,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		
 		# ========== 4. ПЕРИОДЫ ==========
 		# periods уже сгенерированы в начале run (generate_periods_for_pwr_report); повторная генерация не нужна.
-		frappe.log("Generated " + str(len(periods)) + " periods for view_type=" + view_type + ", range=" + period_range)
-		if periods:
-		    frappe.log("First period: " + str(periods[0]))
 		# ISS-2026-00865: один раз строим lookup, чтобы не перебирать periods в горячих циклах.
 		perf_section_start = perf_start("Build date_to_period_key")
 		from project_workload_assignment.project_workload_assignment.project_workload.core.periods import build_date_to_period_key
@@ -410,7 +403,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    "users=" + str(len(users_list)) + ", date_entries=" + str(user_daily_hours_dates_count),
 		)
 
-		frappe.log("Starting workload calculation with WorkloadContext...")
 		perf_section_start = perf_start("Calculate workload original logic")
 		start_time = frappe.utils.now_datetime()
 
@@ -459,7 +451,13 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		                    results[user_email][project_name][period_key] += daily_load
 		end_time = frappe.utils.now_datetime()
 		calculation_time = (end_time - start_time).total_seconds() * 1000
-		frappe.log("Calculation completed in " + str(calculation_time) + " ms, " + str(assignment_calculations) + " date calculations")
+		perf_log(
+			"Calculation completed in "
+			+ str(calculation_time)
+			+ " ms, "
+			+ str(assignment_calculations)
+			+ " date calculations"
+		)
 		perf_end(
 		    "Calculate workload original logic",
 		    perf_section_start,
@@ -686,7 +684,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		except Exception:
 			pass
 		frappe.log_error("\n".join(PERF_TRACE), "PWR V2 PERF get_projects_workload_data_v2 FAILED")
-		frappe.log("Error in get_projects_workload_data_v2: " + str(e))
 		return {
 			"tree_data": [],
 			"periods": [],
