@@ -52,6 +52,7 @@ app_include_css = "/assets/project_workload_assignment/css/assignment_styles.css
 # (no doctype_js). Form UI boots via report-form/entry.js (app_include, route-gated).
 # No Client Script / Server Script for this Form UI.
 app_include_js = [
+	"/assets/project_workload_assignment/js/core/form-tab.js",
 	"/assets/project_workload_assignment/js/workload-reports/report-form/entry.js",
 	"/assets/project_workload_assignment/js/assignment/dialog.js",
 ]
@@ -86,6 +87,7 @@ doctype_js = {
                 # custom doctypes, so doctype_js entries have NO EFFECT here.
                 # Scripts: workload-reports/report-form/entry.js (app_include_js).
                 ,"Project":[
+                    "public/js/core/form-tab.js",
                     "public/js/assignment/dialog.js",
                     "public/js/work_efforts/entry.js",
                     "public/js/forecast/pl-from-we.js",
@@ -93,18 +95,8 @@ doctype_js = {
                 ]
             }
 
-doctype_css = {
-	"Projects Workload Report": [
-		"public/css/workload-reports-filters.css",
-		"public/css/workload-reports-charts.css",
-		"public/css/workload-reports-table.css",
-		"public/css/pwr-workload-report-page.css",
-	],
-	"Project": [
-		"public/css/work-efforts.css",
-		"public/css/pwr-workload-project-tab.css",
-	],
-}
+# CSS loads via entry.js frappe.require / app_include_css — not doctype_css
+# (doctype_css is not a Frappe hook).
 
 doctype_list_js = {
 	"Task": [

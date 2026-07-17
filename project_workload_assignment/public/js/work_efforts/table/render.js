@@ -67,7 +67,7 @@ function render_work_efforts_table(frm) {
     }
 
     if (frm.last_loaded_project == frm.doc.name && (new Date() - frm.last_loaded_time) < 300000) {
-        with_we_ready(frm);
+        schedule_we_mount(frm);
         return;
     }
 
@@ -188,7 +188,17 @@ function render_work_efforts_table(frm) {
     frm.last_loaded_time = new Date();
 
     project_workload_assignment.work_efforts.render_legend(legend_container);
-    with_we_ready(frm);
+    schedule_we_mount(frm);
+}
+
+/** Shell on refresh; grid only when tab «Трудозатраты» is visible. */
+function schedule_we_mount(frm) {
+    const bind = project_workload_assignment.bindLazyTabMount;
+    if (typeof bind !== "function") {
+        console.error("[WorkEfforts] bindLazyTabMount missing — refuse eager mount");
+        return;
+    }
+    bind(frm, "custom_work_efforts", () => with_we_ready(frm));
 }
 
 /**

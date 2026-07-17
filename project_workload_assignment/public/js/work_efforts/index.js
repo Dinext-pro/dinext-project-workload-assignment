@@ -1,3 +1,4 @@
+import { installLazyTabMountApi } from "../core/lazy-tab-mount.js";
 import { destroyTable } from "./state.js";
 import { buildSummaryRows } from "./summary.js";
 import { ensureMounted } from "./mount.js";
@@ -60,5 +61,6 @@ ready = true;
 window.WorkEfforts = WorkEfforts;
 // Temporary alias after rename from WorkEffortsV2.
 window.WorkEffortsV2 = WorkEfforts;
+installLazyTabMountApi();
 
 export { WorkEfforts };

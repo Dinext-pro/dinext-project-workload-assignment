@@ -1,4 +1,6 @@
 const HOURS_PREFIX = "hours_";
+/** Intent: Project.refresh opens Загрузка once (no scroll retries). */
+export const OPEN_WORKLOAD_TAB_KEY = "pwr_open_workload_tab";
 
 export const NAV_POINTER_CLASS = "wr-nav-pointer";
 
@@ -48,41 +50,59 @@ export function resolveAbsenceDate(periodKey, periods) {
 	return null;
 }
 
+/**
+ * Open Project → tab Загрузка.
+ * Sets a one-shot intent; Project form consumes it on refresh (see project-tab).
+ */
 export function openProjectWorkloadTab(projectName, fieldName) {
 	if (!projectName) return;
 	const field = fieldName || "custom_workload";
 
-	const tryGo = () => {
-		const frm = cur_frm;
-		if (!frm || frm.doctype !== "Project" || frm.docname !== projectName) {
-			return false;
+	try {
+		sessionStorage.setItem(OPEN_WORKLOAD_TAB_KEY, projectName);
+	} catch (_e) {
+		/* ignore */
+	}
+
+	const frm = window.cur_frm;
+	if (frm?.doctype === "Project" && frm.docname === projectName) {
+		if (frm.get_field?.(field)) {
+			frm.scroll_to_field(field);
+			try {
+				sessionStorage.removeItem(OPEN_WORKLOAD_TAB_KEY);
+			} catch (_e) {
+				/* ignore */
+			}
 		}
-		if (!frm.get_field?.(field)) {
-			return false;
-		}
-		return !!frm.scroll_to_field(field);
-	};
-
-	const retryGo = (left) => {
-		if (tryGo()) return;
-		if (left <= 0) return;
-		setTimeout(() => retryGo(left - 1), 200);
-	};
-
-	const alreadyOpen =
-		cur_frm?.doctype === "Project" && cur_frm?.docname === projectName;
-
-	if (alreadyOpen) {
-		retryGo(12);
 		return;
 	}
 
-	frappe.set_route("Form", "Project", projectName).then(() => {
-		retryGo(20);
-		if (typeof frappe.after_ajax === "function") {
-			frappe.after_ajax(() => retryGo(12));
-		}
-	});
+	frappe.set_route("Form", "Project", projectName);
+}
+
+export function consumeOpenWorkloadTab(frm, fieldName) {
+	const field = fieldName || "custom_workload";
+	if (!frm || frm.doctype !== "Project" || !frm.docname) {
+		return false;
+	}
+	let want = null;
+	try {
+		want = sessionStorage.getItem(OPEN_WORKLOAD_TAB_KEY);
+	} catch (_e) {
+		return false;
+	}
+	if (want !== frm.docname) {
+		return false;
+	}
+	try {
+		sessionStorage.removeItem(OPEN_WORKLOAD_TAB_KEY);
+	} catch (_e) {
+		/* ignore */
+	}
+	if (!frm.get_field?.(field)) {
+		return false;
+	}
+	return !!frm.scroll_to_field(field);
 }
 
 export async function openUserAbsence(userEmail, dateStr) {
