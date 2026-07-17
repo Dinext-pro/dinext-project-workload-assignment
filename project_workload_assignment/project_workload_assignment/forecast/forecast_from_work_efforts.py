@@ -5,7 +5,7 @@ import json
 
 import frappe
 
-ENABLE_DETAILED_LOG = True
+ENABLE_DETAILED_LOG = False
 
 
 def _debug_log(message):

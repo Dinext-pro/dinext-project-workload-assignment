@@ -6,7 +6,7 @@ const PWR_PL_FORECAST_COST_LABEL = __("Cost forecast from work efforts");
 const PWR_PL_FORECAST_REVENUE_LABEL = __("Revenue forecast from work efforts");
 
 function loadForecastFromWeCss() {
-	const href = "/assets/project_workload_assignment/css/pwr-pl-forecast-from-we.css";
+	const href = "/assets/project_workload_assignment/css/forecast.css";
 	if (document.querySelector(`link[href="${href}"]`)) {
 		return;
 	}
@@ -142,7 +142,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 					{
 						fieldtype: "HTML",
 						fieldname: "table_container",
-						options: `<div class="tasks-datatable-container pwr-pl-forecast-tasks-datatable-container" style="height: ${tableHeight}px;"></div>`
+						options: `<div class="tasks-datatable-container forecast-tasks-table" style="height: ${tableHeight}px;"></div>`
 					}
 				];
 
@@ -173,7 +173,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 					fieldtype: "HTML",
 					fieldname: "info_html",
 					options: `
-						<div class="text-muted pwr-pl-forecast-info-box">
+						<div class="text-muted forecast-info">
 							<i class="fa fa-info-circle"></i>
 							<strong>${__("Select tasks to add forecast to budget")}</strong>
 							<br><small>${__("Forecast will be added for all roles")}</small>
@@ -271,7 +271,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 							sortable: false,
 							format: (value, row, column, data) => {
 								if (data && data.total_assigned > 0) {
-									return `<span class="pwr-pl-forecast-assigned-hours">${data.total_assigned.toFixed(1)}</span>`;
+									return `<span class="forecast-assigned-hours">${data.total_assigned.toFixed(1)}</span>`;
 								}
 								return '—';
 							}
@@ -299,7 +299,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 
 								if (rowData && !rowData.has_data) {
 									$(this).find('.dt-cell--col-0 input[type="checkbox"]').hide();
-									$(this).addClass('pwr-pl-forecast-row-no-data');
+									$(this).addClass("forecast-row-no-data");
 								}
 							}
 						});

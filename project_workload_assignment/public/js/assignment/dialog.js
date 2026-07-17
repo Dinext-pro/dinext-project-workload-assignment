@@ -226,12 +226,8 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 on_setup: null,
                 fields: get_pwa_fields( task ),
                 data: pwas,
-                on_add_row: (idx) => {
-                    console.log("on_add_row " + idx);
-                },
-                on_make: (me) => {
-                    console.log("on_make " + me);
-                },
+                on_add_row: (_idx) => {},
+                on_make: (_me) => {},
             },
         ],
         primary_action_label: __('Save'),

@@ -17,7 +17,7 @@ from project_workload_assignment.project_workload_assignment.project_workload.mo
 	OverloadMonthUser,
 )
 
-ENABLE_DEBUG_LOG = True
+ENABLE_DEBUG_LOG = False
 
 
 def _debug_log(message: str) -> None:

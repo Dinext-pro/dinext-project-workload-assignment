@@ -37,7 +37,7 @@ def run_get_tasks_forecast_and_workload(fd: ForecastFormDict | None) -> TasksFor
 
 # Флаг для включения/отключения детального логирования
 
-ENABLE_DETAILED_LOG = True
+ENABLE_DETAILED_LOG = False
 
 def debug_log(message):
 
@@ -455,7 +455,7 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
         })
 
     
-    frappe.log(f"Tasks with forecast/workload: {len(tasks_aggregated)}")
+    debug_log(f"Tasks with forecast/workload: {len(tasks_aggregated)}")
 
     
     return {
