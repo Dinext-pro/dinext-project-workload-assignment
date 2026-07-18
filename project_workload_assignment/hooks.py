@@ -49,7 +49,16 @@ fixtures = [
 # include js, css files in header of desk.html
 # pwa_styles.css: PWA dialog opens from form + Task/Issue kanban
 app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
-app_include_js = "/assets/project_workload_assignment/js/pwa_dialog.js"
+# form-loader.js kept in app_include_js: Projects Workload Report is a custom
+# DocType (is_custom=1), so Frappe skips add_code() and doctype_js has no effect.
+# form-loader is the ONLY mechanism that loads report scripts via frappe.require().
+# api-methods.js / shared.js / dialog.js moved to doctype_js for non-custom
+# doctypes (Project, Task, Issue) where doctype_js IS processed.
+app_include_js = [
+	"/assets/project_workload_assignment/js/core/form-loader.js",
+	"/assets/project_workload_assignment/js/core/api-methods.js",
+	"/assets/project_workload_assignment/js/pwa/dialog.js",
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/project_workload_assignment/css/project_workload_assignment.css"
@@ -67,18 +76,85 @@ app_include_js = "/assets/project_workload_assignment/js/pwa_dialog.js"
 
 # include js in doctype views
 doctype_js = {
-                "Task":"public/js/pwa_form.js"
-                ,"Issue":"public/js/pwa_form.js"
+                # dialog.js must precede form.js — form.js calls start_pwa_dialog()
+                "Task": [
+                    "public/js/pwa/dialog.js",
+                    "public/js/pwa/form.js",
+                ]
+                ,"Issue": [
+                    "public/js/pwa/dialog.js",
+                    "public/js/pwa/form.js",
+                ]
+                # "Projects Workload Report" doctype_js intentionally omitted:
+                # this is a custom DocType (is_custom=1), Frappe's add_code() skips
+                # custom doctypes, so doctype_js entries have NO EFFECT here.
+                # Scripts are loaded by form-loader.js (app_include_js) via frappe.require.
+                ,"Project":[
+                    # api-methods / shared / dialog moved here from app_include_js
+                    "public/js/core/api-methods.js",
+                    "public/js/core/shared.js",
+                    "public/js/pwa/dialog.js",
+                    "public/js/work_efforts/calc.js",
+                    "public/js/work_efforts/checks.js",
+                    "public/js/work_efforts/styles.js",
+                    "public/js/work_efforts/chart.js",
+                    "public/js/work_efforts/overload.js",
+                    "public/js/work_efforts/table/controls.js",
+                    "public/js/work_efforts/table/data-load.js",
+                    "public/js/work_efforts/table/columns.js",
+                    "public/js/work_efforts/table/cell-edit.js",
+                    "public/js/work_efforts/table/limits.js",
+                    "public/js/work_efforts/table/render.js",
+                    "public/js/core/plan-fact-cell.js",
+                    "public/js/forecast/pl-from-we.js",
+                    "public/js/pwr-project/helpers.js",
+                    "public/js/pwr-project/filters.js",
+                    "public/js/pwr-project/columns.js",
+                    "public/js/pwr-project/data.js",
+                    "public/js/pwr-project/form.js",
+                    "public/js/charts/bootstrap.js",
+                ]
             }
 
-# kanban assign click → start_pwa_dialog (needs pwa_dialog.js via app_include_js)
-doctype_list_js = {
-               "Task": "public/js/kanban.js"
-               ,"Issue": "public/js/kanban.js"
-           }
+doctype_css = {
+	"Projects Workload Report": [
+		"public/css/pwr-workload-cells.css",
+		"public/css/pwr-workload-participant-column.css",
+		"public/css/pwr-workload-filters.css",
+		"public/css/pwr-workload-charts.css",
+		"public/css/pwr-workload-report-page.css",
+	],
+	"Project": [
+		"public/css/we-table.css",
+		"public/css/pwr-workload-cells.css",
+		"public/css/pwr-workload-participant-column.css",
+		"public/css/pwr-workload-filters.css",
+		"public/css/pwr-workload-charts.css",
+		"public/css/pwr-workload-project-tab.css",
+	],
+}
 
-# doctype_tree_js = {"Task":"public/js/pwa_dialog.js"}
-# doctype_calendar_js = {"Task" : "public/js/pwa_dialog.js"}
+# kanban assign click → start_pwa_dialog (dialog.js also in app_include_js)
+doctype_list_js = {
+	"Task": [
+		"public/js/core/api-methods.js",
+		"public/js/pwa/dialog.js",
+		"public/js/kanban.js",
+	],
+	"Issue": [
+		"public/js/core/api-methods.js",
+		"public/js/pwa/dialog.js",
+		"public/js/kanban.js",
+	],
+}
+
+doctype_tree_js = {
+	"Task": [
+		"public/js/core/api-methods.js",
+		"public/js/pwa/dialog.js",
+	],
+}
+# doctype_calendar_js = {"Task" : "public/js/pwa/dialog.js"}
 
 # Svg Icons
 # ------------------

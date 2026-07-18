@@ -52,7 +52,7 @@ Single DocType-оболочка для пользовательского экр
 
 ### 1. Работа из `Task` и `Issue`
 
-Приложение подключает `project_workload_assignment/public/js/pwa_form.js` как `doctype_js` для `Task` и `Issue`.
+Приложение подключает `project_workload_assignment/public/js/pwa/form.js` как `doctype_js` для `Task` и `Issue`.
 
 - Для `Task` диалог назначения загрузки открывается прямо из формы.
 - Для `Issue` сначала ищется связанная задача по полю `custom_linked_issue`, после чего открывается тот же диалог.
@@ -60,7 +60,7 @@ Single DocType-оболочка для пользовательского экр
 
 ### 2. Диалог назначения загрузки
 
-Глобальный сценарий диалога реализован в `project_workload_assignment/public/js/pwa_dialog.js`.
+Глобальный сценарий диалога реализован в `project_workload_assignment/public/js/pwa/dialog.js`.
 
 При открытии диалога система:
 
@@ -136,8 +136,8 @@ flowchart LR
 
 - модуль Desk: `Dinext Project Workload`;
 - глобальный CSS: `/assets/project_workload_assignment/css/pwa_styles.css`;
-- глобальный JS: `/assets/project_workload_assignment/js/pwa_dialog.js`;
-- `doctype_js` для `Task` и `Issue`: `public/js/pwa_form.js`;
+- глобальный JS: `/assets/project_workload_assignment/js/pwa/dialog.js`;
+- `doctype_js` для `Task` и `Issue`: `public/js/pwa/form.js`;
 - fixtures:
   - `Server Script` для модуля `Project Workload Assignment`;
   - `Client Script` для модуля `Project Workload Assignment`.
@@ -216,8 +216,8 @@ bench start
 При разборе поведения приложения начинать стоит в таком порядке:
 
 1. `project_workload_assignment/hooks.py`
-2. `project_workload_assignment/public/js/pwa_form.js`
-3. `project_workload_assignment/public/js/pwa_dialog.js`
+2. `project_workload_assignment/public/js/pwa/form.js`
+3. `project_workload_assignment/public/js/pwa/dialog.js`
 4. `project_workload_assignment/fixtures/server_script.json`
 5. `project_workload_assignment/fixtures/client_script.json`
 6. `project_workload_assignment/project_workload_assignment/doctype/*/*.json`
@@ -320,9 +320,9 @@ project_workload_assignment/
 ## Где искать изменения по типам задач
 
 - Нужно изменить поведение открытия диалога из `Task` / `Issue`:
-  - `project_workload_assignment/public/js/pwa_form.js`
+  - `project_workload_assignment/public/js/pwa/form.js`
 - Нужно изменить UI или валидацию назначения загрузки:
-  - `project_workload_assignment/public/js/pwa_dialog.js`
+  - `project_workload_assignment/public/js/pwa/dialog.js`
   - `project_workload_assignment/public/css/pwa_styles.css`
 - Нужно изменить серверную обработку сохранения, расчёта или синхронизации:
   - `project_workload_assignment/fixtures/server_script.json`
