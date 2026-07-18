@@ -1,0 +1,38 @@
+{
+  "_comment": "TC-02 baseline for calculate_timesheet_limits. positions_payload is input; results is normalized API output. Regenerate: capture_golden.py",
+  "positions_payload": [
+    {
+      "all_hours": 8.7,
+      "custom_username": null,
+      "document_name": "TASK-2026-00173",
+      "month": 6,
+      "name": "UTP-2026-00207",
+      "project": "TEST-V15.106.0 (HEAD)",
+      "project_role": "Консультант",
+      "status": "Согласовано",
+      "year": 2026
+    }
+  ],
+  "results": [
+    {
+      "child_tasks_count": 0,
+      "completion_percentage": 5,
+      "document_name": "TASK-2026-00173",
+      "hours_data": {
+        "total": 8.7,
+        "Согласовано": 8.7
+      },
+      "limit": 0,
+      "plan_required": false,
+      "planned_hours": 160.0,
+      "position": "UTP-2026-00207",
+      "project": "TEST-V15.106.0 (HEAD)",
+      "role": "Консультант",
+      "status": "normal",
+      "total_hours": 8.7,
+      "used_children_for_actual": false,
+      "used_parent_for_plan": false
+    }
+  ],
+  "timesheet_name": ""
+}

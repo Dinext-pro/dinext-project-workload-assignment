@@ -2,6 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "creation": "2025-11-08 17:34:32.932645",
+ "custom": 1,
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -9,6 +10,8 @@
   "tab_break_288d",
   "project",
   "tab_break_6vkn",
+  "project_portfolio",
+  "column_break_ocwv",
   "user_group",
   "tab_break_andg",
   "custom_view_type",
@@ -34,6 +37,16 @@
   },
   {
    "fieldname": "tab_break_6vkn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project_portfolio",
+   "fieldtype": "Link",
+   "label": "\u041f\u043e\u0440\u0442\u0444\u0435\u043b\u044c",
+   "options": "Project Portfolio"
+  },
+  {
+   "fieldname": "column_break_ocwv",
    "fieldtype": "Column Break"
   },
   {
@@ -68,7 +81,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-27 16:22:00.085130",
+ "modified": "2026-07-02 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Project Workload Assignment",
  "name": "Projects Workload Report",
