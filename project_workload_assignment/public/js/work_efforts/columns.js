@@ -290,21 +290,6 @@ export function getColumns(frm, periods) {
     const periodList = periods || form?.we?.periods || [];
 
     const baseColumns = [
-        {
-            field: "_selected",
-            colId: "_selected",
-            headerName: "",
-            headerClass: HEADER_CENTER,
-            ...fixedWidth(36),
-            sortable: false,
-            suppressMovable: true,
-            pinned: "left",
-            tree: false,
-            type: "checkbox",
-            edit: true,
-            spanRows,
-            // centering: core .dinext-table-cell--align-center (checkbox preset)
-        },
         withCenterAlign({
             field: "task_serial",
             colId: "task_serial",

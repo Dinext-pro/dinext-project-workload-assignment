@@ -187,31 +187,48 @@
 }
 
 /*
- * Merge-group (spanRows): legacy WE puts task / # / checkbox on the FIRST role line.
- * DinextTable default centers content across the full span → looks like broken row height.
- * Keep AG absolute wrapper intact; only pin inner content to first row band (rowHeight 28).
+ * Merge-group (spanRows): AG puts spanned cells in .ag-spanning-container, not inside
+ * normal .ag-cell. The .ag-spanned-cell IS the cell (often also .ag-cell-value).
+ * Legacy WE: pin content to first role line; keep horizontal center for align-center cols.
  */
 .work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell {
 	display: flex;
-	align-items: flex-start;
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: stretch;
 	height: 100%;
 	box-sizing: border-box;
 }
 
-.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell > .ag-cell-wrapper,
+/* Plain value (#): top band + horizontal center (no inner .ag-cell-wrapper). */
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell.dinext-table-cell--align-center {
+	align-items: center;
+	text-align: center;
+	line-height: var(--we-row-height, 28px);
+}
+
+/* Checkbox / custom inner: first-row band, centered. */
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell.dinext-table-cell--align-center > .dinext-table-row-check-cell-inner,
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell.dinext-table-cell--align-center > .ag-cell-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: var(--we-row-height, 28px);
+	min-height: var(--we-row-height, 28px);
+	max-height: var(--we-row-height, 28px);
+	width: 100%;
+	box-sizing: border-box;
+	line-height: normal;
+}
+
+/* Task tree: first-row band, full width, left content. */
 .work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell > .dinext-table-tree-cell,
 .work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell > .dinext-table-tree-cell--merge-group {
 	height: var(--we-row-height, 28px);
 	min-height: var(--we-row-height, 28px);
 	max-height: var(--we-row-height, 28px);
-	box-sizing: border-box;
-}
-
-.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell > .ag-cell-wrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
 	width: 100%;
+	box-sizing: border-box;
 }
 
 /* Плановые / прогнозные сроки — те же CSS vars, что legacy we-table */

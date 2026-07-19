@@ -12,13 +12,18 @@ function flattenTree(rows) {
 }
 
 export function getSelectedTaskIds(frm) {
-    const flat = flattenTree(frm.we?.rows || []);
+    const table = frm.we?.table;
+    if (!table?.getCheckedRows) {
+        return [];
+    }
+
     const taskIds = [];
     const seen = new Set();
 
-    for (const row of flat) {
-        if (!row._selected || row.merge_group_index !== 0) continue;
-        if (row.merge_group_id === SUMMARY_ROW_ID) continue;
+    for (const row of table.getCheckedRows()) {
+        if (!row || row.merge_group_id === SUMMARY_ROW_ID) continue;
+        // mergeHead unit: only heads land in Set; keep guard for safety.
+        if (row.merge_group_index != null && row.merge_group_index !== 0) continue;
         const taskId = row.task_id;
         if (!taskId || seen.has(taskId)) continue;
         seen.add(taskId);

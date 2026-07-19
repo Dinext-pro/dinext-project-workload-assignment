@@ -30,7 +30,6 @@ function toGridRow(apiRow, index) {
         task_subject: index === 0 ? apiRow.task_subject || "" : "",
         role: apiRow.role || "",
         parent_task_id: apiRow.parent_task_id || null,
-        _selected: false,
         merge_group_id: apiRow.merge_group_id,
         merge_group_index: apiRow.merge_group_index,
         merge_group_size: apiRow.merge_group_size,

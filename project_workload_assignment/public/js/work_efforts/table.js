@@ -70,6 +70,8 @@ function buildTableOptions(frm, state) {
         edit: false,
         selection: { enabled: true },
         fillHandle: { enabled: true },
+        // Checkbox select for «Сохранить план»; mergeHead = one check per task group.
+        rowCheck: { enabled: true, unit: "mergeHead", selectAll: true },
         // Gutter DnD default-on in DinextTable; WE merge-groups are not reorder targets.
         rowReorder: { enabled: false },
         // Dense cells via Quartz theme API (not .ag-cell padding hacks)
