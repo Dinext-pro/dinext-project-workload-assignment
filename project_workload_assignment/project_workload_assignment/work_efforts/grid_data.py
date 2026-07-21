@@ -16,6 +16,7 @@ import frappe
 
 from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import (
 	build_aggregated_work_efforts_tasks,
+	keep_role_entry,
 )
 from project_workload_assignment.project_workload_assignment.work_efforts.models import (
 	ConsolidatedTaskEntry,
@@ -63,9 +64,10 @@ def _resolve_actual(
 
 
 def _role_rows_for_task(task: ConsolidatedTaskEntry) -> list[WorkEffortRoleEntry]:
-	role_data = [r for r in (task.get("role_data") or []) if (r.get("role") or "").strip()]
+	role_data = [r for r in (task.get("role_data") or []) if keep_role_entry(r)]
 	if role_data:
-		return sorted(role_data, key=lambda item: item.get("role") or "")
+		# Named roles first; empty-role («—») last.
+		return sorted(role_data, key=lambda item: (0 if (item.get("role") or "").strip() else 1, item.get("role") or ""))
 	return [{"role": None}]
 
 

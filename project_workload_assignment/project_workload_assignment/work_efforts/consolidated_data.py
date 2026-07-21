@@ -27,6 +27,23 @@ def _to_float(value: object) -> float:
         return 0.0
 
 
+def keep_role_entry(role_entry: WorkEffortRoleEntry) -> bool:
+    """Named role, or empty-role row that still carries plan/forecast/fact amounts.
+
+    Empty-role PWE is valid (UI shows «—»). Dropping it on reload made saves
+    look successful then snap back to 0 after refresh.
+    """
+    role = role_entry.get("role")
+    if role and str(role).strip():
+        return True
+    for key, value in role_entry.items():
+        if key == "role" or str(key).startswith("fact_utps_"):
+            continue
+        if str(key).startswith(("plan_", "forecast_", "fact_")) and _to_float(value) != 0:
+            return True
+    return False
+
+
 def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataResponse:
     """Единая загрузка Task + PWE + UTP, rollup fact, tree order.
 
@@ -197,9 +214,7 @@ def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataRespons
 
     for task_id in aggregated_tasks:
         aggregated_tasks[task_id]["role_data"] = [
-            r
-            for r in aggregated_tasks[task_id]["role_data"]
-            if r.get("role") and r["role"].strip()
+            r for r in aggregated_tasks[task_id]["role_data"] if keep_role_entry(r)
         ]
 
     tasks_for_rollup = list(aggregated_tasks.values())

@@ -35,22 +35,30 @@ function calc_we_column_total(frm, roles, period, calc_plan = true, calc_fact = 
  */
 function with_we_ready(frm, callback) {
     const run = () => {
-        window.WorkEfforts.ensureMounted(frm);
-        callback?.();
+        const mounted = Promise.resolve(window.WorkEfforts.ensureMounted(frm));
+        return mounted
+            .then(() => {
+                callback?.();
+            })
+            .catch((err) => {
+                console.error("[WorkEfforts] ensureMounted failed", err);
+            });
     };
 
     if (window.WorkEfforts?.isReady?.()) {
-        run();
-        return;
+        return run();
     }
 
-    frappe.require([frappe.assets.bundled_asset("work-efforts.bundle.js")], () => {
-        if (!window.WorkEfforts?.isReady?.()) {
-            console.error("[WorkEfforts] work-efforts.bundle.js did not register WorkEfforts");
-            return;
-        }
-        run();
-    });
+    return new Promise((resolve) => {
+        frappe.require([frappe.assets.bundled_asset("work-efforts.bundle.js")], () => {
+            if (!window.WorkEfforts?.isReady?.()) {
+                console.error("[WorkEfforts] work-efforts.bundle.js did not register WorkEfforts");
+                resolve();
+                return;
+            }
+            resolve(run());
+        });
+    }).then((result) => result);
 }
 
 function destroy_we(frm) {

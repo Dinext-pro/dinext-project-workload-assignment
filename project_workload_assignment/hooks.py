@@ -47,7 +47,10 @@ fixtures = [
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/project_workload_assignment/css/assignment_styles.css"
+app_include_css = [
+	"/assets/project_workload_assignment/css/assignment_styles.css",
+	"/assets/project_workload_assignment/css/tab-loading.css",
+]
 # Projects Workload Report is custom DocType → FormMeta.add_code() skipped
 # (no doctype_js). Form UI boots via report-form/entry.js (app_include, route-gated).
 # No Client Script / Server Script for this Form UI.

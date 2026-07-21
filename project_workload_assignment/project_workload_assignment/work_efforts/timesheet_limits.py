@@ -98,14 +98,28 @@ def _bulk_load(
 
         pwe_amounts: dict = {}
         if pwe_names:
+            from project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates import (
+                _resolve_plan_year_month,
+            )
+
+            fy_cache: dict = {}
             raw_amounts = frappe.db.get_all(
                 "Project Work Efforts Amount",
                 filters={"parent": ["in", pwe_names]},
                 fields=["parent", "pwea_year", "pwea_month", "pwea_plan"],
             )
             for a in raw_amounts:
+                # pwea_year is Link→Fiscal Year (or legacy numeric year string)
+                resolved = _resolve_plan_year_month(a.pwea_year, a.pwea_month, fy_cache)
+                if not resolved:
+                    continue
+                year, month = resolved
                 pwe_amounts.setdefault(a.parent, []).append(
-                    {"year": int(a.pwea_year), "month": int(a.pwea_month), "plan": frappe.utils.flt(a.pwea_plan or 0)}
+                    {
+                        "year": year,
+                        "month": month,
+                        "plan": frappe.utils.flt(a.pwea_plan or 0),
+                    }
                 )
 
         # 3) Limit Control rows for all projects
@@ -125,17 +139,29 @@ def _bulk_load(
     return task_meta, children_map, pwe_by_task_role, pwe_amounts, limit_rows
 
 
+def _as_json_list(value):
+    """frappe.call may pass list or JSON string."""
+    if value is None or value == "":
+        return []
+    if isinstance(value, str):
+        return json.loads(value)
+    if isinstance(value, list):
+        return value
+    return list(value)
+
+
 def run_calculate_timesheet_limits(
     form_dict: TimesheetLimitsFormInput,
 ) -> TimesheetLimitsResponse:
-    positions: list[TimesheetPositionInput] = json.loads(form_dict["positions"])
+    positions: list[TimesheetPositionInput] = _as_json_list(form_dict.get("positions"))
     timesheet_name = form_dict.get("timesheet_name")
 
     session_limits_override: dict[str, float | None] | None = None
     if form_dict.get("project_limits"):
-        session_limits_override = _parse_limit_rows(
-            json.loads(form_dict["project_limits"])
-        )
+        raw_limits = form_dict.get("project_limits")
+        if isinstance(raw_limits, str):
+            raw_limits = json.loads(raw_limits)
+        session_limits_override = _parse_limit_rows(raw_limits or [])
 
     # ── Bulk-load all DB data upfront ────────────────────────────────────────
     task_meta, children_map, pwe_by_task_role, pwe_amounts, limit_rows_by_project = (
