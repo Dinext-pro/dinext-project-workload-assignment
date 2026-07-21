@@ -9,7 +9,7 @@ const _reload = (frm, el) => {
 		showFact: !!args.load_actual,
 	});
 	const chartsDone = common.scheduleChartsReload(el._wr.charts);
-	void Promise.all([tableDone, chartsDone]).then(() => {
+	return Promise.all([tableDone, chartsDone]).then(() => {
 		common.realignCharts?.(el._wr.charts);
 	});
 };
@@ -30,7 +30,9 @@ const _bindChartsTab = () => {
 		if (!charts) {
 			return;
 		}
-		void project_workload_assignment.workloadReports.common.scheduleChartsReload(charts);
+		// Tab was display:none — realign (or reload only if filters changed while hidden).
+		// Full scheduleChartsReload here disposed the chart on every switch.
+		project_workload_assignment.workloadReports.common.flushChartsWhenVisible?.(charts);
 	});
 };
 
@@ -62,8 +64,19 @@ function mount(frm) {
 		_bindChartsTab();
 	}
 
-	_reload(frm, el);
-	common.consumeOpenWorkloadTab?.(frm, FIELD);
+	return _reload(frm, el);
+}
+
+/** Shell deferred; table/API only when tab «Загрузка» is visible. */
+function scheduleMount(frm) {
+	const bind = project_workload_assignment.bindLazyTabMount;
+	if (typeof bind !== "function") {
+		console.error("[WorkloadReports] bindLazyTabMount missing — refuse eager mount");
+		return;
+	}
+	bind(frm, FIELD, () => mount(frm));
+	// Deep-link from PWR: open Загрузка once (mount via shown.bs.tab / already-active)
+	project_workload_assignment.workloadReports.common?.consumeOpenWorkloadTab?.(frm, FIELD);
 }
 
 let bound = false;
@@ -75,11 +88,15 @@ const _bindForm = () => {
 	bound = true;
 	frappe.ui.form.on("Project", {
 		refresh(frm) {
-			mount(frm);
+			scheduleMount(frm);
 		},
 	});
 };
 
 frappe.provide("project_workload_assignment.workloadReports.project");
 
-project_workload_assignment.workloadReports.project = { bindForm: _bindForm, mount };
+project_workload_assignment.workloadReports.project = {
+	bindForm: _bindForm,
+	mount,
+	scheduleMount,
+};

@@ -60,7 +60,11 @@ def _v2_period_values(rows: list) -> dict[tuple[str, str, str], float]:
 
 
 def _iter_role_entries(task: dict) -> list[dict]:
-	role_data = [r for r in (task.get("role_data") or []) if (r.get("role") or "").strip()]
+	from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import (
+		keep_role_entry,
+	)
+
+	role_data = [r for r in (task.get("role_data") or []) if keep_role_entry(r)]
 	return role_data if role_data else [{"role": None}]
 
 
@@ -166,9 +170,13 @@ class TestWeGridParity(FrappeTestCase):
 		legacy = run_get_work_efforts_consolidated_data({"project": DEPENDENCY_PROJECT})
 		v2 = run_get_work_efforts_grid({"project": DEPENDENCY_PROJECT})
 
+		from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import (
+			keep_role_entry,
+		)
+
 		expected_rows = 0
 		for task in legacy:
-			roles = [r for r in (task.get("role_data") or []) if (r.get("role") or "").strip()]
+			roles = [r for r in (task.get("role_data") or []) if keep_role_entry(r)]
 			expected_rows += len(roles) if roles else 1
 
 		self.assertEqual(len(v2["rows"]), expected_rows)
