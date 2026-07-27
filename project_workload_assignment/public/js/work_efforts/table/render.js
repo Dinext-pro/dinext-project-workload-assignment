@@ -101,12 +101,10 @@ function render_work_efforts_table(frm) {
     frm.we_periods = {};
 
     $('<div class="work-efforts-table"></div>').appendTo(wrapper);
-    const legend_container = $('<div class="work-efforts-legend"></div>').appendTo(wrapper);
 
     frm.last_loaded_project = frm.doc.name;
     frm.last_loaded_time = new Date();
 
-    project_workload_assignment.work_efforts.render_legend(legend_container);
     schedule_we_mount(frm);
 }
 

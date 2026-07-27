@@ -2,6 +2,8 @@
  * Фаза 15.3 — dblclick past fact → List User Timesheet Position.
  */
 
+import { isSummaryRow } from "./constants.js";
+
 function resolveUtps(row, periodKey) {
     const fromRow = row[`fact_utps_${periodKey}`];
     return Array.isArray(fromRow) ? fromRow : [];
@@ -14,7 +16,7 @@ export function onCellDoubleClicked(frm, params) {
 
     const periodKey = match[1];
     const row = params.data;
-    if (!row || row.merge_group_id === "summary-total") return;
+    if (isSummaryRow(row)) return;
 
     const period = (frm.we?.periods || []).find((p) => p.key === periodKey);
     if (!period?.is_past) return;

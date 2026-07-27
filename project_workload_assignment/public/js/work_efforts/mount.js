@@ -13,13 +13,7 @@ const FIELD = "custom_work_efforts";
 export function resolveTableContainer(wrapper) {
 	let table = wrapper.find(`.${TABLE_CLASS}`);
 	if (!table.length) {
-		const legend = wrapper.find(".work-efforts-legend");
-		table = $(`<div class="${TABLE_CLASS}"></div>`);
-		if (legend.length) {
-			table.insertBefore(legend);
-		} else {
-			wrapper.append(table);
-		}
+		table = $(`<div class="${TABLE_CLASS}"></div>`).appendTo(wrapper);
 	}
 
 	const containerEl = table[0];
