@@ -1,4 +1,4 @@
-import { SUMMARY_ROW_ID } from "./constants.js";
+import { isSummaryRow } from "./constants.js";
 
 function flattenTree(rows) {
     const result = [];
@@ -11,14 +11,13 @@ function flattenTree(rows) {
     return result;
 }
 
-function hasFactOnRow(row, periods) {
-    for (const period of periods || []) {
-        if (Number(row[`fact_${period.key}`] || 0) > 0) {
-            return true;
+/** True when row has numeric fact_* hours (ignore fact_utps_* arrays). */
+function hasFactOnRow(row) {
+    for (const [key, value] of Object.entries(row || {})) {
+        if (!key.startsWith("fact_") || key.startsWith("fact_utps")) {
+            continue;
         }
-    }
-    for (const key of Object.keys(row || {})) {
-        if (key.startsWith("fact_") && Number(row[key] || 0) > 0) {
+        if (Number(value || 0) > 0) {
             return true;
         }
     }
@@ -28,7 +27,7 @@ function hasFactOnRow(row, periods) {
 function rolesOnTask(frm, taskId) {
     const flat = flattenTree(frm.we?.rows || []);
     return flat
-        .filter((row) => row.task_id === taskId && row.merge_group_id !== SUMMARY_ROW_ID)
+        .filter((row) => row.task_id === taskId && !isSummaryRow(row))
         .map((row) => row.role)
         .filter(Boolean);
 }
@@ -42,22 +41,12 @@ function availableRolesForTask(frm, taskId) {
 }
 
 async function postRoleMutationRefresh(frm) {
-    if (project_workload_assignment.work_efforts?.clear_assignments_cache) {
-        project_workload_assignment.work_efforts.clear_assignments_cache();
-    }
-    if (frm._tasksByParent) {
-        frm._tasksByParent = null;
-    }
+    project_workload_assignment.work_efforts?.clear_assignments_cache?.();
+    frm._tasksByParent = null;
     project_workload_assignment.work_efforts?.clear_aggregated_tasks?.(frm);
-
     frm.last_loaded_time = null;
     frm.last_loaded_project = null;
-
-    if (window.WorkEfforts?.refresh) {
-        await window.WorkEfforts.refresh(frm);
-    } else if (project_workload_assignment.work_efforts?.updateTable) {
-        project_workload_assignment.work_efforts.updateTable(frm, "month", "hours");
-    }
+    await window.WorkEfforts.refresh(frm);
 }
 
 export async function addRole(frm, taskId, role) {
@@ -226,6 +215,30 @@ function buildAddRoleControl(frm, taskId) {
     return btn;
 }
 
+function buildDeleteRoleControl(frm, row) {
+    const blockedByFact = hasFactOnRow(row);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "btn btn-default btn-xs we-role-delete";
+    del.textContent = "×";
+    del.setAttribute("aria-label", __("Удалить роль"));
+    del.addEventListener("mousedown", stopGridEvent);
+
+    if (blockedByFact) {
+        del.disabled = true;
+        del.title = __("Нельзя удалить роль: по строке есть фактические трудозатраты");
+        return del;
+    }
+
+    del.title = __("Удалить роль");
+    del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        confirmDeleteRole(frm, row.task_id, row.role);
+    });
+    return del;
+}
+
 /** AG Grid cellRenderer для колонки role. */
 export function roleCellRenderer(frm) {
     return function (params) {
@@ -233,7 +246,7 @@ export function roleCellRenderer(frm) {
         const wrap = document.createElement("div");
         wrap.className = "we-role-cell";
 
-        if (!row || row.merge_group_id === SUMMARY_ROW_ID) {
+        if (isSummaryRow(row)) {
             return wrap;
         }
 
@@ -245,22 +258,11 @@ export function roleCellRenderer(frm) {
         const actions = document.createElement("div");
         actions.className = "we-role-actions";
 
-        const periods = frm.we?.periods || [];
-        if (row.role && !hasFactOnRow(row, periods)) {
-            const del = document.createElement("button");
-            del.type = "button";
-            del.className = "btn btn-default btn-xs we-role-delete";
-            del.title = __("Удалить роль");
-            del.textContent = "×";
-            del.addEventListener("mousedown", stopGridEvent);
-            del.addEventListener("click", (e) => {
-                e.stopPropagation();
-                confirmDeleteRole(frm, row.task_id, row.role);
-            });
-            actions.appendChild(del);
+        if (row.role) {
+            actions.appendChild(buildDeleteRoleControl(frm, row));
         }
 
-        // "+" opens role dropdown (merge head only)
+        // "+" — merge head only (summary already returned above)
         if (row.merge_group_index === 0) {
             const add = buildAddRoleControl(frm, row.task_id);
             if (add) {

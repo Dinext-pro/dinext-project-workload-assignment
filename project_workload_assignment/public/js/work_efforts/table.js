@@ -51,7 +51,6 @@ function buildTableOptions(frm, state) {
             headerHeight: 32,
             groupHeaderHeight: 28,
         },
-        // Fullscreen: core default (target: container). Domain controls live in toolbar.
     };
 }
 

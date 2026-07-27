@@ -1,4 +1,4 @@
-import { MERGE_GROUP, SUMMARY_ROW_ID } from "./constants.js";
+import { MERGE_GROUP, isSummaryRow } from "./constants.js";
 import { actualCellClassRules } from "./limits.js";
 import { roleCellRenderer } from "./roles.js";
 import { assignmentsCellRenderer } from "./assignments.js";
@@ -60,7 +60,7 @@ const ZERO_CELL_CLASS_RULES = {
 };
 
 function isSerialHead(row) {
-    if (!row?.task_id || row.merge_group_id === SUMMARY_ROW_ID) {
+    if (!row?.task_id || isSummaryRow(row)) {
         return false;
     }
     if (row.merge_group_size >= 2 && row.merge_group_index > 0) {
@@ -232,7 +232,7 @@ function buildPeriodColumns(frm, periods) {
                     colId: `actual_${key}`,
                     headerName: actualLabel,
                     width: leafWidth,
-                    edit: (row) => !period.is_past && row?.merge_group_id !== SUMMARY_ROW_ID,
+                    edit: (row) => !period.is_past && !isSummaryRow(row) && !!row?.role,
                     valueFormatter: formatNumber,
                     cellClassRules: {
                         ...actualPeriodClassRules(frm, period),

@@ -9,7 +9,8 @@
 function flattenWeRows(rows, out) {
     const acc = out || [];
     for (const row of rows || []) {
-        if (!row || row.merge_group_id === "summary-total") continue;
+        // SUMMARY_ROW_ID in work_efforts/constants.js (classic script — no ESM import).
+        if (!row || row.merge_group_id === "we-total") continue;
         acc.push(row);
         if (row.children?.length) {
             flattenWeRows(row.children, acc);

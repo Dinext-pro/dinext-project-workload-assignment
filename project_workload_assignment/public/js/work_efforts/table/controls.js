@@ -1,4 +1,4 @@
-// we-table/controls.js — period helpers, legend, toolbar domain chrome
+// we-table/controls.js — period helpers + toolbar domain chrome (incl. legend help)
 // ISS-2025-01239
 
 /**
@@ -105,6 +105,8 @@ function mount_toolbar_controls(frm, host) {
 	const periodType = frm._we_period_type || "month";
 	const unit = frm._we_unit || "hours";
 
+	mount_legend_help(host);
+
 	host.append(`
 		<button class="btn btn-default" id="we_save_plan" type="button">${__("Сохранить план")}</button>
 		<button class="btn btn-default" id="toggle_plan" type="button">${__("Показать план")}</button>
@@ -122,14 +124,8 @@ function mount_toolbar_controls(frm, host) {
 			label: __("Назначения"),
 			onchange: function () {
 				frm.show_assignments = this.get_value();
-				const notifyWe = () => window.WorkEfforts.onAssignmentsToggle(frm);
-				if (frm.show_assignments) {
-					project_workload_assignment.work_efforts
-						.load_all_assignments_if_needed(frm)
-						.then(notifyWe);
-				} else {
-					notifyWe();
-				}
+				// onAssignmentsToggle loads assignment cache itself when needed
+				window.WorkEfforts.onAssignmentsToggle(frm);
 			},
 		},
 		value: frm.show_assignments,
@@ -150,12 +146,7 @@ function mount_toolbar_controls(frm, host) {
 		</div>
 	`);
 
-	if (frm.hide_plan === undefined) {
-		frm.hide_plan = true;
-	}
-	if (frm.hide_delta === undefined) {
-		frm.hide_delta = true;
-	}
+	// Defaults set in render.js ensureWeDefaults before mount.
 	host.find("#toggle_plan").text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
 	host.find("#toggle_delta").text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
 
@@ -275,79 +266,133 @@ function bindCheckDropdownPortal($btnGroup) {
 	});
 }
 
-/** @param {JQuery} container */
-function render_legend(container) {
-    let legend_html = `
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; padding: 8px 12px; background: var(--fg-color); border: 1px solid var(--border-color); border-radius: 4px;">
+const LEGEND_HELP_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.35"/><path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" d="M6.2 6.1a1.85 1.85 0 0 1 3.55.7c0 1.15-.95 1.55-1.55 1.95-.35.25-.5.45-.5.9"/><circle cx="8" cy="11.6" r=".9" fill="currentColor"/></svg>`;
 
-            <!-- Плановые сроки -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <div style="width: 16px; height: 16px; background-color: var(--we-period-plan-bg); border-radius: 2px; border: 1px solid var(--border-color);" class="we-legend-plan-swatch"></div>
-                <span>${__("Плановые сроки задачи")}</span>
-            </div>
+function get_legend_html() {
+	return `
+		<div class="we-legend-panel">
+			<div class="we-legend-row">
+				<div class="we-legend-swatch we-legend-plan-swatch"></div>
+				<span>${__("Плановые сроки задачи")}</span>
+			</div>
+			<div class="we-legend-row">
+				<div class="we-legend-swatch we-legend-forecast-swatch"></div>
+				<span>${__("Прогнозные сроки задачи")}</span>
+			</div>
+			<div class="we-legend-row">
+				<div class="we-legend-swatch we-legend-workload-swatch">
+					<div class="we-legend-workload-dots"></div>
+				</div>
+				<span>${__("Загрузка")}</span>
+			</div>
+			<div class="we-legend-row">
+				<div class="we-legend-swatch we-legend-missing-plan">
+					<span>0</span>
+				</div>
+				<span>${__("Отсутствует план при наличии загрузки")}</span>
+			</div>
+			<div class="we-legend-sep"></div>
+			<div class="we-legend-limits">
+				<div class="we-legend-row">
+					<div class="we-legend-limit we-legend-limit-normal"><span>85</span></div>
+					<span>${__("Норма")}</span>
+				</div>
+				<div class="we-legend-row">
+					<div class="we-legend-limit we-legend-limit-warning"><span>105</span></div>
+					<span>${__("Предупреждение")}</span>
+				</div>
+				<div class="we-legend-row">
+					<div class="we-legend-limit we-legend-limit-block"><span>120</span></div>
+					<span>${__("Блокировка")}</span>
+				</div>
+			</div>
+		</div>
+	`;
+}
 
-            <!-- Прогнозные сроки -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <div style="width: 16px; height: 16px; background-color: var(--we-period-forecast-bg); border-radius: 2px; border: 1px solid var(--border-color);" class="we-legend-forecast-swatch"></div>
-                <span>${__("Прогнозные сроки задачи")}</span>
-            </div>
+/**
+ * Toolbar "?" control — toggles portaled legend popover.
+ * @param {JQuery} host
+ */
+function mount_legend_help(host) {
+	if (host.data("we-legend-mounted")) {
+		return;
+	}
+	host.data("we-legend-mounted", true);
 
-            <!-- Загрузка -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <div style="width: 16px; height: 16px; background-color: var(--we-period-forecast-bg); border-radius: 2px; border: 1px solid var(--border-color); position: relative;" class="we-legend-workload-swatch">
-                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle, #c8d0d8 1px, transparent 1px); background-size: 4px 4px; border-radius: 1px;"></div>
-                </div>
-                <span>${__("Загрузка")}</span>
-            </div>
+	const $btn = $(`
+		<button type="button" class="dinext-table-toolbar-item we-legend-help-btn" title="${__("Легенда")}" aria-label="${__("Легенда")}" aria-haspopup="dialog" aria-expanded="false">
+			<span class="dinext-table-toolbar-item-icon">${LEGEND_HELP_ICON}</span>
+		</button>
+	`);
+	host.append($btn);
 
-            <!-- Отсутствие плана -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <div style="width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; background: var(--fg-color); border: 1px solid var(--border-color); border-radius: 2px;">
-                    <span style="color: var(--alert-text-warning); font-weight: 700; font-size: 11px;">0</span>
-                </div>
-                <span>${__("Отсутствует план при наличии загрузки")}</span>
-            </div>
+	let $panel = null;
 
-            <!-- Новая строка с лимитами -->
-            <div style="width: 100%; height: 1px; background: var(--border-color); margin: 4px 0;"></div>
+	const closePanel = () => {
+		if (!$panel) {
+			return;
+		}
+		$panel.remove();
+		$panel = null;
+		$btn.attr("aria-expanded", "false");
+		document.removeEventListener("mousedown", onDocDown, true);
+		window.removeEventListener("resize", closePanel);
+		window.removeEventListener("scroll", closePanel, true);
+	};
 
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; width: 100%;">
+	const onDocDown = (event) => {
+		if ($panel?.[0]?.contains(event.target) || $btn[0].contains(event.target)) {
+			return;
+		}
+		closePanel();
+	};
 
-                <!-- Норма -->
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <div class="we-legend-limit-normal" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 22px; border-radius: 1px; background: var(--fg-color);">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 12px;">85</span>
-                    </div>
-                    <span>${__("Норма")}</span>
-                </div>
+	const openPanel = () => {
+		closePanel();
+		$panel = $(`<div class="we-legend-popover" role="dialog" aria-label="${__("Легенда")}"></div>`);
+		$panel.html(get_legend_html());
+		$panel.appendTo(document.body);
 
-                <!-- Предупреждение -->
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <div class="we-legend-limit-warning" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 22px; border-radius: 1px; background: var(--fg-color);">
-                        <span style="color: var(--text-color); font-weight: 600; font-size: 12px;">105</span>
-                    </div>
-                    <span>${__("Предупреждение")}</span>
-                </div>
+		const rect = $btn[0].getBoundingClientRect();
+		const panelWidth = Math.min(360, window.innerWidth - 16);
+		let left = rect.right - panelWidth;
+		if (left < 8) {
+			left = 8;
+		}
+		let top = rect.bottom + 6;
+		const panelHeight = $panel.outerHeight() || 200;
+		if (top + panelHeight > window.innerHeight - 8) {
+			top = Math.max(8, rect.top - panelHeight - 6);
+		}
+		$panel.css({
+			position: "fixed",
+			top,
+			left,
+			width: panelWidth,
+			zIndex: 1050,
+		});
+		$btn.attr("aria-expanded", "true");
+		setTimeout(() => {
+			document.addEventListener("mousedown", onDocDown, true);
+			window.addEventListener("resize", closePanel);
+			window.addEventListener("scroll", closePanel, true);
+		}, 0);
+	};
 
-                <!-- Блокировка -->
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <div class="we-legend-limit-block" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 22px; border-radius: 1px; background: var(--fg-color);">
-                        <span style="color: var(--text-color); font-weight: 700; font-size: 12px;">120</span>
-                    </div>
-                    <span>${__("Блокировка")}</span>
-                </div>
-
-            </div>
-
-        </div>
-    `;
-    container.html(legend_html);
+	$btn.on("click", (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if ($panel) {
+			closePanel();
+			return;
+		}
+		openPanel();
+	});
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
 	get_project_roles,
 	get_display_periods,
-	addViewOptionsControl,
 	mount_toolbar_controls,
-	render_legend,
 });
