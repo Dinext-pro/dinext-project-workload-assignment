@@ -1,5 +1,5 @@
-// we-table/render.js — render_work_efforts_table, updateTable, frappe.ui.form.on Project
-// ISS-2025-01239 — W1: DinextTable in .work-efforts-table; Sticky WE grid removed from UI path
+// we-table/render.js — shell + form hooks for «Трудозатраты»
+// ISS-2025-01239 — W1: DinextTable in .work-efforts-table; domain actions → toolbar
 
 /**
  * Синхронизация задач WE -> P&L без повторной инъекции (guard от double pass).
@@ -65,21 +65,34 @@ function destroy_we(frm) {
     window.WorkEfforts?.destroy?.(frm);
 }
 
-/**
- * Отрисовка таблицы «Трудозатраты» — shell + DinextTable.
- * @param {WorkEffortsForm} frm
- */
-function render_work_efforts_table(frm) {
+function ensureWeDefaults(frm) {
     if (frm.show_assignments === undefined) {
         frm.show_assignments = false;
     }
+    if (frm.hide_plan === undefined) {
+        frm.hide_plan = true;
+    }
+    if (frm.hide_delta === undefined) {
+        frm.hide_delta = true;
+    }
+    frm._we_period_type = frm._we_period_type || "month";
+    frm._we_unit = frm._we_unit || "hours";
+    frm.view_options = frm.view_options || __("Прогноз и факт");
+}
+
+/**
+ * Shell «Трудозатраты»: table host + legend. Domain buttons live in DinextTable toolbar.
+ * @param {WorkEffortsForm} frm
+ */
+function render_work_efforts_table(frm) {
+    ensureWeDefaults(frm);
 
     if (frm.last_loaded_project == frm.doc.name && (new Date() - frm.last_loaded_time) < 300000) {
         schedule_we_mount(frm);
         return;
     }
 
-    let wrapper = frm.get_field("custom_work_efforts").$wrapper;
+    const wrapper = frm.get_field("custom_work_efforts").$wrapper;
     wrapper.addClass("work_efforts_container");
     destroy_we(frm);
     wrapper.empty();
@@ -87,111 +100,9 @@ function render_work_efforts_table(frm) {
     frm.aggregatedTasks = null;
     frm.we_periods = {};
 
-    let controls = $('<div class="work-efforts-controls"></div>').appendTo(wrapper);
     $('<div class="work-efforts-table"></div>').appendTo(wrapper);
-    let legend_container = $('<div class="work-efforts-legend"></div>').appendTo(wrapper);
+    const legend_container = $('<div class="work-efforts-legend"></div>').appendTo(wrapper);
 
-    controls.append(`
-        <button class="btn btn-default" id="we_save_plan">${__('Сохранить план')}</button>
-        <button class="btn btn-default" id="toggle_plan">${__("Показать план")}</button>
-        <button class="btn btn-default" id="toggle_delta">${__("Показать Δ")}</button>
-    `);
-
-    project_workload_assignment.work_efforts.addViewOptionsControl(frm, controls);
-
-    let selectedPeriodType = "month";
-    let selectedUnit = "hours";
-    frm._we_period_type = selectedPeriodType;
-    frm._we_unit = selectedUnit;
-
-    let checkbox_wrapper = $('<div class="assignments-checkbox-wrapper"></div>').appendTo(controls);
-
-    let assignments_checkbox = frappe.ui.form.make_control({
-        parent: checkbox_wrapper,
-        df: {
-            fieldtype: 'Check',
-            fieldname: 'show_assignments',
-            label: __("Назначения"),
-            onchange: function() {
-                frm.show_assignments = this.get_value();
-
-                const notifyWe = () => {
-                    with_we_ready(frm, () => {
-                        window.WorkEfforts.onAssignmentsToggle(frm);
-                    });
-                };
-
-                if (frm.show_assignments) {
-                    project_workload_assignment.work_efforts.load_all_assignments_if_needed(frm).then(notifyWe);
-                } else {
-                    notifyWe();
-                }
-            }
-        },
-        value: frm.show_assignments,
-        only_input: false,
-        render_input: true
-    });
-
-    assignments_checkbox.refresh();
-
-    controls.append(`
-        <div class="btn-group">
-            <button class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                ${__('Проверить')} <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-right">
-                <li id="check_plan_load">${__('Наличие плановых трудозатрат')}</li>
-                <li id="check_workload_overload">${__('Загрузка превышает прогноз трудозатрат')}</li>
-            </ul>
-        </div>
-    `);
-
-    frm.hide_plan = frm.hide_plan || true;
-    frm.hide_delta = frm.hide_delta || true;
-
-    controls.find('#we_save_plan').on('click', function() {
-        with_we_ready(frm, () => {
-            window.WorkEfforts.saveForecastAsPlan(frm);
-        });
-    });
-
-    controls.find('#toggle_plan').on('click', function() {
-        frm.hide_plan = !frm.hide_plan;
-        $(this).text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
-        project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
-        project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-        with_we_ready(frm, () => {
-            window.WorkEfforts.onTogglePlanOrDelta(frm);
-        });
-    });
-
-    controls.find('#toggle_delta').on('click', function() {
-        frm.hide_delta = !frm.hide_delta;
-        $(this).text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
-        project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
-        with_we_ready(frm, () => {
-            window.WorkEfforts.onTogglePlanOrDelta(frm);
-        });
-    });
-
-    controls.find('#check_plan_load').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        with_we_ready(frm, () => {
-            window.WorkEfforts.runMissingPlanCheck(frm);
-        });
-    });
-
-    //ISS-2025-02858 — overload API+dialog reuse as-is
-    controls.find('#check_workload_overload').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        project_workload_assignment.work_efforts.perform_overload_check(frm);
-    });
-
-    // W3b: GRID only on boot. Chart/limits/P&L sync run after we load.
-    // Consolidated (aggregatedTasks) — lazy for overload / pl-from-we dialogs.
     frm.last_loaded_project = frm.doc.name;
     frm.last_loaded_time = new Date();
 
