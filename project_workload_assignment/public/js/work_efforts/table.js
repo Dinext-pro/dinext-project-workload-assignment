@@ -13,58 +13,14 @@ import { ensurePeriodLimits } from "./limits.js";
 import { ensureWorkloadPeriods } from "./period-markers.js";
 import { onAssignmentsToggle } from "./assignments.js";
 import { onCellDoubleClicked, syncPlFromWe } from "./navigation.js";
-
-const FS_SHELL_CLASS = "work_efforts_container--fullscreen";
-
-/** Fullscreen shell = .work_efforts_container (controls + table; legend hidden via CSS). */
-function resolveFullscreenOpts(container) {
-    const shell = container?.closest?.(".work_efforts_container");
-    if (!shell) {
-        return null;
-    }
-
-    const afterLayout = () => {
-        requestAnimationFrame(() => {
-            window.dispatchEvent(new Event("resize"));
-        });
-    };
-
-    return {
-        target: "shell",
-        shell,
-        onEnter: ({ element }) => {
-            element?.classList.add(FS_SHELL_CLASS);
-            if (container) {
-                container.dataset.wePrevHeight = container.style.height || "";
-                container.dataset.wePrevMinHeight = container.style.minHeight || "";
-                container.style.height = "auto";
-                container.style.minHeight = "0";
-                container.style.flex = "1 1 auto";
-            }
-            afterLayout();
-        },
-        onExit: ({ element }) => {
-            element?.classList.remove(FS_SHELL_CLASS);
-            if (container) {
-                container.style.height = container.dataset.wePrevHeight || "min(50vh, 560px)";
-                container.style.minHeight = container.dataset.wePrevMinHeight || "280px";
-                container.style.flex = "";
-                delete container.dataset.wePrevHeight;
-                delete container.dataset.wePrevMinHeight;
-            }
-            afterLayout();
-        },
-    };
-}
+import { buildToolbarItems } from "./toolbar.js";
 
 function buildTableOptions(frm, state) {
-    const summaryRows = buildSummaryRows(frm, state.periods, state.summaryRows);
-
-    const opts = {
+    return {
         container: state.container,
         data: state.rows,
         columns: getColumns(frm, state.periods),
-        summaryRows,
+        summaryRows: buildSummaryRows(frm, state.periods, state.summaryRows),
         summary: { pin: "bottom", edit: false, clipboard: false, selection: false },
         expandedIds: getExpandedIds(frm),
         edit: false,
@@ -74,6 +30,10 @@ function buildTableOptions(frm, state) {
         rowCheck: { enabled: true, unit: "mergeHead", selectAll: true },
         // Gutter DnD default-on in DinextTable; WE merge-groups are not reorder targets.
         rowReorder: { enabled: false },
+        toolbar: {
+            persistKey: `work-efforts:${frm.doc?.name || "new"}`,
+            items: buildToolbarItems(frm),
+        },
         // Dense cells via Quartz theme API (not .ag-cell padding hacks)
         theme: {
             cellHorizontalPadding: 6,
@@ -91,13 +51,8 @@ function buildTableOptions(frm, state) {
             headerHeight: 32,
             groupHeaderHeight: 28,
         },
+        // Fullscreen: core default (target: container). Domain controls live in toolbar.
     };
-
-    const fullscreen = resolveFullscreenOpts(state.container);
-    if (fullscreen) {
-        opts.fullscreen = fullscreen;
-    }
-    return opts;
 }
 
 function applyRuntime(frm, table) {

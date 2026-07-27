@@ -166,8 +166,18 @@ function totalDeltaGetter(periods) {
 }
 
 function buildPeriodLeaf(opts) {
-    const { field, colId, headerName, width, hide, edit, valueFormatter, valueGetter, cellClassRules } =
-        opts;
+    const {
+        field,
+        colId,
+        headerName,
+        width,
+        hide,
+        edit,
+        valueFormatter,
+        valueGetter,
+        cellClassRules,
+        pinned,
+    } = opts;
     const col = withCenterAlign({
         field,
         colId,
@@ -186,6 +196,7 @@ function buildPeriodLeaf(opts) {
     });
     if (edit !== undefined) col.edit = edit;
     if (valueGetter) col.valueGetter = valueGetter;
+    if (pinned) col.pinned = pinned;
     return col;
 }
 
@@ -253,6 +264,7 @@ function buildTotalColumn(frm, periods) {
         headerName: __("Итого"),
         headerClass: HEADER_CENTER,
         marryChildren: true,
+        pinned: "right",
         children: [
             buildPeriodLeaf({
                 field: "total_plan",
@@ -260,6 +272,7 @@ function buildTotalColumn(frm, periods) {
                 headerName: __("План"),
                 width: leafWidth,
                 hide: hidePlan,
+                pinned: "right",
                 valueGetter: totalPlanGetter(periods),
                 valueFormatter: formatNumber,
             }),
@@ -268,6 +281,7 @@ function buildTotalColumn(frm, periods) {
                 colId: "total_actual",
                 headerName: __("Прогноз"),
                 width: leafWidth,
+                pinned: "right",
                 valueGetter: totalActualGetter(periods),
                 valueFormatter: formatNumber,
             }),
@@ -277,6 +291,7 @@ function buildTotalColumn(frm, periods) {
                 headerName: "Δ",
                 width: leafWidth,
                 hide: hideDelta,
+                pinned: "right",
                 valueGetter: totalDeltaGetter(periods),
                 valueFormatter: formatDelta,
             }),
@@ -298,6 +313,7 @@ export function getColumns(frm, periods) {
             sortable: false,
             suppressMovable: true,
             pinned: "left",
+            hide: true,
             tree: false,
             spanRows,
             valueGetter: serialValueGetter,

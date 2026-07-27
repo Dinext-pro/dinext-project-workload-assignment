@@ -1,6 +1,6 @@
 /* WE v2 — shell + DinextTable domain styles.
  * Selection / summary / chrome — dinext-table.css + Theming API.
- * Host: .work_efforts_container > .work-efforts-table
+ * Host: .work_efforts_container > .work-efforts-table (+ toolbar items)
  */
 
 :root {
@@ -24,75 +24,72 @@
 	max-width: 100% !important;
 }
 
-.work_efforts_container .work-efforts-controls {
+/*
+ * Domain controls on toolbar custom host.
+ * Host itself gets .work-efforts-controls (not a child) — do not nest those selectors.
+ */
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls {
 	display: flex;
-	width: 100%;
 	align-items: center;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	gap: 6px;
-	margin-bottom: 16px;
-}
-
-/* Fullscreen shell = .work_efforts_container: controls stay above table (P&L / WR pattern) */
-.work_efforts_container:fullscreen,
-.work_efforts_container.work_efforts_container--fullscreen {
-	height: 100%;
-	box-sizing: border-box;
-	padding: 8px;
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	background-color: var(--card-bg, var(--bg-color, #fff));
-}
-
-.work_efforts_container:fullscreen .work-efforts-controls,
-.work_efforts_container.work_efforts_container--fullscreen .work-efforts-controls {
 	flex: 0 0 auto;
-	margin-bottom: 0; /* gap: 16px on shell */
+	min-width: max-content;
+	width: max-content;
 }
 
-.work_efforts_container:fullscreen .work-efforts-table,
-.work_efforts_container.work_efforts_container--fullscreen .work-efforts-table {
-	flex: 1 1 auto;
-	min-height: 0;
-	height: auto !important;
-	max-height: none !important;
-}
-
-/* Legend under table — out of fullscreen (WR charts pattern). */
-.work_efforts_container:fullscreen .work-efforts-legend,
-.work_efforts_container.work_efforts_container--fullscreen .work-efforts-legend {
-	display: none !important;
-}
-
-.work_efforts_container .work-efforts-controls .frappe-control {
-	flex: 0 1 150px;
-	margin: 0;
-}
-
-.work_efforts_container .assignments-checkbox-wrapper {
-	margin-left: 10px;
-	margin-top: 10px;
-	display: inline-flex;
-	align-items: center;
+/*
+ * View-options Select (only_input): wrapper is itself `.form-group.frappe-control`.
+ * Default .form-group { margin-bottom } lifts it above neighboring .btn.
+ */
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls > .frappe-control[data-fieldname="view-options"] {
 	position: relative;
-	top: -6px;
+	flex: 0 0 150px;
+	width: 150px;
+	margin: 0 !important;
+	padding: 0;
+	align-self: center;
 }
 
-.work_efforts_container .assignments-checkbox-wrapper .frappe-control,
-.work_efforts_container .assignments-checkbox-wrapper .checkbox {
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls > .frappe-control[data-fieldname="view-options"] .form-control {
+	width: 150px;
+	height: 28px;
+	min-height: 28px;
+	padding: 2px 24px 2px 8px;
+	margin: 0;
+	line-height: 1.2;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper {
+	margin-left: 10px;
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper .frappe-control,
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper .checkbox {
 	margin: 0;
 	display: inline-flex;
 	align-items: center;
 }
 
-.work_efforts_container .btn-group {
-	margin-left: auto;
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .btn-group {
+	flex: 0 0 auto;
 }
 
-.work_efforts_container .btn-group .dropdown-menu li {
+/* Portaled «Проверить» menu (body) — hug content; reset BS right:0 stretch. */
+.we-toolbar-check-menu {
+	right: auto !important;
+	width: max-content;
+	min-width: 0;
+	max-width: min(360px, calc(100vw - 16px));
+}
+
+.we-toolbar-check-menu li {
 	cursor: pointer;
 	padding: 8px 15px;
+	white-space: nowrap;
 }
 
 .work_efforts_container .work-efforts-legend {
@@ -145,6 +142,14 @@
 	height: min(50vh, 560px);
 	max-height: 560px;
 	--we-row-height: 28px;
+}
+
+/* Host has fixed height (+ inline from mount) — clear for core container fullscreen. */
+.work_efforts_container .work-efforts-table.dinext-table:fullscreen,
+.work_efforts_container .work-efforts-table.dinext-table.dinext-table--fullscreen {
+	height: 100% !important;
+	max-height: none !important;
+	min-height: 0 !important;
 }
 
 /*
