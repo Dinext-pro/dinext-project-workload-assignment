@@ -2,6 +2,17 @@
 // ISS-2025-01239
 
 /**
+ * Формат часов для отображения: убирает IEEE 754 хвосты (4.399999 → 4.4).
+ * @param {number|string|null|undefined} value
+ * @returns {number}
+ */
+function format_effort_hours(value) {
+    const n = parseFloat(value);
+    if (!n) return 0;
+    return parseFloat(n.toFixed(1));
+}
+
+/**
  * Определение колонок StickyDataTable для Work Efforts.
  * @param {WorkEffortsForm} frm
  * @param {string} periodType
@@ -316,7 +327,7 @@ function get_columns_definition(frm, periodType, unit) {
                                 : false;
                             if (isMissingPeriod) planClasses += " missing-plan-highlight";
 
-                            lines += `<div class="${planClasses}" data-role="${roleName}"><span>${plan}</span></div>`;
+                            lines += `<div class="${planClasses}" data-role="${roleName}"><span>${format_effort_hours(plan)}</span></div>`;
                         });
 
                         if (availableRoles.length > 0) {
@@ -351,7 +362,7 @@ function get_columns_definition(frm, periodType, unit) {
                         }
 
                         lines += `<div class="${actualClasses}" data-role="${roleName}">
-                            <span class="${period.is_past ? "readonly-fact" : "editable-forecast"}">${actual}</span>
+                            <span class="${period.is_past ? "readonly-fact" : "editable-forecast"}">${format_effort_hours(actual)}</span>
                         </div>`;
                     });
 
@@ -461,7 +472,10 @@ function get_columns_definition(frm, periodType, unit) {
     return columns;
 }
 
-Object.assign(project_workload_assignment.work_efforts, { get_columns_definition });
+Object.assign(project_workload_assignment.work_efforts, {
+    get_columns_definition,
+    format_effort_hours,
+});
 
 // Обработчик выбора новой роли из выпадающего списка
 $(document).on('change', '.new-role-select', function(e) {
