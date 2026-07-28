@@ -4,6 +4,24 @@ let allAssignmentsLoaded = false;
 let isLoadingAssignments = false;
 
 /**
+ * Task ids: prefer we, fallback aggregatedTasks.
+ * @param {WorkEffortsForm} frm
+ * @returns {string[]}
+ */
+function get_assignment_task_ids(frm) {
+    const fromWe = new Set();
+    const flat = [];
+    project_workload_assignment.work_efforts.flattenWeRows?.(frm.we?.rows, flat);
+    flat.forEach((row) => {
+        if (row?.task_id) fromWe.add(row.task_id);
+    });
+    if (fromWe.size) {
+        return Array.from(fromWe);
+    }
+    return Object.keys(frm.aggregatedTasks || {});
+}
+
+/**
  * Загрузка всех назначений проекта (один запрос).
  * @param {WorkEffortsForm} frm
  * @returns {Promise<void>}
@@ -25,7 +43,7 @@ function load_all_assignments_if_needed(frm) {
     }
 
     isLoadingAssignments = true;
-    let task_ids = Object.keys(frm.aggregatedTasks);
+    let task_ids = get_assignment_task_ids(frm);
 
     if (task_ids.length === 0) {
         allAssignmentsLoaded = true;
@@ -241,7 +259,7 @@ function load_detailed_assignments(frm) {
         return Promise.resolve();
     }
 
-    let task_ids = Object.keys(frm.aggregatedTasks);
+    let task_ids = get_assignment_task_ids(frm);
 
     if (task_ids.length === 0) {
         frm._detailedAssignmentsLoaded = true;
@@ -498,7 +516,7 @@ function buildWorkloadPeriodsMap(frm) {
     return project_workload_assignment.work_efforts.load_all_assignments_if_needed(frm).then(() => {
         let workloadMap = {};
         let periods = project_workload_assignment.work_efforts.get_display_periods(frm, "month");
-        let task_ids = Object.keys(frm.aggregatedTasks);
+        let task_ids = get_assignment_task_ids(frm);
 
         for (let task_id of task_ids) {
             let assignments = project_workload_assignment.work_efforts.get_task_assignments(task_id);
@@ -559,6 +577,7 @@ function buildWorkloadPeriodsMap(frm) {
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
+    get_assignment_task_ids,
     load_all_assignments_if_needed,
     get_task_assignments,
     check_plan_load_for_percentage_assignments,

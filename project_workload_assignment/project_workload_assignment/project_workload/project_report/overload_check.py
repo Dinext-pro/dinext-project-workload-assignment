@@ -3,74 +3,21 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
-
 import frappe
 
 from project_workload_assignment.project_workload_assignment.project_workload.project_report.single_project_workload_tree import (
 	run_get_project_workload_data,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.models import (
+	OverloadCheckFormDict,
+	OverloadCheckResponse,
+	ErrorOverloadResponse,
+	OverloadItem,
+	OverloadMonthDetail,
+	OverloadMonthUser,
+)
 
-ENABLE_DEBUG_LOG = True
-
-
-class OverloadPeriodInput(TypedDict, total=False):
-	"""Период из входных данных для проверки перегрузки."""
-	year: int
-	month: int
-	is_past: bool
-
-
-class OverloadCheckFormDict(TypedDict, total=False):
-	"""Параметры запроса из frappe.form_dict."""
-	project: str
-	periods: list[OverloadPeriodInput] | None
-	view_options: Literal['Только факт', 'Только прогноз', 'Прогноз и факт']
-
-
-class OverloadMonthUser(TypedDict):
-	"""Пользователь в детализации месяца перегрузки."""
-	user: str
-	user_full_name: str
-	assigned: float
-	workload_type: str
-	wl_value: int
-
-
-class OverloadMonthDetail(TypedDict):
-	"""Детализация перегрузки по месяцу."""
-	year: int
-	month: int
-	forecast_hours: float
-	assigned_hours: float
-	users: list[OverloadMonthUser]
-
-
-class OverloadItem(TypedDict):
-	"""Одна позиция перегрузки (задача + роль)."""
-	task: str
-	task_subject: str
-	role: str
-	total_forecast: float
-	total_assigned: float
-	overload: float
-	months: list[OverloadMonthDetail]
-	affected_users: int
-
-
-class OverloadCheckResponse(TypedDict, total=False):
-	"""Успешный ответ API check_workload_overload."""
-	overloads: list[OverloadItem]
-	total_overloads: int
-	affected_tasks: int
-	affected_users: int
-
-
-class ErrorOverloadResponse(TypedDict):
-	"""Ответ при ошибке."""
-	overloads: list
-	error: str
-	message: str | None
+ENABLE_DEBUG_LOG = False
 
 
 def _debug_log(message: str) -> None:

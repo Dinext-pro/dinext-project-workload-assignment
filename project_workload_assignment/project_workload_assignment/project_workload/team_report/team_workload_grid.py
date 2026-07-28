@@ -2,157 +2,35 @@
 """Сетка загрузки команды: ответ API get_projects_workload_data_v2 (бывший Exp_V2).
 
 Ядро вынесено из Server Script в это приложение (ISS-2026-00865):
-`project_workload_assignment.project_workload_api.pwr_run_team_workload_grid` → этот модуль.
-Тонкие обёртки остаются в Server Script на сайте (api_method без тела расчёта).
+`pwr_run_team_workload_grid_canonical` → reshape → `run_get_projects_workload_data_v2` (этот модуль).
 
 ISS-2026-00926: при merge DinextAgGrid не откатывать `_userHolidays` в project-row и пропорциональный
 сплит «В рабочих часах»; UI-календарь для % — в CS (`getHolidaysForRow`). См.
 `.issues/ISS-2026-00926/cross-ref-iss-2026-00865.md`.
 """
 
-from typing import TypedDict, Literal
 from datetime import date, datetime
 
 import frappe
 
 from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
-	AbsenceEntry,
-	HolidayEntry,
 	ProjectWorkloadInfo,
 	UserWorkloadInfo,
+)
+from project_workload_assignment.project_workload_assignment.project_workload.models import (
+	TeamWorkloadFormDict,
+	TeamWorkloadPeriod,
+	TeamWorkloadResponse,
+	ErrorTeamWorkloadResponse,
+	TreeDataUserRow,
+	TreeDataProjectRow,
+	UserDataSummary,
+	PerformanceInfo,
 )
 
 # Алиасы для обратной совместимости TypedDict в этом модуле.
 UserInfo = UserWorkloadInfo
 ProjectInfo = ProjectWorkloadInfo
-
-
-# ==================== TypedDict определения ====================
-
-class TeamWorkloadFormDict(TypedDict, total=False):
-	"""Параметры запроса из frappe.form_dict."""
-	user: str | None
-	project: str | None
-	project_portfolio: str | None
-	user_group: str | None
-	view_type: Literal['daily', 'weekly', 'monthly']
-	period_range: Literal['quarter', 'half_year', 'year']
-	period_anchor_date: str | None
-	load_actual: bool | str | int
-	mode: Literal['full', 'user_totals', 'user_projects']
-	detail_user: str | None
-	limit: int | str
-	offset: int | str
-
-
-class TeamWorkloadPeriodDaily(TypedDict):
-	"""Дневной период для отчёта команды."""
-	key: str
-	date: str
-	year: int
-	month: int
-	day: int
-	weekday: int
-
-
-class TeamWorkloadPeriodWeekly(TypedDict):
-	"""Недельный период для отчёта команды."""
-	key: str
-	year: int
-	week: int
-	start_date: str
-	end_date: str
-
-
-class TeamWorkloadPeriodMonthly(TypedDict):
-	"""Месячный период для отчёта команды."""
-	key: str
-	year: int
-	month: int
-	start_date: str
-	end_date: str
-
-
-TeamWorkloadPeriod = TeamWorkloadPeriodDaily | TeamWorkloadPeriodWeekly | TeamWorkloadPeriodMonthly
-
-
-class UserDataSummary(TypedDict):
-	"""Краткие данные пользователя для tree_data."""
-	full_name: str | None
-	user_image: str | None
-	email: str
-	name: str
-
-
-class TreeDataUserRow(TypedDict, total=False):
-	"""Строка пользователя в tree_data."""
-	participant: str
-	user_data: UserDataSummary
-	indent: int
-	expandable: bool
-	_isUser: bool
-	_detailsLoaded: bool
-	_email: str
-	_workingHours: dict[str, float]
-	_absences: list[AbsenceEntry]
-	_userHolidays: list[HolidayEntry]
-	workload_total: str
-
-
-class TreeDataProjectRow(TypedDict, total=False):
-	"""Строка проекта в tree_data."""
-	participant: str
-	user_data: UserDataSummary
-	project: str
-	project_name: str
-	indent: int
-	expandable: bool
-	_isProject: bool
-	_email: str
-	_project: str
-	_workingHours: dict[str, float]
-	_absences: list[AbsenceEntry]
-	_userHolidays: list[HolidayEntry]
-	_projectHolidays: list[HolidayEntry]
-	workload_total: str
-
-
-class PerformanceInfo(TypedDict):
-	"""Информация о производительности."""
-	calculation_time_ms: float
-	assignments: int
-	date_calculations: int
-	working_day_cache_size: int
-	trace: list[str]
-
-
-class TeamWorkloadResponse(TypedDict):
-	"""Основной ответ API get_projects_workload_data_v2."""
-	tree_data: list[TreeDataUserRow | TreeDataProjectRow]
-	periods: list[TeamWorkloadPeriod]
-	users_count: int
-	projects_count: int
-	assignments_count: int
-	mode: str
-	limit: int
-	offset: int
-	next_offset: int | None
-	has_more: bool
-	total_users: int
-	message: str
-	performance: PerformanceInfo
-
-
-class ErrorTeamWorkloadResponse(TypedDict):
-	"""Ответ при ошибке."""
-	tree_data: list
-	periods: list
-	users_count: int
-	projects_count: int
-	assignments_count: int
-	mode: str
-	error: str
-	message: str
 
 
 def _parse_bool_form_value(value, default: bool = False) -> bool:
@@ -175,9 +53,8 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 	PERF_TOTAL_START = frappe.utils.now_datetime()
 
 	def perf_log(message):
-		line = "[PWR V2 PERF] " + str(message)
-		PERF_TRACE.append(line)
-		frappe.log(line)
+		# Keep in-memory trace for log_error on failure; no noisy frappe.log.
+		PERF_TRACE.append("[PWR V2 PERF] " + str(message))
 
 	def perf_start(label):
 		perf_log("START " + label)
@@ -231,7 +108,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    # Для детализации считаем только одного пользователя, сохраняя остальные фильтры.
 		    user = detail_user
 		
-		frappe.log("Filter values - user: " + str(user) + ", project: " + str(project) + ", project_portfolio: " + str(project_portfolio) + ", user_group: " + str(user_group) + ", mode: " + str(mode))
 		perf_log("PARAMS mode=" + str(mode) + ", limit=" + str(limit) + ", offset=" + str(offset) + ", detail_user=" + str(detail_user) + ", view_type=" + str(view_type) + ", period_range=" + str(period_range) + ", worker_wtype=" + str(worker_wtype_filter) + ", user=" + str(user) + ", project=" + str(project) + ", project_portfolio=" + str(project_portfolio) + ", user_group=" + str(user_group))
 		
 		# ISS-2026-00865 V2: для user_totals сначала выбираем только страницу пользователей,
@@ -377,8 +253,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        'message': 'No assignments after worker permission filter',
 		    }
 		
-		frappe.log("Found " + str(len(assignments)) + " assignments")
-		
 		# 1.2 Собираем уникальные сущности
 		users_set = {}
 		projects_set = {}
@@ -489,9 +363,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		
 		# ========== 4. ПЕРИОДЫ ==========
 		# periods уже сгенерированы в начале run (generate_periods_for_pwr_report); повторная генерация не нужна.
-		frappe.log("Generated " + str(len(periods)) + " periods for view_type=" + view_type + ", range=" + period_range)
-		if periods:
-		    frappe.log("First period: " + str(periods[0]))
 		# ISS-2026-00865: один раз строим lookup, чтобы не перебирать periods в горячих циклах.
 		perf_section_start = perf_start("Build date_to_period_key")
 		from project_workload_assignment.project_workload_assignment.project_workload.core.periods import build_date_to_period_key
@@ -532,7 +403,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    "users=" + str(len(users_list)) + ", date_entries=" + str(user_daily_hours_dates_count),
 		)
 
-		frappe.log("Starting workload calculation with WorkloadContext...")
 		perf_section_start = perf_start("Calculate workload original logic")
 		start_time = frappe.utils.now_datetime()
 
@@ -581,7 +451,13 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		                    results[user_email][project_name][period_key] += daily_load
 		end_time = frappe.utils.now_datetime()
 		calculation_time = (end_time - start_time).total_seconds() * 1000
-		frappe.log("Calculation completed in " + str(calculation_time) + " ms, " + str(assignment_calculations) + " date calculations")
+		perf_log(
+			"Calculation completed in "
+			+ str(calculation_time)
+			+ " ms, "
+			+ str(assignment_calculations)
+			+ " date calculations"
+		)
 		perf_end(
 		    "Calculate workload original logic",
 		    perf_section_start,
@@ -808,7 +684,6 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		except Exception:
 			pass
 		frappe.log_error("\n".join(PERF_TRACE), "PWR V2 PERF get_projects_workload_data_v2 FAILED")
-		frappe.log("Error in get_projects_workload_data_v2: " + str(e))
 		return {
 			"tree_data": [],
 			"periods": [],

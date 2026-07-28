@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import TypedDict, Literal
-
 import frappe
 from frappe.utils.data import getdate
 
@@ -19,69 +17,14 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 from project_workload_assignment.project_workload_assignment.project_workload.core.workload_engine import (
 	WorkloadContext,
 )
-
-
-# ==================== TypedDict определения ====================
-
-class ForecastFormDict(TypedDict, total=False):
-	"""Параметры запроса из frappe.form_dict."""
-	project: str
-	periods: list[ForecastPeriod] | None
-	view_options: Literal['Только факт', 'Только прогноз', 'Прогноз и факт']
-
-
-class ForecastPeriod(TypedDict):
-	"""Период для прогноза."""
-	year: int
-	month: int
-	is_past: bool
-
-
-class TaskUserDetail(TypedDict):
-	"""Детали пользователя в задаче."""
-	assigned_hours: float
-	workload_type: str
-	percentage: float
-
-
-class TaskPeriodDetail(TypedDict):
-	"""Детали периода в задаче."""
-	forecast_hours: float
-	plan_hours: float
-	users: dict[str, TaskUserDetail]
-
-
-class TaskRoleDetails(TypedDict):
-	"""Детали роли в задаче."""
-	period_key: TaskPeriodDetail
-
-
-class TaskDetails(TypedDict):
-	"""Детали задачи."""
-	role: TaskRoleDetails
-
-
-class TaskAggregated(TypedDict):
-	"""Агрегированные данные задачи."""
-	task: str
-	task_subject: str
-	total_forecast: float
-	total_assigned: float
-
-
-class TasksForecastResponse(TypedDict):
-	"""Успешный ответ API get_tasks_forecast_and_workload."""
-	tasks: list[TaskAggregated]
-	tasks_details: dict[str, TaskDetails]
-	total_tasks: int
-
-
-class ErrorTasksResponse(TypedDict):
-	"""Ответ при ошибке."""
-	tasks: list[TaskAggregated]
-	tasks_details: dict[str, TaskDetails]
-	total_tasks: int
-	error: str
+from project_workload_assignment.project_workload_assignment.project_workload.models import (
+	ForecastFormDict,
+	ForecastPeriod,
+	TasksForecastResponse,
+	ErrorTasksResponse,
+	TaskAggregated,
+	TaskDetails,
+)
 
 
 def run_get_tasks_forecast_and_workload(fd: ForecastFormDict | None) -> TasksForecastResponse | ErrorTasksResponse:
@@ -94,7 +37,7 @@ def run_get_tasks_forecast_and_workload(fd: ForecastFormDict | None) -> TasksFor
 
 # Флаг для включения/отключения детального логирования
 
-ENABLE_DETAILED_LOG = True
+ENABLE_DETAILED_LOG = False
 
 def debug_log(message):
 
@@ -512,7 +455,7 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
         })
 
     
-    frappe.log(f"Tasks with forecast/workload: {len(tasks_aggregated)}")
+    debug_log(f"Tasks with forecast/workload: {len(tasks_aggregated)}")
 
     
     return {

@@ -6,7 +6,7 @@ from __future__ import annotations
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from project_workload_assignment.project_workload_api import (
+from project_workload_assignment.api import (
 	pwr_run_project_workload_charts,
 	pwr_run_team_workload_charts,
 )

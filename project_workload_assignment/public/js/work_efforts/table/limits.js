@@ -1,8 +1,7 @@
-// we-table/limits.js — recalculatePeriodLimits, refreshLimitHighlight, setCellStyles
-// ISS-2025-01239
+// we-table/limits.js — recalculatePeriodLimits, refreshLimitHighlight
+// ISS-2025-01239 — W3b: positions from we.rows (aggregatedTasks fallback)
 
 /**
- * Пороги из child table «Контроль лимитов» (актуальные значения формы, в т.ч. до save).
  * @param {WorkEffortsForm} frm
  * @returns {Array<{type: string, limit: number}> | null}
  */
@@ -17,24 +16,52 @@ function getProjectLimitsOverride(frm) {
 }
 
 /**
- * Расчёт лимитов по периодам через work_efforts_api.calculate_timesheet_limits.
+ * Past-period fact positions for timesheet limits API.
+ * Prefer we; fallback aggregatedTasks (lazy dialogs / transition).
  * @param {WorkEffortsForm} frm
- * @param {string} periodType
- * @param {() => void} [callback]
+ * @param {DisplayPeriod[]} periods
+ * @returns {TimesheetPositionInput[]}
  */
-function recalculatePeriodLimits(frm, periodType, callback) {
+function collectPeriodPositions(frm, periods) {
     /** @type {TimesheetPositionInput[]} */
-    let periodPositions = [];
-    let periods = project_workload_assignment.work_efforts.get_display_periods(frm, periodType);
+    const periodPositions = [];
+    const weRows = project_workload_assignment.work_efforts.flattenWeRows?.(frm.we?.rows, []) || [];
 
-    Object.values(frm.aggregatedTasks || {}).forEach(task => {
-        (task.role_data || []).forEach(roleEntry => {
-            let roleName = roleEntry.role || '';
+    if (weRows.length) {
+        weRows.forEach((row) => {
+            const taskId = row.task_id;
+            const roleName = row.role || "";
+            if (!taskId) return;
 
-            periods.forEach(period => {
+            periods.forEach((period) => {
+                if (!period.is_past) return;
+                const key = period.key || `${period.year}_${period.month}`;
+                const fact = parseFloat(row[`fact_${key}`]) || 0;
+                if (fact === 0) return;
+
+                periodPositions.push({
+                    name: `${taskId}_${roleName}_${period.year}_${period.month}`,
+                    document_name: taskId,
+                    project_role: roleName,
+                    project: frm.doc.name,
+                    status: "Approved",
+                    all_hours: fact,
+                    year: period.year,
+                    month: period.month,
+                });
+            });
+        });
+        return periodPositions;
+    }
+
+    Object.values(frm.aggregatedTasks || {}).forEach((task) => {
+        (task.role_data || []).forEach((roleEntry) => {
+            const roleName = roleEntry.role || "";
+
+            periods.forEach((period) => {
                 if (!period.is_past) return;
 
-                let fact = parseFloat(roleEntry[`fact_${period.year}_${period.month}`]) || 0;
+                const fact = parseFloat(roleEntry[`fact_${period.year}_${period.month}`]) || 0;
                 if (fact === 0) return;
 
                 periodPositions.push({
@@ -42,18 +69,32 @@ function recalculatePeriodLimits(frm, periodType, callback) {
                     document_name: task.value,
                     project_role: roleName,
                     project: frm.doc.name,
-                    status: 'Approved',
+                    status: "Approved",
                     all_hours: fact,
                     year: period.year,
-                    month: period.month
+                    month: period.month,
                 });
             });
         });
     });
 
+    return periodPositions;
+}
+
+/**
+ * @param {WorkEffortsForm} frm
+ * @param {string} periodType
+ * @param {() => void} [callback]
+ */
+function recalculatePeriodLimits(frm, periodType, callback) {
+    const periods =
+        (frm.we?.periods?.length && frm.we.periods) ||
+        project_workload_assignment.work_efforts.get_display_periods(frm, periodType);
+    const periodPositions = collectPeriodPositions(frm, periods);
+
     /** @type {Record<string, unknown>} */
     let apiArgs = {
-        timesheet_name: '',
+        timesheet_name: "",
         positions: periodPositions,
     };
 
@@ -64,21 +105,21 @@ function recalculatePeriodLimits(frm, periodType, callback) {
 
     if (periodPositions.length > 0) {
         frappe.call({
-            method: 'project_workload_assignment.project_workload_api.calculate_timesheet_limits',
+            method: "project_workload_assignment.api.calculate_timesheet_limits",
             args: apiArgs,
-            callback: function(r) {
+            callback: function (r) {
                 if (r.message) {
                     frm.periodLimitStatuses = {};
-                    r.message.forEach(item => {
+                    r.message.forEach((item) => {
                         frm.periodLimitStatuses[item.position] = {
                             status: item.status,
                             pct: item.completion_percentage,
-                            limit: item.limit
+                            limit: item.limit,
                         };
                     });
                 }
                 if (callback) callback();
-            }
+            },
         });
     } else {
         frm.periodLimitStatuses = {};
@@ -87,38 +128,34 @@ function recalculatePeriodLimits(frm, periodType, callback) {
 }
 
 /**
- * Пересчитать обводку лимитов в таблице (без полной перезагрузки данных).
  * @param {WorkEffortsForm} frm
  */
 function refreshLimitHighlight(frm) {
-    if (!frm.work_efforts_dt || !frm.aggregatedTasks) {
+    if (!window.WorkEfforts?.refreshLimitHighlight) {
         return;
     }
-    let periodType = frm._we_period_type || "month";
-    let unit = frm._we_unit || "hours";
-    project_workload_assignment.work_efforts.updateTable(frm, periodType, unit, true);
-}
-
-function setCellStyles() {
-    $(".work-efforts-table .datatable .dt-scrollable").addClass("dt-fit-height");
+    project_workload_assignment.work_efforts.recalculatePeriodLimits(
+        frm,
+        frm._we_period_type || "month",
+        () => window.WorkEfforts.refreshLimitHighlight(frm)
+    );
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
     recalculatePeriodLimits,
     refreshLimitHighlight,
-    setCellStyles,
 });
 
-frappe.ui.form.on("Limit Control", "limit", function(frm) {
+frappe.ui.form.on("Limit Control", "limit", function (frm) {
     project_workload_assignment.work_efforts.refreshLimitHighlight(frm);
 });
 
-frappe.ui.form.on("Limit Control", "type", function(frm) {
+frappe.ui.form.on("Limit Control", "type", function (frm) {
     project_workload_assignment.work_efforts.refreshLimitHighlight(frm);
 });
 
 frappe.ui.form.on("Limit Control", {
-    custom_limit_control_table_remove: function(frm) {
+    custom_limit_control_table_remove: function (frm) {
         project_workload_assignment.work_efforts.refreshLimitHighlight(frm);
     },
 });

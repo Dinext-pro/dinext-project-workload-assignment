@@ -1,4 +1,4 @@
-// we-table/controls.js — view controls, period helpers, legend
+// we-table/controls.js — period helpers + toolbar domain chrome (incl. legend help)
 // ISS-2025-01239
 
 /**
@@ -55,107 +55,344 @@ function get_display_periods(frm, periodType) {
  * @param {JQuery} controls
  */
 function addViewOptionsControl(frm, controls) {
-    frm.view_options = frm.view_options || __("Прогноз и факт");
-    const control = frappe.ui.form.make_control({
-        parent: controls,
-        df: {
-            fieldtype: 'Select',
-            fieldname: "view-options",
-            options: [
-                __("Прогноз и факт"),
-                __("Только прогноз"),
-                __("Только факт"),
-            ],
-            get_status: function(i) {
-                return "Write";
-            },
-            change: async function(i) {
-                if (this.value != this.last_value) {
-                    frm.we_periods = {};
-                    frm.view_options = this.value;
-                    project_workload_assignment.work_efforts.updateTable(frm, "month", "hours");
-                    project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-                }
-            }
-        },
-        value: frm.view_options,
-        only_input: true,
-        render_input: true
-    });
+	frm.view_options = frm.view_options || __("Прогноз и факт");
+	frappe.ui.form.make_control({
+		parent: controls,
+		df: {
+			fieldtype: "Select",
+			fieldname: "view-options",
+			options: [
+				__("Прогноз и факт"),
+				__("Только прогноз"),
+				__("Только факт"),
+			],
+			get_status: function () {
+				return "Write";
+			},
+			change: function () {
+				if (this.value == this.last_value) {
+					return;
+				}
+				frm.we_periods = {};
+				frm.view_options = this.value;
+				project_workload_assignment.work_efforts.updateTable(
+					frm,
+					frm._we_period_type || "month",
+					frm._we_unit || "hours"
+				);
+				project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
+				window.WorkEfforts.onViewOptionsChange(frm);
+			},
+		},
+		value: frm.view_options,
+		only_input: true,
+		render_input: true,
+	});
 }
 
-/** @param {JQuery} container */
-function render_legend(container) {
-    let legend_html = `
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; padding: 8px 12px; background: var(--fg-color); border: 1px solid var(--border-color); border-radius: 4px;">
+/**
+ * Mount former shell controls into DinextTable toolbar custom host (once).
+ * @param {WorkEffortsForm} frm
+ * @param {JQuery} host
+ */
+function mount_toolbar_controls(frm, host) {
+	if (host.data("we-controls-mounted")) {
+		return;
+	}
+	host.data("we-controls-mounted", true);
+	host.addClass("work-efforts-controls");
 
-            <!-- Плановые сроки -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <div style="width: 16px; height: 16px; background-color: var(--we-period-plan-bg); border-radius: 2px; border: 1px solid var(--border-color);" class="we-legend-plan-swatch"></div>
-                <span>${__("Плановые сроки задачи")}</span>
-            </div>
+	const periodType = frm._we_period_type || "month";
+	const unit = frm._we_unit || "hours";
 
-            <!-- Прогнозные сроки -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <div style="width: 16px; height: 16px; background-color: var(--we-period-forecast-bg); border-radius: 2px; border: 1px solid var(--border-color);" class="we-legend-forecast-swatch"></div>
-                <span>${__("Прогнозные сроки задачи")}</span>
-            </div>
+	mount_legend_help(host);
 
-            <!-- Загрузка -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <div style="width: 16px; height: 16px; background-color: var(--we-period-forecast-bg); border-radius: 2px; border: 1px solid var(--border-color); position: relative;" class="we-legend-workload-swatch">
-                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle, #c8d0d8 1px, transparent 1px); background-size: 4px 4px; border-radius: 1px;"></div>
-                </div>
-                <span>${__("Загрузка")}</span>
-            </div>
+	host.append(`
+		<button class="btn btn-default" id="we_save_plan" type="button">${__("Сохранить план")}</button>
+		<button class="btn btn-default" id="toggle_plan" type="button">${__("Показать план")}</button>
+		<button class="btn btn-default" id="toggle_delta" type="button">${__("Показать Δ")}</button>
+	`);
 
-            <!-- Отсутствие плана -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <div style="width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; background: var(--fg-color); border: 1px solid var(--border-color); border-radius: 2px;">
-                    <span style="color: var(--alert-text-warning); font-weight: 700; font-size: 11px;">0</span>
-                </div>
-                <span>${__("Отсутствует план при наличии загрузки")}</span>
-            </div>
+	addViewOptionsControl(frm, host);
 
-            <!-- Новая строка с лимитами -->
-            <div style="width: 100%; height: 1px; background: var(--border-color); margin: 4px 0;"></div>
+	const checkbox_wrapper = $('<div class="assignments-checkbox-wrapper"></div>').appendTo(host);
+	const assignments_checkbox = frappe.ui.form.make_control({
+		parent: checkbox_wrapper,
+		df: {
+			fieldtype: "Check",
+			fieldname: "show_assignments",
+			label: __("Назначения"),
+			onchange: function () {
+				frm.show_assignments = this.get_value();
+				// onAssignmentsToggle loads assignment cache itself when needed
+				window.WorkEfforts.onAssignmentsToggle(frm);
+			},
+		},
+		value: frm.show_assignments,
+		only_input: false,
+		render_input: true,
+	});
+	assignments_checkbox.refresh();
 
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; width: 100%;">
+	host.append(`
+		<div class="btn-group we-toolbar-check-group">
+			<button class="btn btn-default dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+				${__("Проверить")} <span class="caret"></span>
+			</button>
+			<ul class="dropdown-menu dropdown-menu-right">
+				<li id="check_plan_load">${__("Наличие плановых трудозатрат")}</li>
+				<li id="check_workload_overload">${__("Загрузка превышает прогноз трудозатрат")}</li>
+			</ul>
+		</div>
+	`);
 
-                <!-- Норма -->
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <div class="we-legend-limit-normal" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 22px; border-radius: 1px; background: var(--fg-color);">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 12px;">85</span>
-                    </div>
-                    <span>${__("Норма")}</span>
-                </div>
+	// Defaults set in render.js ensureWeDefaults before mount.
+	host.find("#toggle_plan").text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
+	host.find("#toggle_delta").text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
 
-                <!-- Предупреждение -->
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <div class="we-legend-limit-warning" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 22px; border-radius: 1px; background: var(--fg-color);">
-                        <span style="color: var(--text-color); font-weight: 600; font-size: 12px;">105</span>
-                    </div>
-                    <span>${__("Предупреждение")}</span>
-                </div>
+	host.find("#we_save_plan").on("click", function () {
+		window.WorkEfforts.saveForecastAsPlan(frm);
+	});
 
-                <!-- Блокировка -->
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <div class="we-legend-limit-block" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 22px; border-radius: 1px; background: var(--fg-color);">
-                        <span style="color: var(--text-color); font-weight: 700; font-size: 12px;">120</span>
-                    </div>
-                    <span>${__("Блокировка")}</span>
-                </div>
+	host.find("#toggle_plan").on("click", function () {
+		frm.hide_plan = !frm.hide_plan;
+		$(this).text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
+		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
+		project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
+		window.WorkEfforts.onTogglePlanOrDelta(frm);
+	});
 
-            </div>
+	host.find("#toggle_delta").on("click", function () {
+		frm.hide_delta = !frm.hide_delta;
+		$(this).text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
+		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
+		window.WorkEfforts.onTogglePlanOrDelta(frm);
+	});
 
-        </div>
-    `;
-    container.html(legend_html);
+	host.find("#check_plan_load").on("click", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		window.WorkEfforts.runMissingPlanCheck(frm);
+	});
+
+	host.find("#check_workload_overload").on("click", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		project_workload_assignment.work_efforts.perform_overload_check(frm);
+	});
+
+	// Portal menu to body — toolbar/AG overflow clips in-place Bootstrap dropdown.
+	bindCheckDropdownPortal(host.find(".we-toolbar-check-group"));
+}
+
+/**
+ * Same idea as roles.js add-role menu: fixed menu on body escapes overflow clip.
+ * @param {JQuery} $btnGroup
+ */
+function bindCheckDropdownPortal($btnGroup) {
+	const $toggle = $btnGroup.find(".dropdown-toggle");
+	const $menu = $btnGroup.find(".dropdown-menu");
+
+	const closeMenu = () => {
+		if (!$menu.parent().is(document.body)) {
+			return;
+		}
+		$menu
+			.hide()
+			.removeClass("we-toolbar-check-menu")
+			.appendTo($btnGroup)
+			.css({
+				display: "",
+				position: "",
+				top: "",
+				left: "",
+				right: "",
+				width: "",
+				zIndex: "",
+			});
+		$toggle.attr("aria-expanded", "false");
+		document.removeEventListener("mousedown", onDocDown, true);
+		window.removeEventListener("resize", closeMenu);
+		window.removeEventListener("scroll", closeMenu, true);
+	};
+
+	const onDocDown = (event) => {
+		if ($menu[0].contains(event.target) || $toggle[0].contains(event.target)) {
+			return;
+		}
+		closeMenu();
+	};
+
+	const openMenu = () => {
+		const rect = $toggle[0].getBoundingClientRect();
+		// Clear BS `.dropdown-menu-right { right: 0 }` — with body + left it stretches full viewport.
+		$menu
+			.appendTo(document.body)
+			.addClass("we-toolbar-check-menu")
+			.css({
+				display: "block",
+				position: "fixed",
+				top: rect.bottom + 2,
+				right: "auto",
+				width: "max-content",
+				zIndex: 1050,
+			});
+		const menuWidth = $menu.outerWidth() || 220;
+		let left = rect.right - menuWidth;
+		if (left < 8) {
+			left = 8;
+		}
+		$menu.css({ left });
+		$toggle.attr("aria-expanded", "true");
+		setTimeout(() => {
+			document.addEventListener("mousedown", onDocDown, true);
+			window.addEventListener("resize", closeMenu);
+			window.addEventListener("scroll", closeMenu, true);
+		}, 0);
+	};
+
+	$toggle.on("click", (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if ($menu.parent().is(document.body) && $menu.is(":visible")) {
+			closeMenu();
+			return;
+		}
+		openMenu();
+	});
+
+	$menu.on("click", "li", () => {
+		closeMenu();
+	});
+}
+
+const LEGEND_HELP_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.35"/><path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" d="M6.2 6.1a1.85 1.85 0 0 1 3.55.7c0 1.15-.95 1.55-1.55 1.95-.35.25-.5.45-.5.9"/><circle cx="8" cy="11.6" r=".9" fill="currentColor"/></svg>`;
+
+function get_legend_html() {
+	return `
+		<div class="we-legend-panel">
+			<div class="we-legend-row">
+				<div class="we-legend-swatch we-legend-plan-swatch"></div>
+				<span>${__("Плановые сроки задачи")}</span>
+			</div>
+			<div class="we-legend-row">
+				<div class="we-legend-swatch we-legend-forecast-swatch"></div>
+				<span>${__("Прогнозные сроки задачи")}</span>
+			</div>
+			<div class="we-legend-row">
+				<div class="we-legend-swatch we-legend-workload-swatch">
+					<div class="we-legend-workload-dots"></div>
+				</div>
+				<span>${__("Загрузка")}</span>
+			</div>
+			<div class="we-legend-row">
+				<div class="we-legend-swatch we-legend-missing-plan">
+					<span>0</span>
+				</div>
+				<span>${__("Отсутствует план при наличии загрузки")}</span>
+			</div>
+			<div class="we-legend-sep"></div>
+			<div class="we-legend-limits">
+				<div class="we-legend-row">
+					<div class="we-legend-limit we-legend-limit-normal"><span>85</span></div>
+					<span>${__("Норма")}</span>
+				</div>
+				<div class="we-legend-row">
+					<div class="we-legend-limit we-legend-limit-warning"><span>105</span></div>
+					<span>${__("Предупреждение")}</span>
+				</div>
+				<div class="we-legend-row">
+					<div class="we-legend-limit we-legend-limit-block"><span>120</span></div>
+					<span>${__("Блокировка")}</span>
+				</div>
+			</div>
+		</div>
+	`;
+}
+
+/**
+ * Toolbar "?" control — toggles portaled legend popover.
+ * @param {JQuery} host
+ */
+function mount_legend_help(host) {
+	if (host.data("we-legend-mounted")) {
+		return;
+	}
+	host.data("we-legend-mounted", true);
+
+	const $btn = $(`
+		<button type="button" class="dinext-table-toolbar-item we-legend-help-btn" title="${__("Легенда")}" aria-label="${__("Легенда")}" aria-haspopup="dialog" aria-expanded="false">
+			<span class="dinext-table-toolbar-item-icon">${LEGEND_HELP_ICON}</span>
+		</button>
+	`);
+	host.append($btn);
+
+	let $panel = null;
+
+	const closePanel = () => {
+		if (!$panel) {
+			return;
+		}
+		$panel.remove();
+		$panel = null;
+		$btn.attr("aria-expanded", "false");
+		document.removeEventListener("mousedown", onDocDown, true);
+		window.removeEventListener("resize", closePanel);
+		window.removeEventListener("scroll", closePanel, true);
+	};
+
+	const onDocDown = (event) => {
+		if ($panel?.[0]?.contains(event.target) || $btn[0].contains(event.target)) {
+			return;
+		}
+		closePanel();
+	};
+
+	const openPanel = () => {
+		closePanel();
+		$panel = $(`<div class="we-legend-popover" role="dialog" aria-label="${__("Легенда")}"></div>`);
+		$panel.html(get_legend_html());
+		$panel.appendTo(document.body);
+
+		const rect = $btn[0].getBoundingClientRect();
+		const panelWidth = Math.min(360, window.innerWidth - 16);
+		let left = rect.right - panelWidth;
+		if (left < 8) {
+			left = 8;
+		}
+		let top = rect.bottom + 6;
+		const panelHeight = $panel.outerHeight() || 200;
+		if (top + panelHeight > window.innerHeight - 8) {
+			top = Math.max(8, rect.top - panelHeight - 6);
+		}
+		$panel.css({
+			position: "fixed",
+			top,
+			left,
+			width: panelWidth,
+			zIndex: 1050,
+		});
+		$btn.attr("aria-expanded", "true");
+		setTimeout(() => {
+			document.addEventListener("mousedown", onDocDown, true);
+			window.addEventListener("resize", closePanel);
+			window.addEventListener("scroll", closePanel, true);
+		}, 0);
+	};
+
+	$btn.on("click", (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if ($panel) {
+			closePanel();
+			return;
+		}
+		openPanel();
+	});
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
-    get_project_roles,
-    get_display_periods,
-    addViewOptionsControl,
-    render_legend,
+	get_project_roles,
+	get_display_periods,
+	mount_toolbar_controls,
 });

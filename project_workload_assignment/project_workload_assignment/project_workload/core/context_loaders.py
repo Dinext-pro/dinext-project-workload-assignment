@@ -25,10 +25,8 @@ if TYPE_CHECKING:
 
 
 def _debug_loader(event: str, details: dict) -> None:
-	"""Отладочный лог загрузки контекста PWR (виден в worker/error log)."""
-	message = "[PWR context_loaders] " + event + " | " + frappe.as_json(details, indent=None)
-	frappe.log(message)
-	frappe.logger("project_workload").info(message)
+	"""No-op: verbose context load tracing disabled."""
+	return
 
 
 def get_permitted_worker_users(candidate_users: list[str]) -> set[str]:

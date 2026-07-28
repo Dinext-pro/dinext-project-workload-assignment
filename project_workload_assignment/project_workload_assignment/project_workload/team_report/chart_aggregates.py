@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
-
 import frappe
 from frappe.utils import flt, getdate
 
@@ -29,59 +27,19 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 	resolve_wtype,
 )
 
+from project_workload_assignment.project_workload_assignment.project_workload.models import (
+	ChartSeries,
+	ChartMeta,
+	ChartResponse,
+	TeamChartFormDict,
+	ProjectChartFormDict,
+)
+
+
 # Backward-compatible aliases for tests and external imports.
 _normalize_worker_wtype_filter = normalize_worker_wtype_filter
 _filter_users_by_wtype = filter_users_by_wtype
 _resolve_wtype = resolve_wtype
-
-
-class ChartSeries(TypedDict, total=False):
-	capacity_hours: list[float]
-	utilization_plan_hours: list[float]
-	utilization_forecast_hours: list[float]
-	workload_forecast_hours_by_wtype: dict[str, list[float]]
-	project_plan_hours: list[float]
-	team_capacity_hours: list[float]
-	actual_hours_by_wtype: dict[str, list[float]]
-
-
-class ChartMeta(TypedDict, total=False):
-	worker_wtype_filter: str
-	utilization_loaded: bool
-	actual_loaded: bool
-	users_in_scope: int
-	project: str
-
-
-class ChartResponse(TypedDict, total=False):
-	periods: list[PWRPeriod]
-	series: ChartSeries
-	meta: ChartMeta
-	error: str
-	message: str
-
-
-class TeamChartFormDict(TypedDict, total=False):
-	user: str | None
-	project: str | None
-	project_portfolio: str | None
-	user_group: str | None
-	view_type: Literal["daily", "weekly", "monthly"]
-	period_range: Literal["quarter", "half_year", "year"]
-	period_anchor_date: str | None
-	worker_wtype: str | None
-	load_utilization: bool | str | int
-	load_actual: bool | str | int
-
-
-class ProjectChartFormDict(TypedDict, total=False):
-	project: str
-	view_type: Literal["daily", "weekly", "monthly"]
-	date_from: str | None
-	date_to: str | None
-	worker_wtype: str | None
-	load_actual: bool | str | int
-	load_utilization: bool | str | int
 
 
 def _parse_bool(value, default: bool = False) -> bool:
@@ -261,6 +219,56 @@ def _compute_workload_by_wtype(
 	return series
 
 
+def _resolve_plan_year_month(
+	year_value,
+	month_value,
+	fy_cache: dict | None = None,
+) -> tuple[int, int] | None:
+	"""pwea_year is Link→Fiscal Year (or legacy numeric year string)."""
+	from frappe.utils import cint
+
+	month = cint(month_value)
+	if month < 1 or month > 12:
+		return None
+
+	raw = year_value
+	if raw is None:
+		return None
+	if isinstance(raw, (int, float)):
+		return int(raw), month
+
+	s = str(raw).strip()
+	if not s:
+		return None
+	try:
+		return int(s), month
+	except (TypeError, ValueError):
+		pass
+
+	cache = fy_cache if fy_cache is not None else {}
+	if s not in cache:
+		cache[s] = frappe.db.get_value(
+			"Fiscal Year",
+			s,
+			["year_start_date", "year_end_date"],
+			as_dict=True,
+		)
+	fy = cache[s]
+	if not fy or not fy.get("year_start_date"):
+		return None
+
+	start = getdate(fy["year_start_date"])
+	end = getdate(fy.get("year_end_date") or fy["year_start_date"])
+	for y in sorted({start.year, end.year}):
+		try:
+			d = getdate(f"{y}-{month:02d}-01")
+		except Exception:
+			continue
+		if start <= d <= end:
+			return y, month
+	return start.year, month
+
+
 def _load_project_plan_series(
 	project: str,
 	periods: list[PWRPeriod],
@@ -287,9 +295,12 @@ def _load_project_plan_series(
 		.where(PWEA.pwea_plan > 0)
 	).run(as_dict=True)
 
+	fy_cache: dict = {}
 	for plan in plans:
-		year = int(plan["year"])
-		month = int(plan["month"])
+		resolved = _resolve_plan_year_month(plan["year"], plan["month"], fy_cache)
+		if not resolved:
+			continue
+		year, month = resolved
 		plan_hours = flt(plan["plan_hours"])
 		if plan_hours <= 0:
 			continue
@@ -487,12 +498,12 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		project_row = frappe.db.get_value(
 			"Project",
 			project,
-			["name", "project_name", "expected_end_date"],
+			["name", "project_name"],
 			as_dict=True,
 		)
-		if project_row and project_row.get("expected_end_date"):
-			if getdate(date_to) > getdate(project_row["expected_end_date"]):
-				date_to = str(project_row["expected_end_date"])
+		# Keep filter date_from/date_to as-is (same window as project tree table).
+		# Clamping to expected_end_date only in charts caused N_chart < N_table
+		# and bar/column pitch drift after period_range switches.
 
 		periods = generate_periods_for_project_window(date_from, date_to, view_type)
 		period_index = {p["key"]: i for i, p in enumerate(periods)}
