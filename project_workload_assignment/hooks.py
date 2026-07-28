@@ -101,9 +101,15 @@ doctype_js = {
 # CSS loads via entry.js frappe.require / app_include_css — not doctype_css
 # (doctype_css is not a Frappe hook).
 
+# kanban assign click → start_pwa_dialog (dialog.js also in app_include_js)
 doctype_list_js = {
 	"Task": [
 		"public/js/assignment/dialog.js",
+		"public/js/kanban.js",
+	],
+	"Issue": [
+		"public/js/assignment/dialog.js",
+		"public/js/kanban.js",
 	],
 }
 
