@@ -67,16 +67,14 @@ function validateForecastChange(frm, change) {
 
     const childrenSum = getChildForecastSum(rows, taskId, role, periodKey);
     if (childrenSum > 0 && value < childrenSum) {
-        return __(
-            "Значение не может быть меньше суммы трудозатрат дочерних задач ({0})",
+        return __("Value cannot be less than the sum of work efforts of child tasks ({0})",
             [childrenSum.toFixed(0)]
         );
     }
 
     const parentLimit = getParentForecastLimit(rows, taskId, role, periodKey);
     if (parentLimit !== null && value > parentLimit) {
-        return __(
-            "Значение трудозатрат не может превышать {0} (ограничение родительской задачи)",
+        return __("Work efforts value cannot exceed {0} (parent task limit)",
             [parentLimit.toFixed(0)]
         );
     }
@@ -128,7 +126,7 @@ export async function onSaveCells(frm, { changes }) {
         throw new Error(res.exc);
     }
 
-    frappe.show_alert(__("Данные успешно обновлены"), 5);
+    frappe.show_alert(__("Data updated successfully"), 5);
 
     project_workload_assignment.work_efforts?.clear_aggregated_tasks?.(frm);
     if (project_workload_assignment.work_efforts?.clear_assignments_cache) {

@@ -13,14 +13,14 @@ function perform_overload_check(frm) {
             view_options: frm.view_options
         },
         freeze: true,
-        freeze_message: __("Проверка загрузки и трудозатрат по проекту..."),
+        freeze_message: __("Checking project workload and work efforts..."),
         callback: function(r) {
             if (r.message && r.message.overloads) {
                 let overloads = r.message.overloads;
                 
                 if (overloads.length === 0) {
                     frappe.show_alert({
-                        message: __("Расхождений не обнаружено"),
+                        message: __("No discrepancies found"),
                         indicator: 'green'
                     }, 3);
                     return;
@@ -54,19 +54,19 @@ function perform_overload_check(frm) {
                         project_workload_assignment.work_efforts.show_overload_details_dialog(overloads, frm);
                     })
                     .catch(() => {
-                        frappe.msgprint(__("Не удалось загрузить данные для диалога перегрузки"));
+                        frappe.msgprint(__("Failed to load data for the overload dialog"));
                     });
             } else if (r.message && r.message.error) {
                 console.error("Server error:", r.message.error);
-                frappe.msgprint(__("Ошибка при проверке: {0}", [r.message.error]));
+                frappe.msgprint(__("Error checking: {0}", [r.message.error]));
             } else {
                 console.error("Unexpected response structure:", r);
-                frappe.msgprint(__("Неожиданный ответ от сервера"));
+                frappe.msgprint(__("Unexpected server response"));
             }
         },
         error: function(err) {
             console.error("AJAX Error:", err);
-            frappe.msgprint(__("Ошибка при проверке расхождений загрузки"));
+            frappe.msgprint(__("Error checking workload discrepancies"));
         }
     });
 }
@@ -145,7 +145,7 @@ function show_overload_details_dialog(overloads, frm) {
     let tableHeight = Math.min(500, Math.max(200, table_data.length * 30 + 40));
     
     let dialog = new frappe.ui.Dialog({
-        title: __("Расхождения прогноза трудозатрат и назначенной загрузки"),
+        title: __("Discrepancies between forecast work efforts and assigned workload"),
         size: "large",
         fields: [
             {
@@ -159,17 +159,17 @@ function show_overload_details_dialog(overloads, frm) {
                 options: `
                     <div class="text-muted" style="margin-top: 10px; padding: 8px 10px; background: var(--bg-light-gray); border-radius: 4px; font-size: 12px;">
                         <i class="fa fa-info-circle" style="margin-right: 5px;"></i>
-                        <strong>${__("Отметьте галочками задачи и роли для обновления прогноза")}</strong>
+                        <strong>${__("Check the tasks and roles to update the forecast")}</strong>
                     </div>
                 `
             }
         ],
-        primary_action_label: __("Обновить трудозатраты"),
+        primary_action_label: __("Update Work Efforts"),
         primary_action: function(values) {
             let checkedRows = dialog.datatable.rowmanager.getCheckedRows();
             
             if (!checkedRows || checkedRows.length === 0) {
-                frappe.msgprint(__("Выберите хотя бы одну задачу и роль"));
+                frappe.msgprint(__("Select at least one task and role"));
                 return;
             }
             
@@ -193,16 +193,16 @@ function show_overload_details_dialog(overloads, frm) {
             });
             
             if (selected_rows.length === 0) {
-                frappe.msgprint(__("Выберите хотя бы одну задачу и роль с перегрузкой"));
+                frappe.msgprint(__("Select at least one overloaded task and role"));
                 return;
             }
             
             frappe.confirm(
-                __("Обновить прогноз для {0} позиций?", [selected_rows.length]),
+                __("Update forecast for {0} positions?", [selected_rows.length]),
                 () => project_workload_assignment.work_efforts.update_forecast_from_assignments(frm, selected_rows, dialog)
             );
         },
-        secondary_action_label: __("Закрыть"),
+        secondary_action_label: __("Close"),
         secondary_action: function() {
             dialog.hide();
         }
@@ -215,7 +215,7 @@ function show_overload_details_dialog(overloads, frm) {
         
         let columns = [
             {
-                name: __("Задача"),
+                name: __("Task"),
                 id: "subject",
                 width: 200,
                 treeView: true,
@@ -223,7 +223,7 @@ function show_overload_details_dialog(overloads, frm) {
                 format: (value) => value || ''
             },
             {
-                name: __("Роль"),
+                name: __("Role"),
                 id: "role",
                 width: 120,
                 sortable: false,
@@ -235,7 +235,7 @@ function show_overload_details_dialog(overloads, frm) {
                 }
             },
             {
-                name: __("Трудозатраты"),
+                name: __("Work Efforts"),
                 id: "total_forecast",
                 width: 110,
                 sortable: false,
@@ -252,7 +252,7 @@ function show_overload_details_dialog(overloads, frm) {
                 }
             },
             {
-                name: __("Загрузка"),
+                name: __("Workload"),
                 id: "total_assigned",
                 width: 110,
                 sortable: false,
@@ -269,7 +269,7 @@ function show_overload_details_dialog(overloads, frm) {
                 }
             },
             {
-                name: __("Расхождение"),
+                name: __("Discrepancy"),
                 id: "overload",
                 width: 110,
                 sortable: false,
@@ -360,11 +360,11 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
             updates_json: updates_json
         },
         freeze: true,
-        freeze_message: __("Обновление прогнозных трудозатрат..."),
+        freeze_message: __("Updating forecast work efforts..."),
         callback: function(r) {
             if (r.message && r.message.success) {
                 frappe.show_alert({
-                    message: __("Прогнозные данные успешно обновлены для {0} позиций", [r.message.updated_count]),
+                    message: __("Forecast data successfully updated for {0} positions", [r.message.updated_count]),
                     indicator: 'green'
                 }, 5);
                 
@@ -381,14 +381,14 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
                     window.WorkEfforts.refresh(frm);
                 }
             } else if (r.message && r.message.error) {
-                frappe.msgprint(__("Ошибка при обновлении: {0}", [r.message.error]));
+                frappe.msgprint(__("Error updating: {0}", [r.message.error]));
             } else {
-                frappe.msgprint(__("Неизвестная ошибка при обновлении прогнозных данных"));
+                frappe.msgprint(__("Unknown error while updating forecast data"));
             }
         },
         error: function(err) {
             console.error("AJAX Error:", err);
-            frappe.msgprint(__("Ошибка при обновлении прогнозных данных"));
+            frappe.msgprint(__("Error updating forecast data"));
         }
     });
 }

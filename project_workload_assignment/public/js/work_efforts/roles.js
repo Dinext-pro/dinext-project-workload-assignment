@@ -73,7 +73,7 @@ export async function addRole(frm, taskId, role) {
         });
     }
 
-    frappe.show_alert({ message: __("Роль {0} добавлена", [role]), indicator: "green" }, 3);
+    frappe.show_alert({ message: __("Role {0} added", [role]), indicator: "green" }, 3);
     await postRoleMutationRefresh(frm);
 }
 
@@ -103,15 +103,15 @@ export async function deleteRole(frm, taskId, role) {
         );
     }
 
-    frappe.show_alert({ message: __("Роль удалена"), indicator: "green" }, 3);
+    frappe.show_alert({ message: __("Role deleted"), indicator: "green" }, 3);
     await postRoleMutationRefresh(frm);
 }
 
 export function confirmDeleteRole(frm, taskId, role) {
-    frappe.confirm(__("Вы действительно хотите удалить роль {0} для задачи {1}?", [role, taskId]), () => {
+    frappe.confirm(__("Are you sure you want to delete role {0} for task {1}?", [role, taskId]), () => {
         deleteRole(frm, taskId, role).catch((err) => {
             console.error(err);
-            frappe.msgprint(__("Ошибка при удалении роли"));
+            frappe.msgprint(__("Error deleting role"));
         });
     });
 }
@@ -160,7 +160,7 @@ function openAddRoleMenu(frm, taskId, anchorEl, options) {
             closeAddRoleMenu();
             addRole(frm, taskId, role).catch((err) => {
                 console.error(err);
-                frappe.msgprint(__("Ошибка при добавлении роли"));
+                frappe.msgprint(__("Error adding role"));
             });
         });
         li.appendChild(a);
@@ -197,9 +197,9 @@ function buildAddRoleControl(frm, taskId) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn btn-default btn-xs we-role-add";
-    btn.title = __("Добавить роль");
+    btn.title = __("Add Role");
     btn.setAttribute("aria-haspopup", "true");
-    btn.setAttribute("aria-label", __("Добавить роль"));
+    btn.setAttribute("aria-label", __("Add Role"));
     btn.textContent = "+";
 
     btn.addEventListener("mousedown", stopGridEvent);
@@ -222,16 +222,16 @@ function buildDeleteRoleControl(frm, row) {
     del.type = "button";
     del.className = "btn btn-default btn-xs we-role-delete";
     del.textContent = "×";
-    del.setAttribute("aria-label", __("Удалить роль"));
+    del.setAttribute("aria-label", __("Delete Role"));
     del.addEventListener("mousedown", stopGridEvent);
 
     if (blockedByFact) {
         del.disabled = true;
-        del.title = __("Нельзя удалить роль: по строке есть фактические трудозатраты");
+        del.title = __("Cannot delete role: the row has actual work efforts");
         return del;
     }
 
-    del.title = __("Удалить роль");
+    del.title = __("Delete Role");
     del.addEventListener("click", (e) => {
         e.stopPropagation();
         confirmDeleteRole(frm, row.task_id, row.role);

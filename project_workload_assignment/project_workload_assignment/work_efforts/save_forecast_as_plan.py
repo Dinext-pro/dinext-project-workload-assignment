@@ -29,7 +29,7 @@ def run_save_forecast_as_plan(form_dict: SaveForecastAsPlanFormInput) -> int:
         or not data.strip().startswith("[")
         or not data.strip().endswith("]")
     ):
-        frappe.throw("Неверный формат данных")
+        frappe.throw(frappe._("Invalid data format"))
         return 0
 
     data_list: list[SaveForecastAsPlanItem] = json.loads(data)

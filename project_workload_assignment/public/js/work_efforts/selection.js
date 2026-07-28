@@ -174,7 +174,7 @@ export function buildSavePlanPayload(frm) {
 }
 
 async function postSaveRefresh(frm) {
-    frappe.show_alert(__("Данные успешно сохранены как план"), 5);
+    frappe.show_alert(__("Data saved as plan successfully"), 5);
 
     if (project_workload_assignment.work_efforts?.clear_assignments_cache) {
         project_workload_assignment.work_efforts.clear_assignments_cache();
@@ -213,27 +213,27 @@ async function executeSaveForecastAsPlan(frm, data) {
 export function saveForecastAsPlan(frm) {
     if (!hasSavePlanSelection(frm)) {
         frappe.msgprint(
-            __("Выберите задачи и/или ячейки периода, для которых необходимо сохранить плановые данные.")
+            __("Select tasks and/or period cells for which plan data should be saved.")
         );
         return;
     }
 
     const data = buildSavePlanPayload(frm);
     if (!data.length) {
-        frappe.msgprint(__("Нет изменений для сохранения."));
+        frappe.msgprint(__("No changes to save."));
         return;
     }
 
     frappe.confirm(
-        __("Вы уверены, что хотите сохранить выбранные прогнозные / фактические данные как плановые (отмеченные строки и выделенные ячейки)?"),
+        __("Are you sure you want to save the selected forecast / actual data as plan (checked rows and selected cells)?"),
         () => {
             executeSaveForecastAsPlan(frm, data).catch((err) => {
-                frappe.msgprint(__("Ошибка при сохранении плана"));
+                frappe.msgprint(__("Error saving plan"));
                 console.error(err);
             });
         },
         () => {
-            frappe.show_alert(__("Операция отменена"), 3);
+            frappe.show_alert(__("Operation cancelled"), 3);
         }
     );
 }

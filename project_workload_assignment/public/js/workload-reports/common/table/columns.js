@@ -101,7 +101,7 @@ const _periodTooltipValue = (period, dateKey, viewType, showFact) => (params) =>
 export const getLabelColumn = () => ({
 	field: "label",
 	colId: "label",
-	headerName: __("Участник"),
+	headerName: __("Member"),
 	tree: true,
 	minWidth: 200,
 	pinned: "left",
