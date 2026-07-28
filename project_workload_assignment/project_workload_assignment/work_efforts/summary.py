@@ -156,7 +156,7 @@ def build_we_summary_rows(
 	row: WeRow = {
 		"id": WE_V2_SUMMARY_ROW_ID,
 		"task_id": WE_V2_SUMMARY_ROW_ID,
-		"task_subject": frappe._("Итого"),
+		"task_subject": frappe._("Total"),
 		"role": None,
 		"parent_task_id": None,
 		"merge_group_id": WE_V2_SUMMARY_ROW_ID,

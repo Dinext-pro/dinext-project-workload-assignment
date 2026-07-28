@@ -113,14 +113,12 @@ def _validate_change(rows: list, change: WeSaveForecastChange) -> str | None:
 
     children_sum = _get_child_forecast_sum(rows, task_id, role, period_key)
     if children_sum > 0 and value < children_sum:
-        return frappe._(
-            "Значение не может быть меньше суммы трудозатрат дочерних задач ({0})"
+        return frappe._("Value cannot be less than the sum of work efforts of child tasks ({0})"
         ).format(children_sum)
 
     parent_limit = _get_parent_forecast_limit(rows, task_id, role, period_key)
     if parent_limit is not None and value > parent_limit:
-        return frappe._(
-            "Значение трудозатрат не может превышать {0} (ограничение родительской задачи)"
+        return frappe._("Work efforts value cannot exceed {0} (parent task limit)"
         ).format(parent_limit)
 
     return None

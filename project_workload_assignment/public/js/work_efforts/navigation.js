@@ -26,7 +26,7 @@ export function onCellDoubleClicked(frm, params) {
 
     const utps = resolveUtps(row, periodKey);
     if (!utps.length) {
-        frappe.show_alert(__("Нет связанных User Timesheet Position"), 3);
+        frappe.show_alert(__("No related User Timesheet Position"), 3);
         return;
     }
 

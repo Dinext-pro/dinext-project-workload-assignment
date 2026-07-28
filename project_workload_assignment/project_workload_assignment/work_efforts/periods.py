@@ -36,7 +36,7 @@ def get_display_periods(
 	view_mode: ViewMode = VIEW_MODE_FORECAST_AND_FACT,
 ) -> list[WeDisplayPeriod]:
 	if period_type != "month":
-		frappe.throw(f"Unsupported period_type: {period_type}")
+		frappe.throw(frappe._("Unsupported period_type: {0}").format(period_type))
 
 	doc = frappe.get_cached_doc("Project", project)
 	month_start = getdate(get_first_day(frappe.utils.today()))

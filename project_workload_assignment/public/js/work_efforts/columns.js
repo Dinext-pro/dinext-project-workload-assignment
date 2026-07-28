@@ -207,7 +207,7 @@ function buildPeriodColumns(frm, periods) {
 
     return (periods || []).map((period) => {
         const key = period.key;
-        const actualLabel = period.is_past ? __("Факт") : __("Прогноз");
+        const actualLabel = period.is_past ? __("Actual") : __("Forecast");
 
         return {
             colId: `period_${key}`,
@@ -218,7 +218,7 @@ function buildPeriodColumns(frm, periods) {
                 buildPeriodLeaf({
                     field: `plan_${key}`,
                     colId: `plan_${key}`,
-                    headerName: __("План"),
+                    headerName: __("Plan"),
                     width: leafWidth,
                     hide: hidePlan,
                     valueFormatter: formatNumber,
@@ -261,7 +261,7 @@ function buildTotalColumn(frm, periods) {
 
     return {
         colId: "total",
-        headerName: __("Итого"),
+        headerName: __("Total"),
         headerClass: HEADER_CENTER,
         marryChildren: true,
         pinned: "right",
@@ -269,7 +269,7 @@ function buildTotalColumn(frm, periods) {
             buildPeriodLeaf({
                 field: "total_plan",
                 colId: "total_plan",
-                headerName: __("План"),
+                headerName: __("Plan"),
                 width: leafWidth,
                 hide: hidePlan,
                 pinned: "right",
@@ -279,7 +279,7 @@ function buildTotalColumn(frm, periods) {
             buildPeriodLeaf({
                 field: "total_actual",
                 colId: "total_actual",
-                headerName: __("Прогноз"),
+                headerName: __("Forecast"),
                 width: leafWidth,
                 pinned: "right",
                 valueGetter: totalActualGetter(periods),
@@ -320,7 +320,7 @@ export function getColumns(frm, periods) {
         }),
         {
             field: "task_subject",
-            headerName: __("Задачи"),
+            headerName: __("Tasks"),
             headerClass: HEADER_CENTER,
             flex: 1,
             minWidth: 250,
@@ -331,7 +331,7 @@ export function getColumns(frm, periods) {
         },
         {
             field: "role",
-            headerName: __("Роли"),
+            headerName: __("Roles"),
             headerClass: HEADER_CENTER,
             width: 220,
             minWidth: 180,
@@ -345,7 +345,7 @@ export function getColumns(frm, periods) {
         withCenterAlign({
             field: "assignments",
             colId: "assignments",
-            headerName: __("Назначения"),
+            headerName: __("Assignments"),
             width: 95,
             minWidth: 80,
             maxWidth: 120,

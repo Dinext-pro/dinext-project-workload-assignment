@@ -47,7 +47,7 @@ function resolveTaskSubject(frm, row) {
 
 function openPwaDialog(frm, row) {
     if (typeof start_pwa_dialog !== "function") {
-        frappe.msgprint(__("Функция назначения нагрузки недоступна"));
+        frappe.msgprint(__("Workload assignment function is unavailable"));
         return;
     }
 
@@ -65,7 +65,7 @@ function openPwaDialog(frm, row) {
         await ensureAssignmentsLoaded(frm);
         we?.updateTable?.(frm, "month", "hours");
         refreshAssignmentsCells(frm);
-        frappe.show_alert({ message: __("Назначения обновлены"), indicator: "green" }, 3);
+        frappe.show_alert({ message: __("Assignments updated"), indicator: "green" }, 3);
     }, task);
 }
 

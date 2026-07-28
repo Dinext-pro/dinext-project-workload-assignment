@@ -39,10 +39,10 @@ function ensure_aggregated_tasks(frm) {
                 view_options: frm.view_options || "Прогноз и факт",
             },
             freeze: true,
-            freeze_message: __("Загрузка данных о трудозатратах..."),
+            freeze_message: __("Loading work efforts data..."),
             callback: function (r) {
                 if (!r.message) {
-                    frappe.msgprint(__("Ошибка при загрузке данных о трудозатратах"));
+                    frappe.msgprint(__("Error loading work efforts data"));
                     reject(new Error("empty consolidated response"));
                     return;
                 }
@@ -57,7 +57,7 @@ function ensure_aggregated_tasks(frm) {
             },
             error: function (err) {
                 console.error("Ошибка при загрузке данных:", err);
-                frappe.msgprint(__("Ошибка при загрузке данных о трудозатратах"));
+                frappe.msgprint(__("Error loading work efforts data"));
                 reject(err);
             },
         });

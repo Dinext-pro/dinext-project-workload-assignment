@@ -83,10 +83,10 @@ export function buildTreeData(flatRows) {
 }
 
 function normalizeViewMode(viewOptions) {
-    if (viewOptions === __("Только прогноз")) {
+    if (viewOptions === __("Forecast Only")) {
         return "forecast_only";
     }
-    if (viewOptions === __("Только факт")) {
+    if (viewOptions === __("Actual Only")) {
         return "fact_only";
     }
     return "forecast_and_fact";
@@ -109,8 +109,8 @@ export async function loadGridData(frm, periodType) {
         const message = await frappe.xcall("project_workload_assignment.api.get_work_efforts_grid", {
             project: frm.doc.name,
             period_type,
-            view_options: frm.view_options || __("Прогноз и факт"),
-            view_mode: normalizeViewMode(frm.view_options || __("Прогноз и факт")),
+            view_options: frm.view_options || __("Forecast and Actual"),
+            view_mode: normalizeViewMode(frm.view_options || __("Forecast and Actual")),
             include_plan: frm.hide_plan ? 0 : 1,
         });
         if (!message) {
@@ -119,7 +119,7 @@ export async function loadGridData(frm, periodType) {
         return applyGridResponse(frm, message);
     } catch (err) {
         console.error("[WorkEfforts] grid load failed", err);
-        frappe.msgprint(__("Ошибка загрузки данных трудозатрат"));
+        frappe.msgprint(__("Error loading work efforts data"));
         throw err;
     }
 }

@@ -175,18 +175,18 @@ export function refreshCheckHighlight(frm) {
 /** Missing plan check (highlight + expand parents in DinextTable). */
 export async function runMissingPlanCheck(frm) {
     if (!frm.we?.rows?.length) {
-        frappe.msgprint(__("Сначала дождитесь загрузки данных таблицы трудозатрат"));
+        frappe.msgprint(__("Wait for the work efforts table data to load first"));
         return;
     }
 
     if (!frm.we?.table) {
-        frappe.msgprint(__("Таблица трудозатрат еще не инициализирована"));
+        frappe.msgprint(__("Work efforts table is not initialized yet"));
         return;
     }
 
     if (frm.hide_plan) {
         frm.hide_plan = false;
-        $("#toggle_plan").text(__("Скрыть план"));
+        $("#toggle_plan").text(__("Hide Plan"));
         window.WorkEfforts?.onTogglePlanOrDelta?.(frm);
     }
 
@@ -205,8 +205,7 @@ export async function runMissingPlanCheck(frm) {
     if (problemsCount > 0) {
         frappe.show_alert(
             {
-                message: __(
-                    "Найдено {0} задач с загрузкой в % от трудоемкости без плановых трудозатрат",
+                message: __("Found {0} tasks with workload as % of effort without planned work efforts",
                     [problemsCount]
                 ),
                 indicator: "orange",
@@ -216,7 +215,7 @@ export async function runMissingPlanCheck(frm) {
     } else {
         frappe.show_alert(
             {
-                message: __("Не найдено задач с загрузкой в % от трудоемкости без плановых трудозатрат"),
+                message: __("No tasks found with workload as % of effort without planned work efforts"),
                 indicator: "green",
             },
             3
