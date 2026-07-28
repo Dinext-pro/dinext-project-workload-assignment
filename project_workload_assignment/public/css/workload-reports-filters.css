@@ -1,0 +1,115 @@
+.wr-filters-row {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+	width: 100%;
+	padding: 8px 0;
+}
+
+.wr-filters-flow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.wr-filters-actions {
+	display: flex;
+	flex-shrink: 0;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+/* Equal square icon buttons (match refresh visual size). */
+.wr-filters-actions .wr-filters-icon-btn {
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	min-width: 28px;
+	height: 28px;
+	padding: 0;
+	margin: 0;
+	font-size: 16px;
+	line-height: 1;
+	font-weight: 600;
+}
+
+.wr-filters-actions .wr-chart-visibility-toggle__icon {
+	display: inline-block;
+	line-height: 1;
+	font-size: 11px;
+	transform: rotate(0deg);
+	transition: transform 0.28s ease;
+	will-change: transform;
+}
+
+.wr-filters-actions .wr-chart-visibility-toggle--collapsed .wr-chart-visibility-toggle__icon {
+	transform: rotate(-90deg);
+}
+
+.wr-filters-actions .wr-filters-clear-btn {
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.wr-filter-field {
+	flex: 0 0 auto;
+}
+
+.wr-filter-form-link {
+	min-width: 160px;
+}
+
+.wr-filter-select select {
+	width: auto;
+	min-width: 110px;
+	max-width: 130px;
+}
+
+/* Daily / Weekly / Monthly — wrap was capped at 130px; Russian labels need more. */
+.wr-filter-select[data-fieldname="view_type"] {
+	min-width: 138px;
+	max-width: none;
+}
+
+.wr-filter-select[data-fieldname="view_type"] select {
+	min-width: 138px;
+	max-width: none;
+	width: auto;
+}
+
+.wr-filter-field .help-box,
+.wr-filter-field .clearfix,
+.wr-filter-field .control-label {
+	display: none;
+}
+
+.wr-filter-field .frappe-control,
+.wr-filter-field .form-group,
+.wr-filter-field .control-input-wrapper,
+.wr-filter-field .control-input {
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+.wr-filter-checkbox label {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin: 0;
+	white-space: nowrap;
+	font-weight: normal;
+}
+
+.wr-filter-period-nav {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}

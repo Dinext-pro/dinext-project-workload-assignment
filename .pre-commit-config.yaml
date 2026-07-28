@@ -41,7 +41,6 @@ repos:
                 project_workload_assignment/public/dist/.*|
                 .*node_modules.*|
                 .*boilerplate.*|
-                project_workload_assignment/templates/includes/.*|
                 project_workload_assignment/public/js/lib/.*
             )$
 
@@ -59,7 +58,6 @@ repos:
                 cypress/.*|
                 .*node_modules.*|
                 .*boilerplate.*|
-                project_workload_assignment/templates/includes/.*|
                 project_workload_assignment/public/js/lib/.*
             )$
 

@@ -6,7 +6,7 @@ function perform_overload_check(frm) {
     let periods = project_workload_assignment.work_efforts.get_display_periods(frm, "month");
     
     frappe.call({
-        method: "project_workload_assignment.project_workload_api.check_workload_overload",
+        method: "project_workload_assignment.api.check_workload_overload",
         args: {
             project: frm.doc.name,
             periods: periods,
@@ -48,7 +48,14 @@ function perform_overload_check(frm) {
                     }
                 });
                 
-                project_workload_assignment.work_efforts.show_overload_details_dialog(overloads, frm);
+                project_workload_assignment.work_efforts
+                    .ensure_aggregated_tasks(frm)
+                    .then(() => {
+                        project_workload_assignment.work_efforts.show_overload_details_dialog(overloads, frm);
+                    })
+                    .catch(() => {
+                        frappe.msgprint(__("Не удалось загрузить данные для диалога перегрузки"));
+                    });
             } else if (r.message && r.message.error) {
                 console.error("Server error:", r.message.error);
                 frappe.msgprint(__("Ошибка при проверке: {0}", [r.message.error]));
@@ -347,7 +354,7 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
     let updates_json = JSON.stringify(updates);
     
     frappe.call({
-        method: "project_workload_assignment.project_workload_api.update_forecast_from_assignments",
+        method: "project_workload_assignment.api.update_forecast_from_assignments",
         args: {
             project: frm.doc.name,
             updates_json: updates_json
@@ -364,13 +371,15 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
                 if (dialog) dialog.hide();
                 
                 project_workload_assignment.work_efforts.clear_assignments_cache();
-                project_workload_assignment.work_efforts.clearTaskIndexCacheFor(frm.aggregatedTasks);
+                project_workload_assignment.work_efforts.clear_aggregated_tasks?.(frm);
                 frm.last_loaded_time = null;
                 frm.last_loaded_project = null;
                 frm._overloadMap = {};
                 frm._missingPlanMap = {};
-                
-                project_workload_assignment.work_efforts.load_work_efforts_data(frm, "month", "hours", true);
+
+                if (window.WorkEfforts?.refresh) {
+                    window.WorkEfforts.refresh(frm);
+                }
             } else if (r.message && r.message.error) {
                 frappe.msgprint(__("Ошибка при обновлении: {0}", [r.message.error]));
             } else {

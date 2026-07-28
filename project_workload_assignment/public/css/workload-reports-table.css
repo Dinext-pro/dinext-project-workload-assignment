@@ -1,0 +1,365 @@
+.workload-reports-root {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+	min-height: 0;
+}
+
+/* Fullscreen shell = root: filters + table; charts out */
+.workload-reports-root:fullscreen,
+.workload-reports-root.workload-reports-root--fullscreen {
+	height: 100%;
+	box-sizing: border-box;
+	padding: 8px;
+	background-color: var(--card-bg, var(--bg-color, #fff));
+}
+
+.workload-reports-root:fullscreen .workload-reports-charts,
+.workload-reports-root.workload-reports-root--fullscreen .workload-reports-charts {
+	display: none !important;
+}
+
+.workload-reports-root:fullscreen .workload-reports-table,
+.workload-reports-root.workload-reports-root--fullscreen .workload-reports-table {
+	flex: 1 1 auto;
+	min-height: 0;
+	height: auto;
+}
+
+.workload-reports-table {
+	--wr-table-min-height: 420px;
+	--wr-cell: 48px;
+	--wr-avatar-size: 26px;
+	--wr-fill-normal: linear-gradient(to top, #7bc67b, #66b266);
+	--wr-fill-warning: linear-gradient(to top, #fcd34d, #fbbf24);
+	--wr-fill-overload: linear-gradient(to top, #e68a8a, #d67979);
+	--wr-marker-normal: #66b266;
+	--wr-marker-warning: #fbbf24;
+	--wr-marker-overload: #d67979;
+	--wr-fill-actual: rgba(33, 150, 243, 0.5);
+	--wr-weekend-bg: #60bcff20;
+	--wr-absence-bg: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+	--wr-absence-fg: #2e7d32;
+	--wr-current-header-bg: rgba(33, 150, 243, 0.14);
+
+	width: 100%;
+	height: var(--wr-table-min-height);
+	min-height: var(--wr-table-min-height);
+	flex: 1 1 auto;
+	min-width: 0;
+	position: relative;
+	box-sizing: border-box;
+}
+
+[data-theme="dark"] .workload-reports-table {
+	--wr-weekend-bg: rgba(96, 188, 255, 0.18);
+	--wr-absence-bg: linear-gradient(135deg, rgba(46, 125, 50, 0.35), rgba(46, 125, 50, 0.2));
+	--wr-absence-fg: #a5d6a7;
+	--wr-current-header-bg: rgba(33, 150, 243, 0.22);
+	--wr-fill-actual: rgba(33, 150, 243, 0.4);
+}
+
+.workload-reports-table > .dinext-table {
+	height: 100%;
+	width: 100%;
+}
+
+.workload-reports-project-tab.workload-reports-root {
+	min-height: 480px;
+	width: 100%;
+	max-width: none !important;
+	box-sizing: border-box;
+}
+
+/* Data field chrome adds input-max-width (desk → 50%). Kill it for WR mount. */
+.frappe-control.workload-reports-project-tab.input-max-width,
+.frappe-control.workload-reports-project-tab {
+	max-width: none !important;
+	width: 100% !important;
+	padding-right: 0 !important;
+}
+
+.workload-reports-project-tab .workload-reports-table {
+	height: var(--wr-table-min-height);
+	min-height: var(--wr-table-min-height);
+	width: 100%;
+}
+
+/* Headers */
+.workload-reports-table .ag-header-cell,
+.workload-reports-table .ag-header-group-cell {
+	padding: 0 2px !important;
+}
+
+.workload-reports-table .ag-header-cell-text,
+.workload-reports-table .ag-header-group-text {
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.15;
+	text-align: center;
+}
+
+.workload-reports-table .ag-header-group-cell .ag-header-group-text {
+	font-size: 12px;
+}
+
+.workload-reports-table .ag-header-cell-label,
+.workload-reports-table .ag-header-group-cell-label {
+	justify-content: center;
+	width: 100%;
+}
+
+.workload-reports-table .ag-header-cell.wr-header--current,
+.workload-reports-table .ag-header-group-cell.wr-header--current {
+	background: var(--wr-current-header-bg);
+}
+
+/*
+ * Period cells: fill on `.ag-cell`.
+ * AG keeps transparent top/bottom borders for focus layout + fractional DPR
+ * leaves hairlines between abs cells — kill borders and overlap 1px.
+ */
+.workload-reports-table .ag-cell.wr-period-cell {
+	padding: 0 !important;
+	overflow: hidden;
+	border: 0 !important;
+	border-width: 0 !important;
+	background-origin: border-box;
+	background-clip: border-box;
+	box-sizing: border-box !important;
+	width: calc(var(--wr-cell) + 1px) !important;
+	height: calc(var(--wr-cell) + 1px) !important;
+}
+
+.workload-reports-table .ag-cell.wr-cell--weekend {
+	background: var(--wr-weekend-bg);
+}
+
+.workload-reports-table .ag-cell.wr-cell--absence {
+	background: var(--wr-absence-bg);
+	color: var(--wr-absence-fg);
+	font-weight: 600;
+	font-size: 9px;
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--normal {
+	background-image: var(--wr-fill-normal);
+	background-size: 100% var(--wr-fill-h, 0%);
+	background-position: left bottom;
+	background-repeat: no-repeat;
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--warning {
+	background-image: var(--wr-fill-warning);
+	background-size: 100% var(--wr-fill-h, 0%);
+	background-position: left bottom;
+	background-repeat: no-repeat;
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--overload {
+	background-image: var(--wr-fill-overload);
+	background-size: 100% 100%;
+	background-position: left bottom;
+	background-repeat: no-repeat;
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-below.wr-load--normal,
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-below.wr-load--warning,
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-below.wr-load--overload {
+	background-image:
+		linear-gradient(var(--wr-fill-actual), var(--wr-fill-actual)),
+		var(--wr-fill-plan, var(--wr-fill-normal));
+	background-size: 100% var(--wr-fact-h, 0%), 100% var(--wr-fill-h, 0%);
+	background-position: left bottom, left bottom;
+	background-repeat: no-repeat, no-repeat;
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-below.wr-load--normal {
+	--wr-fill-plan: var(--wr-fill-normal);
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-below.wr-load--warning {
+	--wr-fill-plan: var(--wr-fill-warning);
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-below.wr-load--overload {
+	--wr-fill-plan: var(--wr-fill-overload);
+	background-size: 100% var(--wr-fact-h, 0%), 100% 100%;
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above {
+	background-image: linear-gradient(var(--wr-fill-actual), var(--wr-fill-actual));
+	background-size: 100% var(--wr-fact-h, 0%);
+	background-position: left bottom;
+	background-repeat: no-repeat;
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: var(--wr-fill-h, 0%);
+	height: 2px;
+	z-index: 2;
+	pointer-events: none;
+	background: var(--wr-marker-normal);
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above.wr-load--warning::after {
+	background: var(--wr-marker-warning);
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above.wr-load--overload::after {
+	background: var(--wr-marker-overload);
+}
+
+.workload-reports-table .wr-cell-content {
+	position: relative;
+	z-index: 4;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 1px;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	line-height: 1;
+}
+
+.workload-reports-table .wr-cell-content__hours {
+	font-weight: 600;
+	font-size: 10px;
+	color: var(--text-color);
+}
+
+.workload-reports-table .wr-cell-content__pct {
+	font-weight: 600;
+	font-size: 7px;
+	color: var(--text-color);
+}
+
+.workload-reports-table .wr-cell-content__hours--zero,
+.workload-reports-table .wr-cell-content__pct--zero {
+	color: var(--gray-500, #6c7680);
+}
+
+/* Participant column */
+.workload-reports-table .wr-participant {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	width: 100%;
+	height: 100%;
+	padding: 0 4px;
+	box-sizing: border-box;
+}
+
+.workload-reports-table .wr-participant__avatar-wrap {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--wr-avatar-size);
+	height: var(--wr-avatar-size);
+	flex-shrink: 0;
+}
+
+.workload-reports-table .wr-participant__avatar {
+	width: var(--wr-avatar-size);
+	height: var(--wr-avatar-size);
+	border-radius: 50%;
+	object-fit: cover;
+	border: 1px solid var(--border-color);
+}
+
+.workload-reports-table .wr-participant__avatar-placeholder {
+	display: none;
+	width: calc(var(--wr-avatar-size) - 4px);
+	height: calc(var(--wr-avatar-size) - 4px);
+	border-radius: 50%;
+	background: var(--blue-50, #e3f2fd);
+	align-items: center;
+	justify-content: center;
+	font-size: 9px;
+	color: var(--blue-500, #2196f3);
+	border: 1px solid var(--blue-100, #bbdefb);
+	flex-shrink: 0;
+}
+
+.workload-reports-table .wr-participant__avatar-wrap > .wr-participant__avatar-placeholder:only-child,
+.workload-reports-table .wr-participant__avatar-placeholder--visible {
+	display: flex;
+}
+
+.workload-reports-table .wr-participant__info {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 0;
+	flex: 1;
+	line-height: 1.1;
+}
+
+.workload-reports-table .wr-participant__name {
+	font-weight: 500;
+	font-size: 12px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-color);
+}
+
+.workload-reports-table .wr-participant__email {
+	font-size: 10px;
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.workload-reports-table .wr-participant__label {
+	font-size: 11px;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-color);
+}
+
+.workload-reports-table .wr-participant--task .wr-participant__label {
+	font-weight: 400;
+}
+
+.workload-reports-table .wr-participant--placeholder .wr-participant__label {
+	color: var(--text-muted);
+}
+
+/* dblclick targets: project (label+period), absence (period) */
+.workload-reports-table .ag-cell.wr-nav-pointer {
+	cursor: pointer;
+}
+
+/* Form DocType «Projects Workload Report» — host field full width */
+.frappe-control.workload-reports-form-host.input-max-width,
+.frappe-control.workload-reports-form-host,
+.workload-reports-form-host.workload-reports-root {
+	max-width: none !important;
+	width: 100% !important;
+	padding-right: 0 !important;
+	box-sizing: border-box;
+}
+
+/* Form: filters inside WR root (same FS shell as page/project) */
+.workload-reports-form-host.workload-reports-root > .workload-reports-filters {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.workload-reports-form-host.workload-reports-root > .workload-reports-filters .wr-filters-row {
+	padding-top: 4px;
+	padding-bottom: 4px;
+}

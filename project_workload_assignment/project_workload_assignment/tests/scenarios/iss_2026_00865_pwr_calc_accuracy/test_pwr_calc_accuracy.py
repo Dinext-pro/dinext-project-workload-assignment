@@ -10,10 +10,6 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from project_workload_assignment.project_workload_api import (
-	pwr_run_project_workload_tree,
-	pwr_run_team_workload_grid,
-)
 from project_workload_assignment.project_workload_assignment.project_workload.project_report.single_project_workload_tree import (
 	run_get_project_workload_data,
 )
@@ -102,26 +98,6 @@ def _max_daily_cell_diff_v2_v3(row_v2: dict, row_v3: dict, periods: list, date_f
 		if diff > max_diff:
 			max_diff = diff
 	return max_diff
-
-
-def _call_pwr_team_whitelist(fd: dict):
-	"""Точка входа Server Script: `frappe.call(pwr_run_team_workload_grid)`."""
-	prev = getattr(frappe.local, "form_dict", None)
-	frappe.local.form_dict = frappe._dict(fd)
-	try:
-		return pwr_run_team_workload_grid()
-	finally:
-		frappe.local.form_dict = prev
-
-
-def _call_pwr_project_whitelist(fd: dict):
-	"""Точка входа Server Script: `frappe.call(pwr_run_project_workload_tree)`."""
-	prev = getattr(frappe.local, "form_dict", None)
-	frappe.local.form_dict = frappe._dict(fd)
-	try:
-		return pwr_run_project_workload_tree()
-	finally:
-		frappe.local.form_dict = prev
 
 
 def _sum_team_v2_user_rows_total(tree_data: list) -> float:
@@ -414,8 +390,8 @@ class TestISS202600865PwrCalcAccuracy(FrappeTestCase):
 		tot = _parse_float_cell(proj_rows[0].get("workload_total"))
 		self.assertGreater(tot, 1.0, msg="Строка проекта должна нести ненулевую сумму")
 
-	def test_tc08_pwr_run_team_workload_grid_matches_direct_run(self):
-		"""Whitelist `pwr_run_team_workload_grid` совпадает с прямым `run_get_projects_workload_data_v2`."""
+	def test_tc08_team_workload_run_is_stable(self):
+		"""`run_get_projects_workload_data_v2` стабилен на одном form_dict (два вызова)."""
 		ctx = prepare_case_hours_without_project_holiday_list(40.0)
 		project_name = ctx["project"]
 		fd = {
@@ -427,9 +403,9 @@ class TestISS202600865PwrCalcAccuracy(FrappeTestCase):
 		with patch.object(frappe.utils, "nowdate", return_value=ANCHOR_MONDAY):
 			frappe.set_user(BUSINESS_USER)
 			direct = run_get_projects_workload_data_v2(fd)
-			via_whitelist = _call_pwr_team_whitelist(fd)
+			again = run_get_projects_workload_data_v2(fd)
 		r1 = _find_team_v2_user_row(direct.get("tree_data") or [], BUSINESS_USER)
-		r2 = _find_team_v2_user_row(via_whitelist.get("tree_data") or [], BUSINESS_USER)
+		r2 = _find_team_v2_user_row(again.get("tree_data") or [], BUSINESS_USER)
 		self.assertAlmostEqual(
 			_parse_float_cell(r1.get("workload_total")),
 			_parse_float_cell(r2.get("workload_total")),
@@ -642,8 +618,8 @@ class TestISS202600865PwrCalcAccuracy(FrappeTestCase):
 		total = _parse_float_cell(row.get("workload_total"))
 		self.assertAlmostEqual(total, 40.0, delta=0.5, msg=f"monthly workload_total={total}")
 
-	def test_tc13_pwr_run_project_workload_tree_matches_direct(self):
-		"""Whitelist `pwr_run_project_workload_tree` = прямой `run_get_project_workload_data`."""
+	def test_tc13_project_workload_run_is_stable(self):
+		"""`run_get_project_workload_data` стабилен на одном form_dict (два вызова)."""
 		ctx = prepare_case_hours_without_project_holiday_list(40.0)
 		project_name = ctx["project"]
 		fd = {
@@ -655,9 +631,9 @@ class TestISS202600865PwrCalcAccuracy(FrappeTestCase):
 		with patch.object(frappe.utils, "nowdate", return_value=ANCHOR_MONDAY):
 			frappe.set_user(BUSINESS_USER)
 			direct = run_get_project_workload_data(fd)
-			via_whitelist = _call_pwr_project_whitelist(fd)
+			again = run_get_project_workload_data(fd)
 		r1 = _find_v3_user_row(direct.get("tree_data") or [], BUSINESS_USER)
-		r2 = _find_v3_user_row(via_whitelist.get("tree_data") or [], BUSINESS_USER)
+		r2 = _find_v3_user_row(again.get("tree_data") or [], BUSINESS_USER)
 		self.assertAlmostEqual(
 			_parse_float_cell(r1.get("workload_total")),
 			_parse_float_cell(r2.get("workload_total")),

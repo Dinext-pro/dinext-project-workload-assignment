@@ -1,30 +1,4 @@
-function applyWEChartStyle() {
-    var styles = `
-        .we-chart-wrapper {
-            & .we-chart-container {
-                width:100%;
-                max-height:360px;
-            }
-            & .work-efforts-controls {
-                position: absolute;
-                right: 0px;
-                width: fit-content;
-            }
-        }
-        :root {
-            --charts-bg-block: #e0363622;
-            --charts-bg-warn: #edba1322;
-            --charts-bg-ok: #59ba8b22;
-            --charts-stroke: rgba(0,0,0,0);
-        }
-`;
-
-    var styleSheet = document.createElement("style");
-    styleSheet.textContent = styles;
-    document.head.appendChild(styleSheet);
-}
-
-applyWEChartStyle();
+// Chart layout / --charts-* tokens: work-efforts.css (loaded via work_efforts/entry.js)
 
 frappe.ui.form.on("Project", {
     refresh: function(frm) {
@@ -75,14 +49,49 @@ function add_role_filter_control(frm, controls) {
    cumulative_plan, cumulative_actual_forecast, periods, plan_by_period
 */
 /**
+ * Task map for chart: prefer we.rows, fallback aggregatedTasks.
+ * @param {WorkEffortsForm} frm
+ * @returns {Record<string, {value: string, parent_task: string|null, role_data: object[]}>}
+ */
+function get_chart_task_map(frm) {
+    const fromWe = {};
+    const flat = [];
+    project_workload_assignment.work_efforts.flattenWeRows?.(frm.we?.rows, flat);
+    if (flat.length) {
+        flat.forEach((row) => {
+            const taskId = row.task_id;
+            if (!taskId) return;
+            if (!fromWe[taskId]) {
+                fromWe[taskId] = {
+                    value: taskId,
+                    parent_task: row.parent_task_id || null,
+                    role_data: [],
+                };
+            }
+            if (!fromWe[taskId].role_data.some((r) => (r.role || "") === (row.role || ""))) {
+                fromWe[taskId].role_data.push(row);
+            }
+        });
+        return fromWe;
+    }
+    return frm.aggregatedTasks || {};
+}
+
+/**
  * @param {WorkEffortsForm} frm
  * @param {string} selectedRole
  * @returns {object}
  */
 function build_chart_data(frm, selectedRole) {
-    let aggregatedTasks = frm.aggregatedTasks || {};
-    let periods = project_workload_assignment.work_efforts.get_display_periods(frm, "month");
+    let aggregatedTasks = get_chart_task_map(frm);
+    let periods =
+        (frm.we?.periods?.length && frm.we.periods) ||
+        project_workload_assignment.work_efforts.get_display_periods(frm, "month");
     let labels = periods.map(p => `${p.year}-${String(p.month).padStart(2,'0')}`);
+
+    function periodField(prefix, period) {
+        return `${prefix}_${period.key || `${period.year}_${period.month}`}`;
+    }
 
     // Вспомогательная рекурсивная функция: возвращает { plan, actual } для заданной задачи и роли за период
     function sumForTaskByPeriod(taskId, period, roleFilter, planRoles, actualRoles) {
@@ -103,7 +112,7 @@ function build_chart_data(frm, selectedRole) {
                 const actualIndex = actualRoles.indexOf(r.role);
                 
                 if (planIndex > -1) {
-                    let curr_plan = parseFloat(r[`plan_${period.year}_${period.month}`]) || 0;
+                    let curr_plan = parseFloat(r[periodField("plan", period)]) || 0;
                     
                     if ( curr_plan ) {
                         plan += curr_plan;
@@ -115,9 +124,10 @@ function build_chart_data(frm, selectedRole) {
                     let curr_actual = 0;
                     
                     if (period.is_past) {
-                        curr_actual = parseFloat(r[`fact_${period.year}_${period.month}`]) || 0;
+                        curr_actual = parseFloat(r[periodField("fact", period)]) || 0;
                     } else {
-                        curr_actual = parseFloat(r[`forecast_${period.year}_${period.month}`]) || 0;
+                        curr_actual = parseFloat(r[periodField("forecast", period)]) ||
+                            parseFloat(r[periodField("actual", period)]) || 0;
                     }
                     
                     if ( curr_actual ) {

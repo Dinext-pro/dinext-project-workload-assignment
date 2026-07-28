@@ -6,7 +6,7 @@ const PWR_PL_FORECAST_COST_LABEL = __("Cost forecast from work efforts");
 const PWR_PL_FORECAST_REVENUE_LABEL = __("Revenue forecast from work efforts");
 
 function loadForecastFromWeCss() {
-	const href = "/assets/project_workload_assignment/css/pwr-pl-forecast-from-we.css";
+	const href = "/assets/project_workload_assignment/css/forecast.css";
 	if (document.querySelector(`link[href="${href}"]`)) {
 		return;
 	}
@@ -26,27 +26,27 @@ function pwr_pl_register_forecast_from_we_menu(frm) {
 	if (!frm || frm.is_new()) {
 		return;
 	}
-	frappe.provide("dinext_projects.project_pl_forecast_menu");
-	if (!Array.isArray(dinext_projects.project_pl_forecast_menu)) {
-		dinext_projects.project_pl_forecast_menu = [];
+	frappe.provide("dinext_projects.project_budget_forecast_menu");
+	if (!Array.isArray(dinext_projects.project_budget_forecast_menu)) {
+		dinext_projects.project_budget_forecast_menu = [];
 	}
-	dinext_projects.project_pl_forecast_menu = dinext_projects.project_pl_forecast_menu.filter(
+	dinext_projects.project_budget_forecast_menu = dinext_projects.project_budget_forecast_menu.filter(
 		(item) => !item[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]
 	);
-	dinext_projects.project_pl_forecast_menu.push({
+	dinext_projects.project_budget_forecast_menu.push({
 		label: PWR_PL_FORECAST_COST_LABEL,
 		action: (frm) => add_forecast_from_work_efforts_handler(frm, "cost"),
 		[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]: true,
 	});
 	if (pwr_pl_is_tm_project(frm)) {
-		dinext_projects.project_pl_forecast_menu.push({
+		dinext_projects.project_budget_forecast_menu.push({
 			label: PWR_PL_FORECAST_REVENUE_LABEL,
 			action: (frm) => add_forecast_from_work_efforts_handler(frm, "revenue"),
 			[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]: true,
 		});
 	}
-	if (typeof dinext_projects.refresh_pl_forecast_dropdown === "function") {
-		dinext_projects.refresh_pl_forecast_dropdown(frm);
+	if (typeof dinext_projects.refresh_project_budget_forecast_dropdown === "function") {
+		dinext_projects.refresh_project_budget_forecast_dropdown(frm);
 	}
 }
 
@@ -59,7 +59,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 	}, 5);
 
 	frappe.call({
-		method: project_workload_assignment.pwrApi.TASKS_FORECAST,
+		method: "project_workload_assignment.api.pwr_run_tasks_forecast_workload",
 		args: {
 			project: frm.doc.name,
 			periods: periods,
@@ -142,7 +142,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 					{
 						fieldtype: "HTML",
 						fieldname: "table_container",
-						options: `<div class="tasks-datatable-container pwr-pl-forecast-tasks-datatable-container" style="height: ${tableHeight}px;"></div>`
+						options: `<div class="tasks-datatable-container forecast-tasks-table" style="height: ${tableHeight}px;"></div>`
 					}
 				];
 
@@ -173,7 +173,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 					fieldtype: "HTML",
 					fieldname: "info_html",
 					options: `
-						<div class="text-muted pwr-pl-forecast-info-box">
+						<div class="text-muted forecast-info">
 							<i class="fa fa-info-circle"></i>
 							<strong>${__("Select tasks to add forecast to budget")}</strong>
 							<br><small>${__("Forecast will be added for all roles")}</small>
@@ -271,7 +271,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 							sortable: false,
 							format: (value, row, column, data) => {
 								if (data && data.total_assigned > 0) {
-									return `<span class="pwr-pl-forecast-assigned-hours">${data.total_assigned.toFixed(1)}</span>`;
+									return `<span class="forecast-assigned-hours">${data.total_assigned.toFixed(1)}</span>`;
 								}
 								return '—';
 							}
@@ -299,7 +299,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 
 								if (rowData && !rowData.has_data) {
 									$(this).find('.dt-cell--col-0 input[type="checkbox"]').hide();
-									$(this).addClass('pwr-pl-forecast-row-no-data');
+									$(this).addClass("forecast-row-no-data");
 								}
 							}
 						});
@@ -315,7 +315,7 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 						args: {
 							doctype: "Account",
 							txt: "",
-							query: "project_workload_assignment.project_workload_assignment.project_workload.forecast.forecast_utils.get_income_accounts_with_task_dimension",
+							query: "project_workload_assignment.project_workload_assignment.forecast.forecast_utils.get_income_accounts_with_task_dimension",
 							filters: { company: frm.doc.company },
 							page_length: 9999
 						},
@@ -358,8 +358,10 @@ function reserveDimensionsEqual(dim1, dim2) {
 }
 
 function reloadForecastBudgetView(frm) {
-	if (typeof load_budget_data === 'function') {
-		load_budget_data(frm, 'month', true);
+	if (typeof refresh_project_budget === "function") {
+		refresh_project_budget(frm);
+	} else if (window.ProjectBudget?.refresh) {
+		window.ProjectBudget.refresh(frm);
 	}
 }
 
@@ -384,7 +386,7 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 	}, 10);
 
 	frappe.call({
-		method: project_workload_assignment.pwrApi.ADD_FORECAST_FROM_WE,
+		method: "project_workload_assignment.api.pwr_run_add_forecast_from_work_efforts",
 		args: {
 			project: frm.doc.name,
 			tasks: selectedTasks,
@@ -402,7 +404,11 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 					indicator: 'green'
 				}, 5);
 
-				if (typeof buildParentAdjustments === 'function' && frm.aggregatedBudget && r.message.results) {
+				const canAdjustParents =
+					window.ProjectBudget?.buildParentAdjustments &&
+					frm.project_budget?.rows?.length &&
+					r.message.results;
+				if (canAdjustParents) {
 					var reserveUpdates = r.message.results.map(function(item) {
 						var dimensions = [];
 						if (item.task) {
@@ -418,7 +424,10 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 						};
 					});
 
-					var parentResult = buildParentAdjustments(frm, reserveUpdates);
+					var parentResult = window.ProjectBudget.buildParentAdjustments(
+						frm,
+						reserveUpdates
+					);
 					if (parentResult.parent_adjustments && parentResult.parent_adjustments.length > 0) {
 						frappe.call({
 							method: 'dinext_risk_management.dinext_risk_management.bulk_save_reserve_budgets',
@@ -489,7 +498,7 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 function clearBudgetCache() {
 	_sum_cache = {};
 	if (cur_frm) {
-		cur_frm.aggregatedBudget = null;
+		cur_frm.project_budget = null;
 	}
 }
 
@@ -501,7 +510,7 @@ function ensureProjectWorkEffortsTasks(frm) {
 		}
 
 		frappe.call({
-			method: project_workload_assignment.pwrApi.CONSOLIDATED_DATA,
+			method: "project_workload_assignment.api.get_work_efforts_consolidated_data",
 			args: {
 				project: frm.doc.name,
 				view_options: frm.view_options || frm.budget_view_options || __("Forecast and actual"),
@@ -539,7 +548,10 @@ function ensureProjectWorkEffortsTasks(frm) {
 }
 
 function add_forecast_from_work_efforts_handler(frm, forecastMode = "cost") {
-	if (!frm.aggregatedBudget || Object.keys(frm.aggregatedBudget).length === 0) {
+	const plReady =
+		(typeof is_project_budget_ready === "function" && is_project_budget_ready(frm)) ||
+		Boolean(frm.project_budget?.rows?.length);
+	if (!plReady) {
 		frappe.msgprint(__("Wait for budget data to load first"));
 		return;
 	}

@@ -1,11 +1,10 @@
 # Copyright (c) 2026, Dinext
 """Дерево загрузки одного проекта: ответ API get_project_workload_data (бывший Server Script V3).
 
-ISS-2026-00926: entrypoint `pwr_run_project_workload_tree` в project_workload_api. Расчёт через WorkloadContext
-(паритет с tasks_forecast_workload и team_workload_grid). Карта: cross-ref-iss-2026-00865.md.
+ISS-2026-00926: entrypoint `pwr_run_project_workload_tree_canonical` → reshape → этот модуль.
+Расчёт через WorkloadContext (паритет с tasks_forecast / team_workload_grid).
 """
 
-from typing import TypedDict, Literal
 from datetime import date
 
 import frappe
@@ -29,172 +28,20 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 from project_workload_assignment.project_workload_assignment.project_workload.core.workload_engine import (
 	WorkloadContext,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.models import (
+	AbsenceItem,
+	FormDict,
+	ProjectWorkloadResponse,
+	ErrorResponse,
+	TreeDataRow,
+	Metadata,
+	Performance,
+	DebugInfo,
+	Period,
+	UserData,
+	TaskDict,
+)
 
-
-# ==================== TypedDict определения ====================
-
-class FormDict(TypedDict, total=False):
-	"""Параметры запроса из frappe.form_dict."""
-	project: str
-	view_type: Literal['daily', 'weekly', 'monthly']
-	date_from: str | date | None
-	date_to: str | date | None
-	no_agg: bool | str | int
-	load_actual: bool | str | int
-
-
-class UserData(TypedDict):
-	"""Данные пользователя для ответа."""
-	full_name: str
-	user_image: str | None
-	email: str
-	name: str
-	wholiday_list: str | None
-	wtimesheet_template: str | None
-	hours_on_date: float | None
-	tt_working_hours_on_date: str | None
-
-
-class TaskDict(TypedDict):
-	"""Данные задачи в словаре tasks_dict."""
-	task_id: str
-	task_subject: str
-	parent_task_id: str | None
-	children: list[str]
-	has_direct_load: bool
-	exp_start_date: str | None
-	exp_end_date: str | None
-
-
-class PeriodDaily(TypedDict):
-	"""Дневной период."""
-	key: str
-	date: str
-	year: int
-	month: int
-	day: int
-	weekday: int
-
-
-class PeriodWeekly(TypedDict):
-	"""Недельный период."""
-	key: str
-	date: str
-	start_date: str
-	end_date: str
-	year: int
-	week: int
-	week_start: str
-	week_end: str
-
-
-class PeriodMonthly(TypedDict):
-	"""Месячный период."""
-	key: str
-	date: str
-	start_date: str
-	end_date: str
-	year: int
-	month: int
-	month_start: str
-	month_end: str
-
-
-Period = PeriodDaily | PeriodWeekly | PeriodMonthly
-
-
-class UserHolidayEntry(TypedDict):
-	"""Запись праздника пользователя."""
-	date: str
-	weekly_off: bool
-
-
-class HolidayItem(TypedDict):
-	"""Элемент праздника."""
-	date: str
-	description: str | None
-	weekly_off: bool | None
-
-
-class AbsenceItem(TypedDict):
-	"""Элемент отсутствия."""
-	from_date: date | str
-	to_date: date | str
-	type: str
-	alfrom_hours: float | None
-	alto_hours: float | None
-
-
-class TreeDataRow(TypedDict):
-	"""Строка данных дерева."""
-	participant: str
-	user_data: UserData
-	role: str
-	task_id: str | None
-	task_subject: str | None
-	indent: int
-	expandable: bool
-	isTask: bool | None
-	isUser: bool | None
-	isRole: bool | None
-	email: str
-	roleName: str | None
-	level: str
-	has_direct_load: bool | None
-	workload_total: str
-
-
-class Metadata(TypedDict):
-	"""Метаданные ответа."""
-	project_holidays: list[HolidayItem]
-	user_holidays: dict[str, list[UserHolidayEntry]]
-	user_absences: dict[str, list[AbsenceItem]]
-	user_daily_hours: dict[str, dict[str, float]]
-	monthly_plans_count: int
-	project_dates: dict[str, str]
-	display_dates: dict[str, str | None]
-
-
-class Performance(TypedDict):
-	"""Показатели производительности."""
-	calculation_time_ms: float
-	assignments: int
-	workload_calculations: int
-
-
-class DebugInfo(TypedDict):
-	"""Отладочная информация."""
-	weekend_logic: str
-	loading_types_supported: list[str]
-	project_weekly_off_dates_count: int
-	monthly_plans_loaded: int
-	structure: str
-
-
-class ProjectWorkloadResponse(TypedDict):
-	"""Основной ответ API get_project_workload_data."""
-	tree_data: list[TreeDataRow]
-	periods: list[Period]
-	users_count: int
-	tasks_count: int
-	assignments_count: int
-	message: str
-	task_results: dict[str, dict[str, float]]
-	hierarchical_task_results: dict[str, dict[str, float]]
-	metadata: Metadata
-	performance: Performance
-	debug_info: DebugInfo
-
-
-class ErrorResponse(TypedDict):
-	"""Ответ при ошибке."""
-	tree_data: list
-	periods: list
-	users_count: int
-	tasks_count: int
-	assignments_count: int
-	error: str
-	message: str
 
 
 def _parse_bool_form_value(value, default: bool = False) -> bool:

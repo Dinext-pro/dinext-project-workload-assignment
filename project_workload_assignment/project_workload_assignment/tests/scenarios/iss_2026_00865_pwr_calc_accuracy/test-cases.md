@@ -16,7 +16,7 @@
 - source_of_truth:
   - `project_workload_assignment/project_workload_assignment/project_workload/team_workload_grid.py` — `get_projects_workload_data_v2`
   - `project_workload_assignment/project_workload_assignment/project_workload/single_project_workload_tree.py` — `get_project_workload_data`
-  - `project_workload_assignment/project_workload_api.py` — whitelist `pwr_run_team_workload_grid` / `pwr_run_project_workload_tree`
+  - `project_workload_assignment/api.py` — whitelist `pwr_run_team_workload_grid` / `pwr_run_project_workload_tree`
   - Исторические Server Script (см. `.sandbox/local/server-script/api/`): **до этапа I** — `Get Projects Workload Data_Exp` (`get_projects_workload_data`); **ветка OLD** — `Get Projects Workload Data_Exp_OLD` (`get_projects_workload_data_old`, в SQL до сих пор `date_to >= CURDATE()`, не `nowdate()`); **до этапа II** — отключённые `PWR Legacy - … (Pre-Phase2)` (тот же `api_method`, что у тонких обёрток); **TC-10** фиксирует контракт уже перенесённого в Python V2 на фикстуре TC-01 (`fixtures/tc10_team_v2_golden.json`).
 - sync_required: `no` (логика в Python-приложении; sandbox/fixtures для прогона не обязательны)
 - run_targets:
