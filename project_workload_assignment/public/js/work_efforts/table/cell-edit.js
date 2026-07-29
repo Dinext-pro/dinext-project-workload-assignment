@@ -97,7 +97,7 @@ function updateForecastValue(task, role, year, month, new_value) {
         });
     }).then(result => {
         frappe.show_alert({
-            message: __('Данные успешно обновлены'),
+            message: __('Data updated successfully'),
             indicator: 'green'
         }, 5);
 
@@ -132,7 +132,7 @@ function updateForecastValue(task, role, year, month, new_value) {
 
         project_workload_assignment.work_efforts.render_work_efforts_chart(cur_frm, false);
     }).catch(err => {
-        frappe.msgprint(__("Ошибка при обновлении прогноза"));
+        frappe.msgprint(__("Error updating forecast"));
         console.error(err);
     });
 }
@@ -185,12 +185,12 @@ function save_forecast_as_plan(frm) {
     }
 
     if (!hasChanges) {
-        frappe.msgprint(__("Нет изменений для сохранения."));
+        frappe.msgprint(__("No changes to save."));
         return;
     }
 
     if (data.length === 0) {
-        frappe.msgprint(__("Нет данных для сохранения."));
+        frappe.msgprint(__("No data to save."));
         return;
     }
 
@@ -201,10 +201,10 @@ function save_forecast_as_plan(frm) {
             data: JSON.stringify(data)
         },
         freeze: true,
-        freeze_message: __("Сохранение данных..."),
+        freeze_message: __("Saving data..."),
         callback: function(r) {
             if (!r.exc) {
-                frappe.show_alert(__("Данные успешно сохранены как план"), 5);
+                frappe.show_alert(__("Data saved as plan successfully"), 5);
 
                 // Очистка кэша назначений
                 project_workload_assignment.work_efforts.clear_assignments_cache();
@@ -402,12 +402,12 @@ $(document).on('click', '.assignment-row', function(e) {
             });
 
             frappe.show_alert({
-                message: __('Назначения обновлены'),
+                message: __('Assignments updated'),
                 indicator: 'green'
             }, 3);
         }, task);
     } else {
-        frappe.msgprint(__("Функция назначений недоступна"));
+        frappe.msgprint(__("Assignment function is unavailable"));
     }
 });
 

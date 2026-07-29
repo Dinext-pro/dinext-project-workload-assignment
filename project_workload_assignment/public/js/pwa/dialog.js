@@ -218,7 +218,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
             },
             {fieldtype: 'Section Break', label: __('Workload') },
             {
-                //label: __('Назначения'),
+                //label: __('Assignments'),
                 fieldname: 'pwa_rows',
                 fieldtype: 'Table',
                 cannot_add_rows: 1,
@@ -330,7 +330,7 @@ function get_pwa_fields( task ) {
             },
           },
           {fieldname: 'wl_value', label: __('Amount'), fieldtype: 'Data', in_list_view: 1, columns: 1, formatter: formatWLValue, reqd: 1 },
-          /*{fieldname: 'acc_separately', label: __('Учит. отд.'), fieldtype: 'Check', in_list_view: 1, columns: 1},/* */
+          /*{fieldname: 'acc_separately', label: __('Charge Dept.'), fieldtype: 'Check', in_list_view: 1, columns: 1},/* */
         ];
 }
 

@@ -57,7 +57,7 @@
 				}, taskData);
 			} else {
 				console.error("start_pwa_dialog function not found");
-				frappe.msgprint(__("Функция открытия диалога PWA не найдена"));
+				frappe.msgprint(__("PWA dialog open function was not found"));
 			}
 		}
 	}

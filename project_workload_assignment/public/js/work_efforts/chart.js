@@ -223,20 +223,20 @@ function get_chart_data(frm, selectedRole) {
     }
 
     let datasets = [];
-    let view =  __("Факт/Прогноз");
-    if ( frm.view_options == __("Только прогноз") ) {
-        view = __("Прогноз");
-    } else if ( frm.view_options == __("Только факт") ) {
-        view = __("Факт");
+    let view =  __("Actual/Forecast");
+    if ( frm.view_options == __("Forecast Only") ) {
+        view = __("Forecast");
+    } else if ( frm.view_options == __("Actual Only") ) {
+        view = __("Actual");
     }
     
     if ( !frm.hide_plan ) {
-        datasets.push( { name: __("План"), values: dataObj.plan, chartType: 'bar' } );
-        datasets.push( { name: __("Накоплен. план"), values: dataObj.cumulative_plan, chartType: 'line' } );
+        datasets.push( { name: __("Plan"), values: dataObj.plan, chartType: 'bar' } );
+        datasets.push( { name: __("Cumul. Plan"), values: dataObj.cumulative_plan, chartType: 'line' } );
     }
     
     datasets.push( { name: view, values: dataObj.actual_forecast, chartType: 'bar' } );
-    datasets.push( { name: __("Накоплен.") + " " + view.toLowerCase(), values: dataObj.cumulative_actual_forecast, chartType: 'line' } );
+    datasets.push( { name: __("Cumul.") + " " + view.toLowerCase(), values: dataObj.cumulative_actual_forecast, chartType: 'line' } );
     
     return {
         labels: dataObj.labels,
@@ -248,7 +248,7 @@ function get_chart_data(frm, selectedRole) {
 
 function get_we_chart_options( frm, data ) {
     return {
-            title: __("План / Факт / Прогноз трудозатрат — по периодам и накопительно"),
+            title: __("Plan / Actual / Forecast work efforts — by period and cumulative"),
             data: data,
             colors: frm.hide_plan ? ['#1b3bff','#919ff5'] : ['#8F00FF','#c482f7','#1b3bff','#919ff5'],
             type: 'axis-mixed',
@@ -310,7 +310,7 @@ function render_work_efforts_chart(frm, init = true) {
              frm._we_chart_instance = new frappe.Chart($chartContainer[0], get_we_chart_options( frm, data ));
         } catch (err) {
             console.error("Chart creation failed:", err );
-            $chartContainer.html(`<div style="padding:24px;color:#900;">${__("Ошибка при построении графика")}</div>`);
+            $chartContainer.html(`<div style="padding:24px;color:#900;">${__("Error building chart")}</div>`);
             return;
         }
         

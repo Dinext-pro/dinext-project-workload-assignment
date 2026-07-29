@@ -26,7 +26,7 @@ function load_work_efforts_data(frm, periodType, unit, updateRows) {
             project: frm.doc.name,
             view_options: frm.view_options || "Прогноз и факт"
         },
-        freeze_message: __("Загрузка данных о трудозатратах..."),
+        freeze_message: __("Loading work efforts data..."),
         callback: function(r) {
             if (r.message) {
                 let tasksArray = r.message;
@@ -75,7 +75,7 @@ function load_work_efforts_data(frm, periodType, unit, updateRows) {
         },
         error: function(err) {
             console.error("Ошибка при загрузке данных:", err);
-            frappe.msgprint(__("Ошибка при загрузке данных о трудозатратах"));
+            frappe.msgprint(__("Error loading work efforts data"));
             frm.work_efforts_dt.unfreeze();
         }
     });

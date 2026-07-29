@@ -308,7 +308,7 @@ function validateDates(dateFrom, dateTo) {
     const to = frappe.datetime.str_to_obj(dateTo);
     
     if (from > to) {
-        frappe.show_alert(__('Дата "С" не может быть больше даты "По"'), 5);
+        frappe.show_alert(__('The "From" date cannot be later than the "To" date'), 5);
         return false;
     }
     
@@ -317,7 +317,7 @@ function validateDates(dateFrom, dateTo) {
     maxDate.setFullYear(maxDate.getFullYear() + 1);
     
     if (to > maxDate) {
-        frappe.show_alert(__('Максимальный период отображения - 1 год'), 5);
+        frappe.show_alert(__('Maximum display period is 1 year'), 5);
         return false;
     }
     
@@ -448,7 +448,7 @@ function isUserAbsentOnDate(userEmail, date, userAbsences) {
             return {
                 isAbsent: true,
                 isPartial: isPartial,  // ← ДОБАВЛЯЕМ ФЛАГ
-                type: absence.type || __('Отсутствие'),
+                type: absence.type || __('Absence'),
                 alfrom_hours: absence.alfrom_hours,
                 alto_hours: absence.alto_hours
             };
@@ -462,7 +462,7 @@ function isUserAbsentOnDate(userEmail, date, userAbsences) {
  * Форматирование текста для отсутствий
  */
 function formatAbsenceText(absenceType) {
-    return __("Отс.");
+    return __("Abs.");
 }
 
 /**
@@ -695,7 +695,7 @@ function handleProjectWorkloadCellDoubleClick(rowData) {
             }, taskData);
         } else {
             console.error('start_pwa_dialog function not found');
-            frappe.msgprint(__('Функция открытия диалога PWA не найдена'));
+            frappe.msgprint(__('PWA dialog open function was not found'));
         }
     }
 }
@@ -839,14 +839,14 @@ async function get_project_workload_data(frm, forceRefresh = false) {
                     worker_wtype: window.pwrWorkerWtype || ''
                 },
                 //freeze: true,
-                freeze_message: __('Получение данных загрузки проекта...')
+                freeze_message: __('Fetching project workload data...')
             });
         }, 5, forceRefresh);
         
         endTimer(timer);
         
         if (!result || !result.message) {
-            throw new Error(__('Пустой ответ от сервера'));
+            throw new Error(__('Empty response from server'));
         }
         
         if (result.message.error) {
@@ -1499,7 +1499,7 @@ async function render_project_workload_table(frm) {
         participantWidth: 250,
         indentSize: 18,
         extraClass: "project-workload-ag-grid",
-        freezeMessage: __("Идет загрузка данных..."),
+        freezeMessage: __("Loading data..."),
         isRowExpandable: function(row) {
             if (!row || row.expandable !== true) {
                 return false;

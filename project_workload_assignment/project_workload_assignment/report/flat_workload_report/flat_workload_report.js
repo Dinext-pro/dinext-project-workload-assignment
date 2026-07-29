@@ -5,42 +5,42 @@ frappe.query_reports["Flat Workload Report"] = {
 	"filters": [
 		{
 			"fieldname": "from_date",
-			"label": __("Дата с"),
+			"label": __("From Date"),
 			"fieldtype": "Date",
 			"default": frappe.datetime.get_today(),
 			"reqd": 0
 		},
 		{
 			"fieldname": "to_date",
-			"label": __("Дата по"),
+			"label": __("To Date"),
 			"fieldtype": "Date",
 			"default": frappe.datetime.add_days(frappe.datetime.get_today(), 90),
 			"reqd": 0
 		},
 		{
 			"fieldname": "user",
-			"label": __("Пользователь"),
+			"label": __("User"),
 			"fieldtype": "Link",
 			"options": "User",
 			"reqd": 0
 		},
 		{
 			"fieldname": "user_group",
-			"label": __("Группа пользователей"),
+			"label": __("User Group"),
 			"fieldtype": "Link",
 			"options": "User Group",
 			"reqd": 0
 		},
 		{
 			"fieldname": "project",
-			"label": __("Проект"),
+			"label": __("Project"),
 			"fieldtype": "Link",
 			"options": "Project",
 			"reqd": 0
 		},
 		{
 			"fieldname": "task",
-			"label": __("Задача"),
+			"label": __("Task"),
 			"fieldtype": "Link",
 			"options": "Task",
 			"reqd": 0,

@@ -31,7 +31,7 @@
 							load_actual: NS.getPwrLoadActualFlag(),
 							worker_wtype: window.pwrWorkerWtype || "",
 						},
-						freeze_message: __("Получение данных загрузки проекта..."),
+						freeze_message: __("Fetching project workload data..."),
 					}),
 				5,
 				forceRefresh
@@ -40,7 +40,7 @@
 			NS.endTimer(timer);
 
 			if (!result || !result.message) {
-				throw new Error(__("Пустой ответ от сервера"));
+				throw new Error(__("Empty response from server"));
 			}
 
 			if (result.message.error) {

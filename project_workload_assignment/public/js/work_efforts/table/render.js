@@ -52,9 +52,9 @@ function render_work_efforts_table(frm) {
     let legend_container = $('<div class="work-efforts-legend"></div>').appendTo(wrapper);
 
     controls.append(`
-        <button class="btn btn-default" id="we_save_plan">${__('Сохранить план')}</button>
-        <button class="btn btn-default" id="toggle_plan">${__("Показать план")}</button>
-        <button class="btn btn-default" id="toggle_delta">${__("Показать Δ")}</button>
+        <button class="btn btn-default" id="we_save_plan">${__('Save Plan')}</button>
+        <button class="btn btn-default" id="toggle_plan">${__("Show Plan")}</button>
+        <button class="btn btn-default" id="toggle_delta">${__("Show Δ")}</button>
     `);
 
     project_workload_assignment.work_efforts.addViewOptionsControl(frm, controls);
@@ -73,7 +73,7 @@ function render_work_efforts_table(frm) {
         df: {
             fieldtype: 'Check',
             fieldname: 'show_assignments',
-            label: __("Назначения"),
+            label: __("Assignments"),
             onchange: function() {
                 frm.show_assignments = this.get_value();
 
@@ -100,11 +100,11 @@ function render_work_efforts_table(frm) {
     controls.append(`
         <div class="btn-group">
             <button class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                ${__('Проверить')} <span class="caret"></span>
+                ${__('Check')} <span class="caret"></span>
             </button>
             <ul class="dropdown-menu dropdown-menu-right">
-                <li id="check_plan_load">${__('Наличие плановых трудозатрат')}</li>
-                <li id="check_workload_overload">${__('Загрузка превышает прогноз трудозатрат')}</li>
+                <li id="check_plan_load">${__('Planned Work Efforts Present')}</li>
+                <li id="check_workload_overload">${__('Workload exceeds forecast work efforts')}</li>
             </ul>
         </div>
     `);
@@ -114,15 +114,15 @@ function render_work_efforts_table(frm) {
 
     controls.find('#we_save_plan').on('click', function() {
         if (!frm.work_efforts_dt.rowmanager.getCheckedRows()?.length) {
-            frappe.msgprint(__("Выберите задачи, для которых необходимо сохранить плановые данные."));
+            frappe.msgprint(__("Select the tasks for which plan data should be saved."));
         } else {
             frappe.confirm(
-                __("Вы уверены, что хотите сохранить выбранные прогнозные / фактические данные как плановые?"),
+                __("Are you sure you want to save the selected forecast / actual data as plan?"),
                 () => {
                     project_workload_assignment.work_efforts.save_forecast_as_plan(frm);
                 },
                 () => {
-                    frappe.show_alert(__("Операция отменена"), 3);
+                    frappe.show_alert(__("Operation cancelled"), 3);
                 }
             );
         }
@@ -130,14 +130,14 @@ function render_work_efforts_table(frm) {
 
     controls.find('#toggle_plan').on('click', function() {
         frm.hide_plan = !frm.hide_plan;
-        $(this).text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
+        $(this).text(frm.hide_plan ? __("Show Plan") : __("Hide Plan"));
         project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
         project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
     });
 
     controls.find('#toggle_delta').on('click', function() {
         frm.hide_delta = !frm.hide_delta;
-        $(this).text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
+        $(this).text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
         project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
     });
 
@@ -183,7 +183,7 @@ function render_work_efforts_table(frm) {
             showTotalRow: true,
             cellHeight: null,
             treeView: true,
-            freezeMessage: __("Идет загрузка данных.."),
+            freezeMessage: __("Loading data.."),
             hooks: {
                 columnTotal(columnValues, cell) {
                     if (cell.column.id == "total") {
@@ -210,7 +210,7 @@ function render_work_efforts_table(frm) {
                           </div>`;
 
                     } else if (cell.colIndex == 0) {
-                        return __('Итого');
+                        return __('Total');
                     } else if (cell.colIndex > 1) {
                         let parts = cell.column.id.split("_");
 

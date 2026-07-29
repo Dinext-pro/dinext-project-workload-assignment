@@ -230,7 +230,7 @@ frappe.provide("project_workload_assignment.pwrProject");
 		const to = frappe.datetime.str_to_obj(dateTo);
 
 		if (from > to) {
-			frappe.show_alert(__('Дата "С" не может быть больше даты "По"'), 5);
+			frappe.show_alert(__('The "From" date cannot be later than the "To" date'), 5);
 			return false;
 		}
 
@@ -238,7 +238,7 @@ frappe.provide("project_workload_assignment.pwrProject");
 		maxDate.setFullYear(maxDate.getFullYear() + 1);
 
 		if (to > maxDate) {
-			frappe.show_alert(__("Максимальный период отображения - 1 год"), 5);
+			frappe.show_alert(__("Maximum display period is 1 year"), 5);
 			return false;
 		}
 
@@ -357,7 +357,7 @@ frappe.provide("project_workload_assignment.pwrProject");
 				return {
 					isAbsent: true,
 					isPartial: isPartial,
-					type: absence.type || __("Отсутствие"),
+					type: absence.type || __("Absence"),
 					alfrom_hours: absence.alfrom_hours,
 					alto_hours: absence.alto_hours,
 				};
@@ -368,7 +368,7 @@ frappe.provide("project_workload_assignment.pwrProject");
 	}
 
 	function formatAbsenceText(_absenceType) {
-		return __("Отс.");
+		return __("Abs.");
 	}
 
 	function getAvailableHoursOnDate(data, dateStr, baseHours) {

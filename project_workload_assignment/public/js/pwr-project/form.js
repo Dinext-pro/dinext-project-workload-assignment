@@ -70,7 +70,7 @@
 			participantWidth: 250,
 			indentSize: 18,
 			extraClass: "project-workload-ag-grid",
-			freezeMessage: __("Идет загрузка данных..."),
+			freezeMessage: __("Loading data..."),
 			isRowExpandable: function (row) {
 				if (!row || row.expandable !== true) {
 					return false;

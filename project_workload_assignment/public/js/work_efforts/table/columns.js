@@ -25,7 +25,7 @@ function get_columns_definition(frm, periodType, unit) {
 
     // 1. Колонка "Задачи"
     columns.push({
-        name: __("Задачи"),
+        name: __("Tasks"),
         id: "subject",
         width: 250,
         sortable: false,
@@ -109,7 +109,7 @@ function get_columns_definition(frm, periodType, unit) {
                 if (availableRoles.length > 0) {
                     roleLines += `<div>
                         <select class="new-role-select btn btn-default" data-task="${data.value}">
-                            <option value="">${__("Добавить роль")}</option>`;
+                            <option value="">${__("Add Role")}</option>`;
                     availableRoles.forEach(role => {
                         roleLines += `<option value="${role}">${__(role)}</option>`;
                     });
@@ -127,7 +127,7 @@ function get_columns_definition(frm, periodType, unit) {
     // 3. Колонка "Назначения"
     if (frm.show_assignments) {
         columns.push({
-            name: __("Назначения"),
+            name: __("Assignments"),
             id: "assignments",
             width: 95,
             sortable: false,
@@ -223,7 +223,7 @@ function get_columns_definition(frm, periodType, unit) {
     let periods = project_workload_assignment.work_efforts.get_display_periods(frm, periodType);
     periods.forEach(function(period) {
         // Если период в прошлом – отображаем "факт", иначе "прогноз"
-        let subcolumn_label = period.is_past ? __("Факт") : __("Прогноз");
+        let subcolumn_label = period.is_past ? __("Actual") : __("Forecast");
 
         columns.push({
             name: `<div style="text-align:center;">
@@ -277,9 +277,9 @@ function get_columns_definition(frm, periodType, unit) {
                     // Результирующая заливка
                     let showForecastFill = false;
 
-                    if (frm.view_options === __("Только прогноз")) {
+                    if (frm.view_options === __("Forecast Only")) {
                         showForecastFill = inForecastDates;
-                    } else if (frm.view_options === __("Только факт")) {
+                    } else if (frm.view_options === __("Actual Only")) {
                         showForecastFill = inFactDates;
                     } else { // "Прогноз и факт"
                         if (factAndForecastConflict) {
@@ -410,10 +410,10 @@ function get_columns_definition(frm, periodType, unit) {
     // Добавляем колонку "Итого" – суммарные значения по всем периодам
     columns.push({
         name: `<div style="text-align:center;">
-                    ${__("Итого")}<br/>
+                    ${__("Total")}<br/>
                     <div class="work-efforts-group-header">` +
                         (cur_frm.hide_plan ? "" : `<span>План</span>`) +
-                        `<span>${__("Прогноз")}</span>` +
+                        `<span>${__("Forecast")}</span>` +
                         (cur_frm.hide_delta ? "" : `<span>Δ</span>`) +
                     `</div>
                </div>`,
@@ -548,7 +548,7 @@ $(document).on('change', '.new-role-select', function(e) {
                 }, 3);
             }).catch(err => {
                 console.error("Ошибка при создании Project Work Efforts:", err);
-                frappe.msgprint(__("Ошибка при добавлении роли"));
+                frappe.msgprint(__("Error adding role"));
             });
         } else {
             project_workload_assignment.work_efforts.updateTable(cur_frm, "month", "hours");
@@ -633,12 +633,12 @@ $(document).on('click', '.delete-role-btn', function(e) {
                 });
 
                 frappe.show_alert({
-                    message: __('Роль удалена'),
+                    message: __('Role deleted'),
                     indicator: 'green'
                 }, 3);
             }).catch(err => {
                 console.error("Ошибка при удалении роли:", err);
-                frappe.msgprint(__("Ошибка при удалении роли"));
+                frappe.msgprint(__("Error deleting role"));
             });
         }
     );

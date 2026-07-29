@@ -90,18 +90,18 @@ function get_task_assignments(task_id) {
 /** @param {WorkEffortsForm} frm */
 function check_plan_load_for_percentage_assignments(frm) {
     if (!frm.aggregatedTasks || Object.keys(frm.aggregatedTasks).length === 0) {
-        frappe.msgprint(__("Сначала дождитесь загрузки данных таблицы трудозатрат"));
+        frappe.msgprint(__("Wait for the work efforts table data to load first"));
         return;
     }
 
     if (!frm.work_efforts_dt) {
-        frappe.msgprint(__("Таблица трудозатрат еще не инициализирована"));
+        frappe.msgprint(__("Work efforts table is not initialized yet"));
         return;
     }
 
     if (frm.hide_plan) {
         frm.hide_plan = false;
-        $('#toggle_plan').text(__("Скрыть план"));
+        $('#toggle_plan').text(__("Hide Plan"));
     }
 
     project_workload_assignment.work_efforts.load_detailed_assignments(frm).then(() => {
@@ -225,7 +225,7 @@ function check_plan_load_for_percentage_assignments(frm) {
             }, 5);
         } else {
             frappe.show_alert({
-                message: __("Не найдено задач с загрузкой в % от трудоемкости без плановых трудозатрат"),
+                message: __("No tasks found with workload as % of effort without planned work efforts"),
                 indicator: "green"
             }, 3);
         }
