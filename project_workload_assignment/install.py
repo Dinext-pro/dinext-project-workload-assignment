@@ -1,6 +1,9 @@
+"""Индексы БД для PWR (ISS-2026-00865). Создаются в after_install / after_migrate этого app."""
+
 import frappe
 
 
+# ISS-2026-00926: не дублировать в dinext_common; при migrate на сайте — bench migrate.
 REPORT_INDEXES = (
 	(
 		"Project Workload Assignment",

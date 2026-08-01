@@ -1,0 +1,295 @@
+/* Workload Reports v3 — charts domain styles (no legacy pwr-*). */
+
+.workload-reports-charts {
+	--wr-chart-plot-height: 200px;
+	--wr-chart-total-height: 236px;
+	--wr-yaxis-gutter-width: 50px;
+	--wr-filters-gutter-width: 170px;
+	--wr-legend-band: 36px;
+	--wr-charts-min-height: var(--wr-chart-total-height);
+
+	width: 100%;
+	min-height: var(--wr-charts-min-height);
+	flex: 0 0 auto;
+	min-width: 0;
+	box-sizing: border-box;
+	border: 1px dashed var(--border-color, #d1d8dd);
+	border-radius: var(--border-radius, 4px);
+	background: var(--control-bg, #f7fafc);
+}
+
+/* Smooth show / hide (driven by visibility toggle). */
+.workload-reports-charts--anim {
+	overflow: hidden;
+	opacity: 1;
+	max-height: 480px;
+	transform-origin: top center;
+	transition:
+		opacity 0.28s ease,
+		max-height 0.28s ease,
+		min-height 0.28s ease,
+		margin 0.28s ease,
+		padding 0.28s ease;
+}
+
+.workload-reports-charts--anim.workload-reports-charts--collapsed {
+	opacity: 0;
+	max-height: 0;
+	min-height: 0;
+	margin-top: 0;
+	margin-bottom: 0;
+	padding-top: 0;
+	padding-bottom: 0;
+	border-width: 0;
+	pointer-events: none;
+}
+
+.workload-reports-charts:has(.wr-charts-root),
+.workload-reports-charts:has(.dinext-chart-panel) {
+	border: none;
+	background: transparent;
+}
+
+/* —— host placeholder / status —— */
+
+.workload-reports-charts .wr-charts-placeholder,
+.workload-reports-charts .wr-chart-status {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: var(--wr-charts-min-height);
+	padding: 12px 16px;
+	text-align: center;
+	box-sizing: border-box;
+	font-size: var(--text-sm, 12px);
+}
+
+.wr-charts-root .dinext-chart-panel__chart .wr-chart-status {
+	min-height: var(--wr-chart-plot-height);
+	width: 100%;
+}
+
+/* —— root / panel shell —— */
+
+.wr-charts-root {
+	width: 100%;
+	flex: 0 0 auto;
+	height: fit-content;
+	margin: 0;
+}
+
+.wr-charts-root .dinext-chart-panel--ag-grid-aligned {
+	height: fit-content;
+}
+
+.wr-charts-root .dinext-chart-panel--ag-grid-aligned .dinext-chart-panel__body {
+	padding: 0;
+	min-height: var(--wr-chart-total-height);
+}
+
+.wr-charts-root .dinext-chart-panel__sync-grid {
+	display: grid;
+	grid-template-columns:
+		var(--wr-filters-gutter-width, 170px)
+		var(--wr-yaxis-gutter-width, 50px)
+		minmax(0, 1fr);
+	grid-template-rows: var(--wr-chart-total-height, 236px);
+	width: 100%;
+	min-width: 0;
+	align-items: start;
+}
+
+/* —— gutter chrome (title + filters) —— */
+
+.wr-charts-root .dinext-chart-panel__gutter-chrome {
+	grid-column: 1;
+	grid-row: 1;
+	display: flex;
+	flex-direction: column;
+	align-self: start;
+	justify-content: flex-start;
+	gap: 6px;
+	min-width: 0;
+	width: var(--wr-filters-gutter-width, 170px);
+	max-width: var(--wr-filters-gutter-width, 170px);
+	padding: 4px 8px 8px 0;
+	box-sizing: border-box;
+	overflow: visible;
+}
+
+/* Title/collapse live in filter actions (visibility toggle). Hide gutter head. */
+.wr-charts-root .dinext-chart-panel__gutter-head {
+	display: none;
+}
+
+.wr-charts-root .dinext-chart-panel__gutter-filters {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: flex-start;
+	flex: 1 1 auto;
+	min-width: 0;
+	width: 100%;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+	overflow: visible;
+}
+
+/* —— y-axis gutter —— */
+
+.wr-charts-root .dinext-chart-panel__gutter-yaxis {
+	grid-column: 2;
+	grid-row: 1;
+	align-self: end;
+	position: relative;
+	box-sizing: border-box;
+	width: var(--wr-yaxis-gutter-width, 50px);
+	min-width: var(--wr-yaxis-gutter-width, 50px);
+	max-width: var(--wr-yaxis-gutter-width, 50px);
+	height: var(--wr-chart-plot-height, 200px);
+	min-height: var(--wr-chart-plot-height, 200px);
+	max-height: var(--wr-chart-plot-height, 200px);
+	padding: 0;
+	border-right: 1px solid var(--border-color, #d1d8dd);
+	overflow: hidden;
+}
+
+.wr-charts-root .wr-chart-yaxis-name {
+	position: absolute;
+	left: 50%;
+	font-size: 10px;
+	line-height: 1;
+	color: var(--text-muted, #8d99a6);
+	pointer-events: none;
+	transform-origin: center center;
+	white-space: nowrap;
+}
+
+.wr-charts-root .wr-chart-yaxis-ticks {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	overflow: hidden;
+}
+
+.wr-charts-root .wr-chart-yaxis-tick {
+	position: absolute;
+	left: 0;
+	right: 0;
+	transform: translateY(-50%);
+	padding-right: 2px;
+	font-size: 10px;
+	line-height: 1;
+	color: var(--text-muted, #8d99a6);
+	text-align: right;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: clip;
+}
+
+/* —— viewport / legend / track —— */
+
+.wr-charts-root .dinext-chart-panel__viewport {
+	grid-column: 3;
+	grid-row: 1;
+	align-self: end;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	min-width: 0;
+	height: var(--wr-chart-total-height, 236px);
+	max-height: var(--wr-chart-total-height, 236px);
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+}
+
+.wr-charts-root .wr-chart-legend-bar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	flex: 0 0 var(--wr-legend-band, 36px);
+	gap: 8px 16px;
+	height: var(--wr-legend-band, 36px);
+	min-height: var(--wr-legend-band, 36px);
+	max-height: var(--wr-legend-band, 36px);
+	padding: 0 8px;
+	box-sizing: border-box;
+	overflow: hidden;
+	background: var(--ag-background-color, var(--bg-color));
+	z-index: 3;
+}
+
+.wr-charts-root .wr-chart-legend-item {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 6px;
+	min-width: 0;
+	white-space: nowrap;
+}
+
+.wr-charts-root .wr-chart-legend-swatch {
+	display: inline-block;
+	flex: 0 0 auto;
+	box-sizing: border-box;
+	width: 14px;
+	height: 10px;
+	min-width: 14px;
+	min-height: 10px;
+	border-radius: 2px;
+}
+
+.wr-charts-root .wr-chart-legend-swatch--line {
+	height: 2px;
+	min-height: 2px;
+	margin-top: 4px;
+	margin-bottom: 4px;
+	border-radius: 1px;
+}
+
+.wr-charts-root .wr-chart-legend-swatch--dot {
+	width: 8px;
+	height: 8px;
+	min-width: 8px;
+	min-height: 8px;
+	border-radius: 50%;
+	border: 1px solid var(--border-color, #a67c52);
+}
+
+.wr-charts-root .wr-chart-legend-label {
+	font-size: 10px;
+	line-height: 1.2;
+	color: var(--text-muted, #8d99a6);
+}
+
+.wr-charts-root .dinext-chart-panel__chart-track {
+	flex: 1 1 auto;
+	height: var(--wr-chart-plot-height, 200px);
+	min-height: var(--wr-chart-plot-height, 200px);
+	max-height: var(--wr-chart-plot-height, 200px);
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	will-change: transform;
+}
+
+.wr-charts-root .dinext-chart-panel__chart {
+	height: var(--wr-chart-plot-height, 200px);
+	min-height: var(--wr-chart-plot-height, 200px);
+	max-height: var(--wr-chart-plot-height, 200px);
+	margin: 0;
+	padding: 0;
+}
+
+/* —— gutter filters / utilization —— */
+/* Markup = filters addCheckbox. Do not override width/height — Desk checkbox.scss needs --checkbox-size. */
+
+.wr-charts-root .wr-chart-filters {
+	display: block;
+	width: auto;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+}

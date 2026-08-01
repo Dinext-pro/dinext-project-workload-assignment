@@ -1,0 +1,473 @@
+/* WE v2 — shell + DinextTable domain styles.
+ * Selection / summary / chrome — dinext-table.css + Theming API.
+ * Host: .work_efforts_container > .work-efforts-table (+ toolbar items)
+ */
+
+:root {
+	--we-period-plan-bg: #ede0f5;
+	--we-period-forecast-bg: #e0e8ff;
+	--we-limit-normal-color: #59ba8b;
+	--we-limit-warning-color: #edba13;
+	--we-limit-block-color: #E46962;
+	--charts-bg-block: #e0363622;
+	--charts-bg-warn: #edba1322;
+	--charts-bg-ok: #59ba8b22;
+	--charts-stroke: rgba(0, 0, 0, 0);
+}
+
+[data-theme="dark"] {
+	--we-period-plan-bg: #3a1a5a;
+	--we-period-forecast-bg: #1a2a6a;
+}
+
+.work_efforts_container {
+	max-width: 100% !important;
+}
+
+/*
+ * Domain controls on toolbar custom host.
+ * Host itself gets .work-efforts-controls (not a child) — do not nest those selectors.
+ */
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls {
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: 6px;
+	flex: 0 0 auto;
+	min-width: max-content;
+	width: max-content;
+}
+
+/*
+ * View-options Select (only_input): wrapper is itself `.form-group.frappe-control`.
+ * Default .form-group { margin-bottom } lifts it above neighboring .btn.
+ */
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls > .frappe-control[data-fieldname="view-options"] {
+	position: relative;
+	flex: 0 0 150px;
+	width: 150px;
+	margin: 0 !important;
+	padding: 0;
+	align-self: center;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls > .frappe-control[data-fieldname="view-options"] .form-control {
+	width: 150px;
+	height: 28px;
+	min-height: 28px;
+	padding: 2px 24px 2px 8px;
+	margin: 0;
+	line-height: 1.2;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper {
+	margin-left: 10px;
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper .frappe-control,
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper .checkbox {
+	margin: 0;
+	display: inline-flex;
+	align-items: center;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .btn-group {
+	flex: 0 0 auto;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls > .we-legend-help-btn {
+	flex: 0 0 auto;
+	align-self: center;
+}
+
+/* Portaled «Проверить» menu (body) — hug content; reset BS right:0 stretch. */
+.we-toolbar-check-menu {
+	right: auto !important;
+	width: max-content;
+	min-width: 0;
+	max-width: min(360px, calc(100vw - 16px));
+}
+
+.we-toolbar-check-menu li {
+	cursor: pointer;
+	padding: 8px 15px;
+	white-space: nowrap;
+}
+
+/* Legend popover (toolbar "?" → body portal). */
+.we-legend-popover {
+	box-sizing: border-box;
+	padding: 10px 12px;
+	background: var(--fg-color, var(--card-bg));
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-md, 6px);
+	box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.12));
+	font-family: var(--font-stack);
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	color: var(--text-color);
+}
+
+.we-legend-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.we-legend-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.we-legend-swatch {
+	flex: 0 0 auto;
+	width: 16px;
+	height: 16px;
+	border-radius: 2px;
+	border: 1px solid var(--border-color);
+	box-sizing: border-box;
+}
+
+.we-legend-plan-swatch {
+	background-color: var(--we-period-plan-bg);
+}
+
+.we-legend-forecast-swatch,
+.we-legend-workload-swatch {
+	background-color: var(--we-period-forecast-bg);
+}
+
+.we-legend-workload-swatch {
+	position: relative;
+}
+
+.we-legend-workload-dots {
+	position: absolute;
+	inset: 0;
+	border-radius: 1px;
+	background-image: radial-gradient(circle, #c8d0d8 1px, transparent 1px);
+	background-size: 4px 4px;
+}
+
+.we-legend-missing-plan {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--fg-color);
+}
+
+.we-legend-missing-plan span {
+	color: var(--alert-text-warning);
+	font-weight: 700;
+	font-size: 11px;
+	line-height: 1;
+}
+
+.we-legend-sep {
+	height: 1px;
+	background: var(--border-color);
+	margin: 2px 0;
+}
+
+.we-legend-limits {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px 16px;
+}
+
+.we-legend-limit {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 22px;
+	border-radius: 1px;
+	background: var(--fg-color);
+	box-sizing: border-box;
+}
+
+.we-legend-limit span {
+	color: var(--text-color);
+	font-size: 12px;
+	line-height: 1;
+}
+
+.we-legend-limit-normal {
+	box-shadow: inset 0 0 0 1px var(--we-limit-normal-color);
+	font-weight: 500;
+}
+
+.we-legend-limit-warning {
+	box-shadow: inset 0 0 0 1px var(--we-limit-warning-color);
+	font-weight: 600;
+}
+
+.we-legend-limit-block {
+	box-shadow: inset 0 0 0 1px var(--we-limit-block-color);
+	font-weight: 700;
+}
+
+.we-chart-wrapper .we-chart-container {
+	width: 100%;
+	max-height: 360px;
+}
+
+.we-chart-wrapper .work-efforts-controls {
+	position: absolute;
+	right: 0;
+	width: fit-content;
+}
+
+.work_efforts_container .work-efforts-table.dinext-table {
+	width: 100%;
+	min-height: 280px;
+	height: min(50vh, 560px);
+	max-height: 560px;
+	--we-row-height: 28px;
+}
+
+/* Host has fixed height (+ inline from mount) — clear for core container fullscreen. */
+.work_efforts_container .work-efforts-table.dinext-table:fullscreen,
+.work_efforts_container .work-efforts-table.dinext-table.dinext-table--fullscreen {
+	height: 100% !important;
+	max-height: none !important;
+	min-height: 0 !important;
+}
+
+/*
+ * Temporary: re-assert AG tokens when PWR class-theme CSS (ag-grid.css) is on the same
+ * Project form. Remove when workload reports migrate off class-theme / ensureLegacyThemeCss.
+ * Border mix matches DinextTable theme default (10%) — do not darken past core.
+ */
+.work_efforts_container .work-efforts-table [class*="ag-theme-"] {
+	--ag-background-color: var(--card-bg);
+	--ag-foreground-color: var(--text-color);
+	--ag-data-background-color: var(--card-bg);
+	--ag-header-background-color: color-mix(in srgb, var(--card-bg), var(--text-color) 2%);
+	--ag-border-color: color-mix(in srgb, var(--text-color) 10%, transparent);
+	--ag-secondary-foreground-color: color-mix(in srgb, var(--text-color) 80%, transparent);
+	--ag-header-foreground-color: var(--text-color);
+	--ag-column-border: solid 1px var(--ag-border-color);
+	--ag-header-column-border: solid 1px var(--ag-border-color);
+	--ag-pinned-column-border: solid 1px var(--ag-border-color);
+}
+
+/* Headers — center via column headerClass prop (we-header--center).
+ * AG Grid has no headerAlign; number cellDataType may add ag-right-aligned-header. */
+.work_efforts_container .work-efforts-table .we-header--center .ag-header-cell-label,
+.work_efforts_container .work-efforts-table .we-header--center .ag-header-group-cell-label,
+.work_efforts_container .work-efforts-table .ag-right-aligned-header.we-header--center .ag-header-cell-label {
+	justify-content: center;
+	width: 100%;
+	text-align: center;
+}
+
+/* Leaf header row (План / Прогноз / Δ) — чуть мельче group row */
+.work_efforts_container .work-efforts-table .ag-header-row:not(.ag-header-row-column-group) .ag-header-cell-text {
+	font-size: 11px;
+}
+
+/* Задачи / Роли — как первый ряд (group header), не leaf 11px */
+.work_efforts_container .work-efforts-table .ag-header-cell[col-id="task_subject"] .ag-header-cell-text,
+.work_efforts_container .work-efforts-table .ag-header-cell[col-id="role"] .ag-header-cell-text {
+	font-size: var(--ag-font-size, 13px);
+}
+
+/*
+ * Merge-group (spanRows): AG puts spanned cells in .ag-spanning-container, not inside
+ * normal .ag-cell. The .ag-spanned-cell IS the cell (often also .ag-cell-value).
+ * Legacy WE: pin content to first role line; keep horizontal center for align-center cols.
+ */
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: stretch;
+	height: 100%;
+	box-sizing: border-box;
+}
+
+/* Plain value (#): top band + horizontal center (no inner .ag-cell-wrapper). */
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell.dinext-table-cell--align-center {
+	align-items: center;
+	text-align: center;
+	line-height: var(--we-row-height, 28px);
+}
+
+/* Checkbox / custom inner: first-row band, centered. */
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell.dinext-table-cell--align-center > .dinext-table-row-check-cell-inner,
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell.dinext-table-cell--align-center > .ag-cell-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: var(--we-row-height, 28px);
+	min-height: var(--we-row-height, 28px);
+	max-height: var(--we-row-height, 28px);
+	width: 100%;
+	box-sizing: border-box;
+	line-height: normal;
+}
+
+/* Task tree: first-row band, full width, left content. */
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell > .dinext-table-tree-cell,
+.work_efforts_container .work-efforts-table .ag-spanned-cell-wrapper > .ag-spanned-cell > .dinext-table-tree-cell--merge-group {
+	height: var(--we-row-height, 28px);
+	min-height: var(--we-row-height, 28px);
+	max-height: var(--we-row-height, 28px);
+	width: 100%;
+	box-sizing: border-box;
+}
+
+/* Плановые / прогнозные сроки — те же CSS vars, что legacy we-table */
+.work_efforts_container .work-efforts-table .ag-cell.we-in-plan-dates {
+	background-color: var(--we-period-plan-bg);
+}
+
+.work_efforts_container .work-efforts-table .ag-cell.we-in-forecast-dates {
+	background-color: var(--we-period-forecast-bg);
+}
+
+.work_efforts_container .work-efforts-table .ag-cell.dinext-table-cell-in-range.we-in-plan-dates {
+	background-color: color-mix(
+		in srgb,
+		var(--blue-500, #0289f7) 18%,
+		var(--we-period-plan-bg)
+	);
+}
+
+.work_efforts_container .work-efforts-table .ag-cell.dinext-table-cell-in-range.we-in-forecast-dates {
+	background-color: color-mix(
+		in srgb,
+		var(--blue-500, #0289f7) 18%,
+		var(--we-period-forecast-bg)
+	);
+}
+
+/* Загрузка — точечный паттерн (legacy .has-workload) */
+.work_efforts_container .work-efforts-table .ag-cell.we-has-workload {
+	background-image: radial-gradient(circle, #bec5cc 1px, transparent 1px);
+	background-size: 4px 4px;
+}
+
+[data-theme="dark"] .work_efforts_container .work-efforts-table .ag-cell.we-has-workload {
+	background-image: radial-gradient(circle, #686e74 1px, transparent 1px);
+}
+
+/* Лимиты UTP (факт) — inset border; parity legacy (.limit-normal|warning|block only) */
+.work_efforts_container .work-efforts-table .ag-cell.we-limit-normal {
+	box-shadow: inset 0 0 0 1px var(--we-limit-normal-color);
+}
+
+.work_efforts_container .work-efforts-table .ag-cell.we-limit-warning {
+	box-shadow: inset 0 0 0 1px var(--we-limit-warning-color);
+	font-weight: 600;
+}
+
+.work_efforts_container .work-efforts-table .ag-cell.we-limit-block {
+	box-shadow: inset 0 0 0 1px var(--we-limit-block-color);
+	font-weight: 700;
+}
+
+/* Missing plan — цвет текста (как legacy missing-plan-highlight) */
+.work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-task,
+.work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-role,
+.work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-cell {
+	color: var(--alert-text-warning);
+	font-weight: 600;
+}
+
+/* Нулевые значения — приглушённый цвет (legacy .we-role-value.zero) */
+.work_efforts_container .work-efforts-table .ag-cell.we-cell--zero {
+	color: #b0b8c0;
+	font-weight: 400;
+	opacity: 0.65;
+}
+
+[data-theme="dark"] .work_efforts_container .work-efforts-table .ag-cell.we-cell--zero {
+	color: #7a8288;
+	opacity: 0.55;
+}
+
+/* Role cell: label left, actions pinned right (full cell width) */
+.work_efforts_container .work-efforts-table .ag-cell[col-id="role"] .ag-cell-wrapper,
+.work_efforts_container .work-efforts-table .ag-cell[col-id="role"] .ag-cell-value {
+	width: 100%;
+	min-width: 0;
+}
+
+.work_efforts_container .work-efforts-table .we-role-cell,
+.work_efforts_container .work-efforts-table .we-assignments-cell {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	width: 100%;
+	min-height: 100%;
+	box-sizing: border-box;
+}
+
+.work_efforts_container .work-efforts-table .we-assignments-cell {
+	justify-content: center;
+	cursor: pointer;
+}
+
+.work_efforts_container .work-efforts-table .we-role-label {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.work_efforts_container .work-efforts-table .we-role-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	flex: 0 0 auto;
+	margin-left: auto;
+}
+
+.work_efforts_container .work-efforts-table .we-role-delete,
+.work_efforts_container .work-efforts-table .we-role-add {
+	flex: 0 0 auto;
+	padding: 0 4px;
+	line-height: 1.2;
+	min-width: 22px;
+}
+
+/* Delete: only on role-cell hover; red on enabled hover. */
+.work_efforts_container .work-efforts-table .we-role-delete {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.work_efforts_container .work-efforts-table .ag-cell[col-id="role"]:hover .we-role-delete {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+}
+
+.work_efforts_container .work-efforts-table .ag-cell[col-id="role"]:hover .we-role-delete:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.work_efforts_container .work-efforts-table .we-role-delete:not(:disabled):hover {
+	color: var(--red-500, #e24c4c);
+	border-color: var(--red-500, #e24c4c);
+	background-color: color-mix(in srgb, var(--red-500, #e24c4c) 12%, transparent);
+}
+
+/* Portaled to body from roles.js — Desk dropdown theme */
+.we-role-add-menu {
+	min-width: 10rem;
+	max-height: 240px;
+	overflow-y: auto;
+}
