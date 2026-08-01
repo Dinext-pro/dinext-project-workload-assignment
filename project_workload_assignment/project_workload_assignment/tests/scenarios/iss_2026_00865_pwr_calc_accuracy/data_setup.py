@@ -1,0 +1,770 @@
+# Copyright (c) 2026, Dinext
+"""Детерминированные данные для PWR: сетка команды (V2) vs дерево проекта (V3)."""
+
+from __future__ import annotations
+
+import frappe
+
+PREFIX = "ISS-2026-00865-PWR"
+ROLE_NAME = f"{PREFIX} Role"
+BUSINESS_USER = "Administrator"
+SECOND_USER_EMAIL = "iss-2026-00865-pwr-2@example.com"
+TASK_TYPE = "Stage"
+WORKLOAD_TYPE = "В рабочих часах"
+WORKLOAD_PERCENT_FUND = "В % от фонда рабочих часов"
+# В коде V2/V3 строка без «ё» (как в select/options PWA).
+WORKLOAD_PERCENT_TASK = "В % от трудоемкости задачи"
+
+# Фиксированная «сегодняшняя» дата для сетки V2 (monkeypatch nowdate в тесте).
+ANCHOR_MONDAY = "2026-05-04"
+# Одна календарная неделя с включением субботы/воскресенья в интервале назначения.
+WEEK_START = "2026-05-04"
+WEEK_END = "2026-05-10"
+
+# Кейс Ivan (01.06–05.06): пн–пт, 10 ч «В рабочих часах», hours_on_date 8 vs 4.
+IVAN_ANCHOR_MONDAY = "2026-06-01"
+IVAN_DATE_FROM = "2026-06-01"
+IVAN_DATE_END = "2026-06-05"
+IVAN_WL_HOURS = 10.0
+IVAN_WORKING_DAYS = 5
+
+# Сохраняем Worker.wholiday_list и Company.default_holiday_list между reset и восстановлением.
+_PWR_ADMIN_WHOLIDAY_SAVED = False
+_PWR_ADMIN_WHOLIDAY_VALUE: str | None = None
+_PWR_COMPANY_DEFAULT_HL_SAVED = False
+_PWR_COMPANY_DEFAULT_HL_VALUE: str | None = None
+_PWR_COMPANY_DEFAULT_HL_NAME: str | None = None
+_PWR_TT_HOURS_SAVED = False
+_PWR_TT_HOURS_VALUE: float | None = None
+
+
+def _detach_company_default_holiday_list(company: str) -> None:
+	"""Убирает Company.default_holiday_list для кейсов «нет календаря ни на проекте, ни в компании»."""
+	global _PWR_COMPANY_DEFAULT_HL_SAVED, _PWR_COMPANY_DEFAULT_HL_VALUE, _PWR_COMPANY_DEFAULT_HL_NAME
+	if not company:
+		return
+	if not _PWR_COMPANY_DEFAULT_HL_SAVED:
+		_PWR_COMPANY_DEFAULT_HL_VALUE = frappe.db.get_value("Company", company, "default_holiday_list")
+		_PWR_COMPANY_DEFAULT_HL_NAME = company
+		_PWR_COMPANY_DEFAULT_HL_SAVED = True
+	frappe.db.set_value("Company", company, "default_holiday_list", None, update_modified=False)
+
+
+def _restore_company_default_holiday_list_if_saved() -> None:
+	global _PWR_COMPANY_DEFAULT_HL_SAVED, _PWR_COMPANY_DEFAULT_HL_VALUE, _PWR_COMPANY_DEFAULT_HL_NAME
+	if not _PWR_COMPANY_DEFAULT_HL_SAVED or not _PWR_COMPANY_DEFAULT_HL_NAME:
+		return
+	frappe.db.set_value(
+		"Company",
+		_PWR_COMPANY_DEFAULT_HL_NAME,
+		"default_holiday_list",
+		_PWR_COMPANY_DEFAULT_HL_VALUE,
+		update_modified=False,
+	)
+	_PWR_COMPANY_DEFAULT_HL_SAVED = False
+	_PWR_COMPANY_DEFAULT_HL_VALUE = None
+	_PWR_COMPANY_DEFAULT_HL_NAME = None
+
+
+def _detach_admin_worker_holiday_list() -> None:
+	"""Убирает календарь Worker; вместе с _detach_company_default_holiday_list — «нет HL» на всех уровнях."""
+	global _PWR_ADMIN_WHOLIDAY_SAVED, _PWR_ADMIN_WHOLIDAY_VALUE
+	wname = frappe.db.get_value("Worker", {"wuser": BUSINESS_USER}, "name")
+	if not wname:
+		return
+	if not _PWR_ADMIN_WHOLIDAY_SAVED:
+		_PWR_ADMIN_WHOLIDAY_VALUE = frappe.db.get_value("Worker", wname, "wholiday_list")
+		_PWR_ADMIN_WHOLIDAY_SAVED = True
+	frappe.db.set_value("Worker", wname, "wholiday_list", None, update_modified=False)
+
+
+def _restore_admin_worker_holiday_list_if_saved() -> None:
+	global _PWR_ADMIN_WHOLIDAY_SAVED, _PWR_ADMIN_WHOLIDAY_VALUE
+	if not _PWR_ADMIN_WHOLIDAY_SAVED:
+		return
+	wname = frappe.db.get_value("Worker", {"wuser": BUSINESS_USER}, "name")
+	if wname:
+		frappe.db.set_value("Worker", wname, "wholiday_list", _PWR_ADMIN_WHOLIDAY_VALUE, update_modified=False)
+	_PWR_ADMIN_WHOLIDAY_SAVED = False
+	_PWR_ADMIN_WHOLIDAY_VALUE = None
+
+
+def _default_company() -> str | None:
+	row = frappe.db.sql("select name from `tabCompany` limit 1", as_dict=True)
+	return row[0].name if row else None
+
+
+def _default_project_type_name() -> str | None:
+	"""Первый доступный Project Type (на dev обычно есть «Внутренний» из fixtures)."""
+	for cand in ("Внутренний", "Internal", "Коммерческий", "External"):
+		if frappe.db.exists("Project Type", cand):
+			return cand
+	row = frappe.db.sql("select name from `tabProject Type` limit 1", as_dict=True)
+	return row[0].name if row else None
+
+
+def _default_project_payment_scheme_name() -> str | None:
+	"""Первый доступный Project Payment Scheme."""
+	for cand in ("Неоплачиваемый", "Время и затраты (T&M)", "Фикс. стоимость"):
+		if frappe.db.exists("Project Payment Scheme", cand):
+			return cand
+	row = frappe.db.sql("select name from `tabProject Payment Scheme` limit 1", as_dict=True)
+	return row[0].name if row else None
+
+
+def owned_entities() -> dict[str, list[str]]:
+	return {
+		"Project": [f"project_name like {PREFIX}%"],
+		"Task": [f"subject like {PREFIX}%"],
+		"Project Workload Assignment": ["task in owned tasks"],
+		"Project Work Efforts": ["pwe_task in owned tasks"],
+		"Holiday List": [f"name like {PREFIX}%"],
+		"Project Role": [ROLE_NAME],
+		"User": [SECOND_USER_EMAIL],
+		"User Group": [f"name like {PREFIX}%"],
+		"Application For Leave": [f"alreasons like {PREFIX}%"],
+	}
+
+
+def _restore_admin_timesheet_hours_on_date_if_saved() -> None:
+	global _PWR_TT_HOURS_SAVED, _PWR_TT_HOURS_VALUE
+	if not _PWR_TT_HOURS_SAVED:
+		return
+	tt = _admin_timesheet_template_name()
+	if tt and _PWR_TT_HOURS_VALUE is not None:
+		frappe.db.set_value(
+			"Timesheet Template",
+			tt,
+			"hours_on_date",
+			_PWR_TT_HOURS_VALUE,
+			update_modified=False,
+		)
+	_PWR_TT_HOURS_SAVED = False
+	_PWR_TT_HOURS_VALUE = None
+
+
+def _admin_timesheet_template_name() -> str | None:
+	return frappe.db.get_value("Worker", {"wuser": BUSINESS_USER}, "wtimesheet_template")
+
+
+def set_admin_hours_on_date(hours: float) -> None:
+	"""Меняет Timesheet Template.hours_on_date у Worker Administrator; восстанавливается в reset."""
+	global _PWR_TT_HOURS_SAVED, _PWR_TT_HOURS_VALUE
+	tt = _admin_timesheet_template_name()
+	if not tt:
+		frappe.throw("У Administrator нет Worker/wtimesheet_template — сценарий hours_on_date недоступен")
+	if not _PWR_TT_HOURS_SAVED:
+		prev = frappe.db.get_value("Timesheet Template", tt, "hours_on_date")
+		_PWR_TT_HOURS_VALUE = float(prev) if prev is not None else 8.0
+		_PWR_TT_HOURS_SAVED = True
+	frappe.db.set_value("Timesheet Template", tt, "hours_on_date", float(hours), update_modified=False)
+
+
+def reset_owned_data() -> None:
+	_restore_admin_timesheet_hours_on_date_if_saved()
+	_restore_company_default_holiday_list_if_saved()
+	_restore_admin_worker_holiday_list_if_saved()
+	for leave_name in frappe.get_all(
+		"Application For Leave",
+		filters={"alreasons": ["like", f"{PREFIX}%"]},
+		pluck="name",
+		ignore_permissions=True,
+	):
+		frappe.delete_doc("Application For Leave", leave_name, force=True, ignore_permissions=True)
+
+	for ug_name in frappe.get_all(
+		"User Group",
+		filters={"name": ["like", f"{PREFIX}%"]},
+		pluck="name",
+		ignore_permissions=True,
+	):
+		frappe.delete_doc("User Group", ug_name, force=True, ignore_permissions=True)
+
+	task_names = frappe.get_all(
+		"Task",
+		filters={"subject": ["like", f"{PREFIX}%"]},
+		pluck="name",
+		order_by="lft desc",
+		ignore_permissions=True,
+	)
+	if task_names:
+		for pwe in frappe.get_all(
+			"Project Work Efforts",
+			filters={"pwe_task": ["in", task_names]},
+			pluck="name",
+			ignore_permissions=True,
+		):
+			frappe.delete_doc("Project Work Efforts", pwe, force=True, ignore_permissions=True)
+
+	for task_name in task_names:
+		for pwa in frappe.get_all(
+			"Project Workload Assignment",
+			filters={"task": task_name},
+			pluck="name",
+			ignore_permissions=True,
+		):
+			frappe.delete_doc("Project Workload Assignment", pwa, force=True, ignore_permissions=True)
+		frappe.delete_doc("Task", task_name, force=True, ignore_permissions=True)
+
+	for proj in frappe.get_all(
+		"Project",
+		filters={"project_name": ["like", f"{PREFIX}%"]},
+		pluck="name",
+		ignore_permissions=True,
+	):
+		frappe.delete_doc("Project", proj, force=True, ignore_permissions=True)
+
+	for hl in frappe.get_all(
+		"Holiday List",
+		filters={"name": ["like", f"{PREFIX}%"]},
+		pluck="name",
+		ignore_permissions=True,
+	):
+		frappe.delete_doc("Holiday List", hl, force=True, ignore_permissions=True)
+
+	second_worker = frappe.db.get_value("Worker", {"wuser": SECOND_USER_EMAIL}, "name")
+	if second_worker:
+		frappe.delete_doc("Worker", second_worker, force=True, ignore_permissions=True)
+	if frappe.db.exists("User", SECOND_USER_EMAIL):
+		frappe.delete_doc("User", SECOND_USER_EMAIL, force=True, ignore_permissions=True)
+
+	if frappe.db.exists("Project Role", ROLE_NAME):
+		frappe.delete_doc("Project Role", ROLE_NAME, force=True, ignore_permissions=True)
+
+	for portfolio_name in (PORTFOLIO_A_NAME, PORTFOLIO_B_NAME):
+		if frappe.db.exists("Project Portfolio", portfolio_name):
+			frappe.delete_doc("Project Portfolio", portfolio_name, force=True, ignore_permissions=True)
+
+
+def ensure_project_role() -> str:
+	if not frappe.db.exists("Project Role", ROLE_NAME):
+		frappe.get_doc(
+			{
+				"doctype": "Project Role",
+				"role_name": ROLE_NAME,
+				"enabled": 1,
+			}
+		).insert(ignore_permissions=True)
+	return ROLE_NAME
+
+
+def _create_holiday_list_for_weekend_rows(company: str) -> str:
+	"""Два дня (сб/вс) в диапазоне WEEK_* с weekly_off=1 — как в production Holiday List."""
+	name = f"{PREFIX}-HL-WEEKEND"
+	if frappe.db.exists("Holiday List", name):
+		return name
+	doc = frappe.get_doc(
+		{
+			"doctype": "Holiday List",
+			"name": name,
+			"holiday_list_name": name,
+			"company": company,
+			"from_date": WEEK_START,
+			"to_date": WEEK_END,
+			"holidays": [
+				{
+					"holiday_date": "2026-05-09",
+					"description": f"{PREFIX} Sat weekly_off",
+					"weekly_off": 1,
+				},
+				{
+					"holiday_date": "2026-05-10",
+					"description": f"{PREFIX} Sun weekly_off",
+					"weekly_off": 1,
+				},
+			],
+		}
+	)
+	doc.insert(ignore_permissions=True)
+	return doc.name
+
+
+def _ensure_project_portfolio(name: str) -> str:
+	if not frappe.db.exists("DocType", "Project Portfolio"):
+		frappe.throw("DocType Project Portfolio не установлен — нужен dinext_projects")
+	if frappe.db.exists("Project Portfolio", name):
+		return name
+	frappe.get_doc(
+		{
+			"doctype": "Project Portfolio",
+			"name": name,
+			"status": "Активный",
+		}
+	).insert(ignore_permissions=True)
+	return name
+
+
+def _create_project(
+	company: str,
+	holiday_list: str | None,
+	*,
+	project_name: str | None = None,
+	project_id: str | None = None,
+	project_portfolio: str | None = None,
+) -> str:
+	# На bench с dinext_projects у Project autoname = prompt — без явного name insert падает.
+	project_name = project_name or f"{PREFIX} Project"
+	project_id = project_id or f"{PREFIX}-PRJ"
+	existing = frappe.get_all(
+		"Project",
+		filters={"project_name": project_name},
+		limit=1,
+		pluck="name",
+		ignore_permissions=True,
+	)
+	if existing:
+		pname = existing[0]
+		if holiday_list:
+			frappe.db.set_value("Project", pname, "holiday_list", holiday_list, update_modified=False)
+		if project_portfolio:
+			frappe.db.set_value(
+				"Project",
+				pname,
+				"custom_project_portfolio",
+				project_portfolio,
+				update_modified=False,
+			)
+		return pname
+
+	pt = _default_project_type_name()
+	pps = _default_project_payment_scheme_name()
+	if not pt or not pps:
+		frappe.throw(
+			"В базе нет Project Type или Project Payment Scheme — сценарий PWR не может создать Project "
+			"(ожидаются fixtures dinext_projects или аналог)."
+		)
+
+	p = frappe.get_doc(
+		{
+			"doctype": "Project",
+			"name": project_id,
+			"project_name": project_name,
+			"project_type": pt,
+			"custom_payment_scheme": pps,
+			"company": company,
+			"status": "Open",
+			"expected_start_date": WEEK_START,
+			"expected_end_date": WEEK_END,
+			"holiday_list": holiday_list,
+			"custom_project_portfolio": project_portfolio,
+		}
+	)
+	p.insert(ignore_permissions=True)
+	return p.name
+
+
+def _create_task(project_name: str, subject_suffix: str) -> str:
+	subject = f"{PREFIX} {subject_suffix}"
+	task = frappe.get_doc(
+		{
+			"doctype": "Task",
+			"subject": subject,
+			"status": "Open",
+			"type": TASK_TYPE,
+			"project": project_name,
+			"exp_start_date": WEEK_START,
+			"exp_end_date": WEEK_END,
+			"is_group": 0,
+		}
+	)
+	task.insert(ignore_permissions=True)
+	return task.name
+
+
+def _create_pwa(
+	task: str,
+	wl_value: float,
+	*,
+	workload: str | None = None,
+	user: str | None = None,
+	date_from: str | None = None,
+	date_to: str | None = None,
+) -> str:
+	doc = frappe.get_doc(
+		{
+			"doctype": "Project Workload Assignment",
+			"task": task,
+			"role": ensure_project_role(),
+			"user": user or BUSINESS_USER,
+			"task_dates": 1,
+			"date_from": date_from or WEEK_START,
+			"date_to": date_to or WEEK_END,
+			"workload": workload or WORKLOAD_TYPE,
+			"wl_value": wl_value,
+		}
+	)
+	doc.insert(ignore_permissions=True)
+	return doc.name
+
+
+def prepare_case_hours_on_date_invariant(
+	wl_hours: float = IVAN_WL_HOURS,
+	date_from: str = IVAN_DATE_FROM,
+	date_to: str = IVAN_DATE_END,
+) -> dict[str, str]:
+	"""01.06–05.06, «В рабочих часах»: дневные/недельные часы не зависят от hours_on_date."""
+	reset_owned_data()
+	_detach_admin_worker_holiday_list()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company в базе — сценарий не может создать Project")
+	_detach_company_default_holiday_list(company)
+	ensure_project_role()
+	project = _create_project(company, holiday_list=None)
+	frappe.db.set_value("Project", project, "expected_start_date", date_from, update_modified=False)
+	frappe.db.set_value("Project", project, "expected_end_date", date_to, update_modified=False)
+	task = _create_task(project, "Ivan Jun01-05")
+	frappe.db.set_value("Task", task, "exp_start_date", date_from, update_modified=False)
+	frappe.db.set_value("Task", task, "exp_end_date", date_to, update_modified=False)
+	pwa = _create_pwa(
+		task,
+		wl_hours,
+		date_from=date_from,
+		date_to=date_to,
+	)
+	return {
+		"company": company,
+		"project": project,
+		"task": task,
+		"pwa": pwa,
+		"date_from": date_from,
+		"date_to": date_to,
+		"holiday_list": "",
+	}
+
+
+def prepare_case_hours_without_project_holiday_list(wl_hours: float = 40.0) -> dict[str, str]:
+	"""Проект без holiday_list: оба движка должны согласоваться по сумме (± float)."""
+	reset_owned_data()
+	_detach_admin_worker_holiday_list()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company в базе — сценарий не может создать Project")
+	_detach_company_default_holiday_list(company)
+	ensure_project_role()
+	project = _create_project(company, holiday_list=None)
+	task = _create_task(project, "Leaf week")
+	pwa = _create_pwa(task, wl_hours)
+	return {
+		"company": company,
+		"project": project,
+		"task": task,
+		"pwa": pwa,
+		"holiday_list": "",
+	}
+
+
+def prepare_case_percent_fund_without_holiday_list(wl_percent: float = 50.0) -> dict[str, str]:
+	"""«В % от фонда»: без effective HL — 7 календарных дней × 8 ч × доля."""
+	reset_owned_data()
+	_detach_admin_worker_holiday_list()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company в базе — сценарий не может создать Project")
+	_detach_company_default_holiday_list(company)
+	ensure_project_role()
+	project = _create_project(company, holiday_list=None)
+	task = _create_task(project, "Leaf week pct")
+	pwa = _create_pwa(task, wl_percent, workload=WORKLOAD_PERCENT_FUND)
+	return {
+		"company": company,
+		"project": project,
+		"task": task,
+		"pwa": pwa,
+		"holiday_list": "",
+	}
+
+
+def prepare_case_percent_fund_with_company_holiday_fallback(wl_percent: float = 50.0) -> dict[str, str]:
+	"""Project без HL, Company.default_holiday_list — fallback на календарь компании (TC-16)."""
+	reset_owned_data()
+	_detach_admin_worker_holiday_list()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company в базе — сценарий не может создать Project")
+	company_hl = frappe.db.get_value("Company", company, "default_holiday_list")
+	if not company_hl:
+		frappe.throw("У Company нет default_holiday_list — пропустите TC-16")
+	ensure_project_role()
+	project = _create_project(company, holiday_list=None)
+	task = _create_task(project, "Leaf week company HL")
+	pwa = _create_pwa(task, wl_percent, workload=WORKLOAD_PERCENT_FUND)
+	return {
+		"company": company,
+		"project": project,
+		"task": task,
+		"pwa": pwa,
+		"holiday_list": "",
+		"company_holiday_list": company_hl,
+	}
+
+
+def prepare_case_hours_with_weekend_holiday_list(wl_hours: float = 40.0) -> dict[str, str]:
+	"""Проект + Holiday List: сб/вс с weekly_off — часы не должны «размазываться» на выходные."""
+	reset_owned_data()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company в базе — сценарий не может создать Project")
+	ensure_project_role()
+	hl = _create_holiday_list_for_weekend_rows(company)
+	project = _create_project(company, holiday_list=hl)
+	task = _create_task(project, "Leaf week HL")
+	pwa = _create_pwa(task, wl_hours)
+	return {
+		"company": company,
+		"project": project,
+		"task": task,
+		"pwa": pwa,
+		"holiday_list": hl,
+	}
+
+
+def _pick_fiscal_year_for_assignment_window() -> str | None:
+	"""Fiscal Year, пересекающийся с WEEK_START..WEEK_END (май 2026)."""
+	rows = frappe.db.sql(
+		"""
+		select name from `tabFiscal Year`
+		where year_start_date <= %(end)s and year_end_date >= %(start)s
+		limit 1
+		""",
+		{"start": WEEK_START, "end": WEEK_END},
+	)
+	if not rows:
+		return None
+	return rows[0][0]
+
+
+def ensure_second_test_user() -> str:
+	if frappe.db.exists("User", SECOND_USER_EMAIL):
+		return SECOND_USER_EMAIL
+	doc = frappe.get_doc(
+		{
+			"doctype": "User",
+			"email": SECOND_USER_EMAIL,
+			"first_name": "PWR",
+			"last_name": "Test2",
+			"enabled": 1,
+			"send_welcome_email": 0,
+			"new_password": "Test-Pwr-00000",
+		}
+	)
+	doc.insert(ignore_permissions=True, ignore_mandatory=True)
+	return SECOND_USER_EMAIL
+
+
+def ensure_second_test_worker() -> str | None:
+	"""Worker для второго пользователя — нужен filter_assignments_by_permitted_workers в V2."""
+	ensure_second_test_user()
+	existing = frappe.db.get_value("Worker", {"wuser": SECOND_USER_EMAIL}, "name")
+	if existing:
+		return existing
+	admin_w = frappe.db.get_value(
+		"Worker",
+		{"wuser": BUSINESS_USER},
+		["wtimesheet_template", "wuser_group", "wholiday_list"],
+		as_dict=True,
+	)
+	if not admin_w or not admin_w.get("wtimesheet_template"):
+		return None
+	whl = admin_w.get("wholiday_list")
+	if not whl:
+		company = _default_company()
+		if company:
+			whl = frappe.db.get_value("Company", company, "default_holiday_list")
+	if not whl:
+		candidates = frappe.get_all("Holiday List", limit=1, pluck="name")
+		whl = candidates[0] if candidates else None
+	ug = admin_w.get("wuser_group")
+	if not ug:
+		groups = frappe.get_all("User Group", limit=1, pluck="name")
+		ug = groups[0] if groups else None
+	if not whl or not ug:
+		return None
+	doc = frappe.get_doc(
+		{
+			"doctype": "Worker",
+			"wuser": SECOND_USER_EMAIL,
+			"wuser_group": ug,
+			"wtimesheet_template": admin_w["wtimesheet_template"],
+			"wholiday_list": whl,
+		}
+	)
+	doc.insert(ignore_permissions=True, ignore_mandatory=True)
+	return doc.name
+
+
+def prepare_case_percent_task_effort(
+	wl_percent: float = 50.0,
+	*,
+	plan_hours_may: float = 160.0,
+) -> dict[str, str]:
+	"""PWE с планом на май + PWA «В % от трудоемкости задачи» (ожидаемая сумма ≈ plan × wl/100 за полный охват месяца в диапазоне)."""
+	if not frappe.db.exists("DocType", "Project Work Efforts"):
+		frappe.throw("DocType Project Work Efforts не установлен — пропустите TC-04b на этом bench")
+
+	reset_owned_data()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company в базе — сценарий не может создать Project")
+	fy = _pick_fiscal_year_for_assignment_window()
+	if not fy:
+		frappe.throw("Нет Fiscal Year на интервал теста — пропустите TC-04b или создайте FY в ERPNext")
+	ensure_project_role()
+	project = _create_project(company, holiday_list=None)
+	task = _create_task(project, "Leaf task effort")
+	pwe = frappe.get_doc(
+		{
+			"doctype": "Project Work Efforts",
+			"pwe_project": project,
+			"pwe_task": task,
+			"pwe_project_role": ROLE_NAME,
+			"pwe_amount": [
+				{
+					"pwea_year": fy,
+					"pwea_month": 5,
+					"pwea_plan": plan_hours_may,
+				}
+			],
+		}
+	)
+	pwe.insert(ignore_permissions=True)
+	pwa = _create_pwa(task, wl_percent, workload=WORKLOAD_PERCENT_TASK)
+	return {
+		"company": company,
+		"project": project,
+		"task": task,
+		"pwa": pwa,
+		"pwe": pwe.name,
+		"fiscal_year": fy,
+		"holiday_list": "",
+	}
+
+
+def prepare_case_two_users_hours_for_pagination(
+	admin_hours: float = 40.0,
+	second_hours: float = 20.0,
+) -> dict[str, str]:
+	"""Два пользователя, одна задача, два PWA — для суммирования user_totals по страницам."""
+	reset_owned_data()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company в базе — сценарий не может создать Project")
+	ensure_project_role()
+	if not ensure_second_test_worker():
+		frappe.throw("Не удалось создать Worker для второго тестового пользователя")
+	project = _create_project(company, holiday_list=None)
+	task = _create_task(project, "Shared two users")
+	pwa1 = _create_pwa(task, admin_hours, user=BUSINESS_USER)
+	pwa2 = _create_pwa(task, second_hours, user=SECOND_USER_EMAIL)
+	return {
+		"company": company,
+		"project": project,
+		"task": task,
+		"pwa_admin": pwa1,
+		"pwa_second": pwa2,
+		"second_user": SECOND_USER_EMAIL,
+		"holiday_list": "",
+	}
+
+
+LEAVE_MARK_TC09 = f"{PREFIX} TC-09 full day"
+USER_GROUP_NAME = f"{PREFIX}-UG"
+PORTFOLIO_A_NAME = f"{PREFIX}-Portfolio-A"
+PORTFOLIO_B_NAME = f"{PREFIX}-Portfolio-B"
+
+
+def try_create_application_for_leave_tc09(
+	leave_day: str = "2026-05-06",
+) -> str | None:
+	"""Один полный день отпуска «Согласовано» для Worker текущего BUSINESS_USER. Возвращает имя документа или None."""
+	if not frappe.db.exists("DocType", "Application For Leave"):
+		return None
+	worker = frappe.db.get_value("Worker", {"wuser": BUSINESS_USER}, "name")
+	tol_list = frappe.get_all("Type Of Leave", limit=1, pluck="name")
+	if not worker or not tol_list:
+		return None
+	doc = frappe.get_doc(
+		{
+			"doctype": "Application For Leave",
+			"alworker": worker,
+			"status": "Согласовано",
+			"altype_of_leave": tol_list[0],
+			"alfrom_date": leave_day,
+			"alto_date": leave_day,
+			"alfrom_hours": "8",
+			"alto_hours": "8",
+			"alreasons": LEAVE_MARK_TC09,
+		}
+	)
+	# validate + Server Script на AFL (workflow) не должны ломать PWR-тест.
+	doc.flags.ignore_validate = True
+	prev_migrate = frappe.flags.in_migrate
+	frappe.flags.in_migrate = True
+	try:
+		doc.insert(ignore_permissions=True)
+	except Exception:
+		return None
+	finally:
+		frappe.flags.in_migrate = prev_migrate
+	return doc.name
+
+
+def prepare_case_project_portfolio_filters_other_project() -> dict[str, str]:
+	"""Два проекта в разных портфелях: фильтр project_portfolio оставляет только назначения своего проекта."""
+	if not frappe.db.exists("DocType", "Project Portfolio"):
+		frappe.throw("DocType Project Portfolio не установлен")
+	_detach_admin_worker_holiday_list()
+	company = _default_company()
+	if not company:
+		frappe.throw("Нет Company для PWR portfolio case")
+	portfolio_a = _ensure_project_portfolio(PORTFOLIO_A_NAME)
+	portfolio_b = _ensure_project_portfolio(PORTFOLIO_B_NAME)
+	project_a = _create_project(
+		company,
+		None,
+		project_name=f"{PREFIX} Project A",
+		project_id=f"{PREFIX}-PRJ-A",
+		project_portfolio=portfolio_a,
+	)
+	project_b = _create_project(
+		company,
+		None,
+		project_name=f"{PREFIX} Project B",
+		project_id=f"{PREFIX}-PRJ-B",
+		project_portfolio=portfolio_b,
+	)
+	task_a = _create_task(project_a, "Portfolio A")
+	task_b = _create_task(project_b, "Portfolio B")
+	pwa_a = _create_pwa(task_a, 30.0)
+	pwa_b = _create_pwa(task_b, 15.0)
+	return {
+		"company": company,
+		"portfolio_a": portfolio_a,
+		"portfolio_b": portfolio_b,
+		"project_a": project_a,
+		"project_b": project_b,
+		"task_a": task_a,
+		"task_b": task_b,
+		"pwa_a": pwa_a,
+		"pwa_b": pwa_b,
+	}
+
+
+def prepare_case_user_group_excludes_second_user() -> dict[str, str]:
+	"""Два PWA (40+20 ч), User Group только с Administrator — второй пользователь отфильтровывается."""
+	ctx = prepare_case_two_users_hours_for_pagination(40.0, 20.0)
+	if frappe.db.exists("User Group", USER_GROUP_NAME):
+		frappe.delete_doc("User Group", USER_GROUP_NAME, force=True, ignore_permissions=True)
+	frappe.get_doc(
+		{
+			"doctype": "User Group",
+			"name": USER_GROUP_NAME,
+			"user_group_members": [{"user": BUSINESS_USER}],
+		}
+	).insert(ignore_permissions=True)
+	ctx["user_group"] = USER_GROUP_NAME
+	return ctx
+
+
+def reset():
+	reset_owned_data()

@@ -1,0 +1,23 @@
+/* Absolute overlay for first lazy-tab mount (see core/form-tab.js). */
+.pwa-tab-loading-host {
+	position: relative;
+	min-height: 8rem;
+}
+
+.pwa-tab-loading {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--card-bg, var(--bg-color, #fff));
+}
+
+.pwa-tab-loading.is-hidden {
+	display: none;
+}
+
+.pwa-tab-loading p {
+	margin: 0;
+}

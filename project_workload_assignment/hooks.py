@@ -47,8 +47,18 @@ fixtures = [
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/project_workload_assignment/css/pwa_styles.css"
-app_include_js = "/assets/project_workload_assignment/js/pwa_dialog.js"
+app_include_css = [
+	"/assets/project_workload_assignment/css/assignment_styles.css",
+	"/assets/project_workload_assignment/css/tab-loading.css",
+]
+# Projects Workload Report is custom DocType → FormMeta.add_code() skipped
+# (no doctype_js). Form UI boots via report-form/entry.js (app_include, route-gated).
+# No Client Script / Server Script for this Form UI.
+app_include_js = [
+	"/assets/project_workload_assignment/js/core/form-tab.js",
+	"/assets/project_workload_assignment/js/workload-reports/report-form/entry.js",
+	"/assets/project_workload_assignment/js/assignment/dialog.js",
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/project_workload_assignment/css/project_workload_assignment.css"
@@ -66,17 +76,49 @@ app_include_js = "/assets/project_workload_assignment/js/pwa_dialog.js"
 
 # include js in doctype views
 doctype_js = {
-                "Task":"public/js/pwa_form.js"
-                ,"Issue":"public/js/pwa_form.js"
+                # dialog.js must precede form.js — form.js calls start_pwa_dialog()
+                "Task": [
+                    "public/js/assignment/dialog.js",
+                    "public/js/assignment/form.js",
+                ]
+                ,"Issue": [
+                    "public/js/assignment/dialog.js",
+                    "public/js/assignment/form.js",
+                ]
+                # "Projects Workload Report" doctype_js intentionally omitted:
+                # this is a custom DocType (is_custom=1), Frappe's add_code() skips
+                # custom doctypes, so doctype_js entries have NO EFFECT here.
+                # Scripts: workload-reports/report-form/entry.js (app_include_js).
+                ,"Project":[
+                    "public/js/core/form-tab.js",
+                    "public/js/assignment/dialog.js",
+                    "public/js/work_efforts/entry.js",
+                    "public/js/forecast/pl-from-we.js",
+                    "public/js/workload-reports/project-tab/entry.js",
+                ]
             }
 
-# doctype_list_js = {
-#                "Task":"public/js/pwa_dialog.js"
-#                ,"Issue":"public/js/pwa_dialog.js"
-#            }
+# CSS loads via entry.js frappe.require / app_include_css — not doctype_css
+# (doctype_css is not a Frappe hook).
 
-# doctype_tree_js = {"Task":"public/js/pwa_dialog.js"}
-# doctype_calendar_js = {"Task" : "public/js/pwa_dialog.js"}
+# kanban assign click → start_pwa_dialog (dialog.js also in app_include_js)
+doctype_list_js = {
+	"Task": [
+		"public/js/assignment/dialog.js",
+		"public/js/kanban.js",
+	],
+	"Issue": [
+		"public/js/assignment/dialog.js",
+		"public/js/kanban.js",
+	],
+}
+
+doctype_tree_js = {
+	"Task": [
+		"public/js/assignment/dialog.js",
+	],
+}
+# doctype_calendar_js = {"Task" : "public/js/assignment/dialog.js"}
 
 # Svg Icons
 # ------------------

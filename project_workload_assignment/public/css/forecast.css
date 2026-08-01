@@ -1,0 +1,27 @@
+.forecast-tasks-table {
+	width: 100%;
+	overflow: auto;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+}
+
+.forecast-info {
+	margin-top: 10px;
+	padding: 8px 10px;
+	background: var(--bg-light-gray);
+	border-radius: 4px;
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.forecast-info .fa-info-circle {
+	margin-right: 5px;
+}
+
+.forecast-assigned-hours {
+	color: var(--alert-text-warning);
+}
+
+.forecast-row-no-data {
+	background-color: var(--subtle-accent);
+}
