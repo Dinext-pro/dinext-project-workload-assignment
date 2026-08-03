@@ -55,11 +55,17 @@ function start_pwa_dialog(cbfunc, task) {
                 },
                 limit: 0
             }).then(todos => {
-                if ( todos ) {
-                    add_new_pwa( task, pwas, 
-                        todos.filter(todo => !pwas.some( pwa => pwa.user == todo.allocated_to ) ).map( r => r.allocated_to ), null,
-                        () => make_pwa_dialog( cbfunc, task, pwas, pwes ) );
-                }
+                const todoOnly = (todos || [])
+                    .filter((todo) => !pwas.some((pwa) => pwa.user == todo.allocated_to))
+                    .map((r) => r.allocated_to);
+                add_new_pwa(
+                    task,
+                    pwas,
+                    todoOnly,
+                    null,
+                    () => make_pwa_dialog(cbfunc, task, pwas, pwes),
+                    { fromTodo: true }
+                );
             });
         });
     });
@@ -99,11 +105,23 @@ function getProjectUserRolesSync(project, user) {
     return roles;
 }
 
-function add_new_pwa( task, pwas, users, grid=null, callback=null) {
+function isFromTodo(doc) {
+    return !!(doc && !doc.__isRemove && (doc.from_todo || doc.__from_todo));
+}
+
+function add_new_pwa(task, pwas, users, grid = null, callback = null, opts = {}) {
+    const fromTodo = !!opts.fromTodo;
+    const list = users || [];
+    if (!list.length) {
+        if (callback) {
+            callback();
+        }
+        return;
+    }
     frappe.db.get_list('User', {
         fields: ['name', 'full_name'],
-        filters: [["name", "in", users ]],
-        limit: users.length
+        filters: [["name", "in", list]],
+        limit: list.length
     })
         .then(results => {
             for ( const user of results ) {
@@ -114,7 +132,10 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
                     name: user.name, 
                     task: task.name,
                     role: ( roles.length == 1 ) ? roles[ 0 ] : null,
-                    __islocal: true, 
+                    __islocal: true,
+                    // Regular field (survives grid) + legacy meta flag.
+                    from_todo: fromTodo ? 1 : 0,
+                    __from_todo: fromTodo,
                     user_full_name: user.full_name || user.name,
                     task_dates: true,
                     date_from: getMaxToDate( task.exp_start_date ),
@@ -128,11 +149,58 @@ function add_new_pwa( task, pwas, users, grid=null, callback=null) {
                 let data = pwas.filter( pwa => !pwa.__isRemove );
                 grid.df.data = data;
                 grid.refresh();
+                decorateTodoPwaRows(grid);
             }
             if ( callback ) {
                 callback();
             }
         });
+}
+
+function countTodoDrafts(pwas) {
+    return (pwas || []).filter((p) => isFromTodo(p)).length;
+}
+
+function updateTodoHint(dialog, pwas) {
+    const wrap = dialog?.fields_dict?.todo_hint?.$wrapper;
+    if (!wrap?.length) {
+        return;
+    }
+    const n = countTodoDrafts(pwas);
+    if (!n) {
+        wrap.empty().hide();
+        return;
+    }
+    wrap
+        .show()
+        .html(
+            `<div class="alert alert-warning pwa-todo-hint mb-2" role="status">${__(
+                "There are {0} ToDo-only assignee(s) without workload. Saving will create Project Workload Assignment rows for them.",
+                [n]
+            )}</div>`
+        );
+}
+
+function decorateTodoPwaRows(grid) {
+    if (!grid?.grid_rows) {
+        return;
+    }
+    grid.grid_rows.forEach((row) => {
+        const doc = row.doc;
+        // GridRow: .wrapper = .grid-row, .row = inner .data-row
+        const $row = $(row.wrapper || row.row);
+        if (!$row.length) {
+            return;
+        }
+        $row.removeClass("pwa-row--from-todo pwa-row--needs-role");
+        if (!isFromTodo(doc)) {
+            return;
+        }
+        $row.addClass("pwa-row--from-todo");
+        if (!doc.role) {
+            $row.addClass("pwa-row--needs-role");
+        }
+    });
 }
 
 function make_pwa_dialog(cbfunc, task, pwas, pwes) {
@@ -217,6 +285,10 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
             },
             {fieldtype: 'Section Break', label: __('Workload') },
             {
+                fieldtype: "HTML",
+                fieldname: "todo_hint",
+            },
+            {
                 //label: __('Назначения'),
                 fieldname: 'pwa_rows',
                 fieldtype: 'Table',
@@ -232,6 +304,20 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
         ],
         primary_action_label: __('Save'),
         primary_action: async (values) => {
+            const incomplete = (pwas || []).filter(
+                (p) => isFromTodo(p) && !p.role
+            );
+            if (incomplete.length) {
+                decorateTodoPwaRows(d.fields_dict.pwa_rows.grid);
+                frappe.msgprint({
+                    title: __("Role required"),
+                    indicator: "orange",
+                    message: __(
+                        "Select a project role for ToDo-only assignees before saving. Saving creates workload (PWA) rows."
+                    ),
+                });
+                return;
+            }
             await submit_pwa_and_todo(pwas || []);
             d.hide();
             if ( cbfunc ) {
@@ -250,6 +336,8 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 found.__isRemove = true
             }
         }
+        updateTodoHint(d, pwas);
+        decorateTodoPwaRows(grid);
     });
     grid.grid_rows.forEach( row => { 
         row.activate();
@@ -258,6 +346,13 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
     });
 
     d.show();
+    updateTodoHint(d, pwas);
+    decorateTodoPwaRows(grid);
+    // Grid paints after show — re-apply chrome on next tick.
+    setTimeout(() => {
+        updateTodoHint(d, pwas);
+        decorateTodoPwaRows(grid);
+    }, 0);
     _pwa_starting = false;
 }
 
@@ -267,7 +362,15 @@ function getMaxToDate(date) {
 }
 
 const formatUserDisplay = (val, field, options, doc) => {
-    return frappe.avatar( doc.user, "", val ) + " " + val;
+    const name = frappe.utils.escape_html(val || "");
+    let html = frappe.avatar(doc.user, "", val) + " " + name;
+    if (isFromTodo(doc)) {
+        html +=
+            ` <span class="badge badge-warning pwa-todo-badge" title="${frappe.utils.escape_html(
+                __("Assigned via ToDo only — saving will create workload")
+            )}">${__("ToDo")}</span>`;
+    }
+    return html;
 }
 
 const formatWLValue = (val, field, options, doc) => {
@@ -280,13 +383,22 @@ function getPWAGrid(me) {
 
 function get_pwa_fields( task ) {
     return [
+          {fieldname: 'from_todo', label: __('From ToDo'), fieldtype: 'Check', hidden: 1, in_list_view: 0, read_only: 1},
           {fieldname: 'user_full_name', label: __('User'), fieldtype: 'Read Only', in_list_view: 1, read_only: 1, columns: 2, formatter: formatUserDisplay},
           {fieldname: 'role', label: __('Role'), fieldtype: 'Link', options: 'Project Role',/**/ in_list_view: 1, columns: 2, reqd: 1,
             get_query: (doc, cdt, cdn) =>  {
                 return { filters: [["Project Role", "name", "in", getProjectUserRolesSync( task.project, doc.user ) ]] };
             },
             onchange: function(e) { 
-                checkWorkload( getChangedRow( getPWAGrid( this ), "role" ) );
+                const row = getChangedRow( getPWAGrid( this ), "role" );
+                checkWorkload( row );
+                const grid = getPWAGrid(this);
+                if (grid) {
+                    decorateTodoPwaRows(grid);
+                }
+                if (cur_dialog) {
+                    updateTodoHint(cur_dialog, grid?.df?.data || []);
+                }
             }
           },            
           {fieldname: 'task_dates', label: __('Task dates'), fieldtype: 'Check', in_list_view: 1, columns: 1, task: task,           
