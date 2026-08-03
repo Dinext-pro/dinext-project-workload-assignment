@@ -36,3 +36,24 @@ div.warning[tooltip]:hover:after{
     width: 200%;
     z-index: 10;
 }
+
+/* ToDo-only drafts imported into PWA dialog */
+.pwa-todo-hint {
+	font-size: var(--text-sm, 12px);
+}
+
+.pwa-todo-badge {
+	font-size: 10px;
+	vertical-align: middle;
+	margin-left: 4px;
+}
+
+.modal-body div[data-fieldname="pwa_rows"] .grid-row.pwa-row--from-todo,
+.modal-body div[data-fieldname="pwa_rows"] .grid-row.pwa-row--from-todo > .data-row {
+	box-shadow: inset 3px 0 0 var(--orange-500, #ed8936);
+}
+
+.modal-body div[data-fieldname="pwa_rows"] .grid-row.pwa-row--needs-role,
+.modal-body div[data-fieldname="pwa_rows"] .grid-row.pwa-row--needs-role > .data-row {
+	background-color: var(--alert-bg-warning, rgba(237, 137, 54, 0.12));
+}
