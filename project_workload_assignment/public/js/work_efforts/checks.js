@@ -127,7 +127,7 @@ function check_plan_load_for_percentage_assignments(frm) {
             let role_period_load = {};
 
             detailed_assignments.forEach(assignment => {
-                let role = assignment.role || "Без роли";
+                let role = assignment.role || __("No role");
                 let date_from = assignment.date_from;
                 let date_to = assignment.date_to;
                 let wl_value = parseFloat(assignment.wl_value) || 0;
@@ -508,7 +508,7 @@ function buildWorkloadPeriodsMap(frm) {
 
             let role_assignments = {};
             assignments.forEach(a => {
-                let role = a.role || "Без роли";
+                let role = a.role || __("No role");
                 if (!role_assignments[role]) {
                     role_assignments[role] = [];
                 }

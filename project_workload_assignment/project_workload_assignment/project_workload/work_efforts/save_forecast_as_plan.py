@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 
 import frappe
+from frappe import _
 
 from project_workload_assignment.project_workload_assignment.project_workload.work_efforts.models import (
     SaveForecastAsPlanFormInput,
@@ -29,7 +30,7 @@ def run_save_forecast_as_plan(form_dict: SaveForecastAsPlanFormInput) -> int:
         or not data.strip().startswith("[")
         or not data.strip().endswith("]")
     ):
-        frappe.throw("Неверный формат данных")
+        frappe.throw(_("Invalid data format"))
         return 0
 
     data_list: list[SaveForecastAsPlanItem] = json.loads(data)

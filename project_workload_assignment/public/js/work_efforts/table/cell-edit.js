@@ -295,7 +295,7 @@ $(document).on('blur', '.we-edit-input', function(e) {
 
     let parentLimit = get_parent_forecast_limit(task, role, period, aggregatedTasks);
     if (parentLimit !== null && (new_value > parentLimit)) {
-        frappe.msgprint(__("Work effort value cannot exceed " + parentLimit + " (ограничение родительской задачи)"));
+        frappe.msgprint(__("Work effort value cannot exceed {0} (parent task limit)", [parentLimit]));
         $input.addClass("error");
         return;
     }

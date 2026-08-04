@@ -55,7 +55,7 @@ function get_columns_definition(frm, periodType, unit) {
 
     // 2. Колонка "Роли"
     columns.push({
-        name: "Роли",
+        name: __("Roles"),
         id: "role",
         width: 220,
         sortable: false,
@@ -91,7 +91,7 @@ function get_columns_definition(frm, periodType, unit) {
                     }
                     if (r.role && !hasFact) {
                         roleLines += `<button data-task="${data.value}" data-role="${r.role}"
-                            class="btn delete-role-btn btn-default btn-sm filter-x-button" title="Удалить роль">
+                            class="btn delete-role-btn btn-default btn-sm filter-x-button" title="${__("Delete role")}">
                             <span class="filter-icon">
                                 <svg class="es-icon es-line icon-sm" aria-hidden="true">
                                     <use class="" href="#es-small-close"></use>
@@ -149,7 +149,7 @@ function get_columns_definition(frm, periodType, unit) {
 
                 let rolesWithAssignments = {};
                 assignments.forEach(assignment => {
-                    let role = normalize(assignment.role) || "Без роли";
+                    let role = normalize(assignment.role) || __("No role");
                     if (!rolesWithAssignments[role]) {
                         rolesWithAssignments[role] = [];
                     }
@@ -229,7 +229,7 @@ function get_columns_definition(frm, periodType, unit) {
             name: `<div style="text-align:center;">
                     ${period.year} ${period.month}<br/>
                     <div class="work-efforts-group-header">` +
-                        (cur_frm.hide_plan ? "" : `<span>План</span>`) +
+                        (cur_frm.hide_plan ? "" : `<span>${__("Plan")}</span>`) +
                         `<span>${subcolumn_label}</span>` +
                         (cur_frm.hide_delta ? "" : `<span>Δ</span>`) +
                     `</div>
@@ -412,7 +412,7 @@ function get_columns_definition(frm, periodType, unit) {
         name: `<div style="text-align:center;">
                     ${__("Total")}<br/>
                     <div class="work-efforts-group-header">` +
-                        (cur_frm.hide_plan ? "" : `<span>План</span>`) +
+                        (cur_frm.hide_plan ? "" : `<span>${__("Plan")}</span>`) +
                         `<span>${__("Forecast")}</span>` +
                         (cur_frm.hide_delta ? "" : `<span>Δ</span>`) +
                     `</div>
