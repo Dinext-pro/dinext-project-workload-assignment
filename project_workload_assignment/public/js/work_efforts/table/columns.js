@@ -127,7 +127,7 @@ function get_columns_definition(frm, periodType, unit) {
     // 3. Колонка "Назначения"
     if (frm.show_assignments) {
         columns.push({
-            name: __("Assignments"),
+            name: __("Assignments", null, "Work Efforts"),
             id: "assignments",
             width: 95,
             sortable: false,

@@ -53,7 +53,7 @@ function render_work_efforts_table(frm) {
 
     controls.append(`
         <button class="btn btn-default" id="we_save_plan">${__('Save Plan')}</button>
-        <button class="btn btn-default" id="toggle_plan">${__("Show Plan")}</button>
+        <button class="btn btn-default" id="toggle_plan">${__("Show Plan", null, "Work Efforts")}</button>
         <button class="btn btn-default" id="toggle_delta">${__("Show Δ")}</button>
     `);
 
@@ -73,7 +73,7 @@ function render_work_efforts_table(frm) {
         df: {
             fieldtype: 'Check',
             fieldname: 'show_assignments',
-            label: __("Assignments"),
+            label: __("Assignments", null, "Work Efforts"),
             onchange: function() {
                 frm.show_assignments = this.get_value();
 
@@ -130,7 +130,7 @@ function render_work_efforts_table(frm) {
 
     controls.find('#toggle_plan').on('click', function() {
         frm.hide_plan = !frm.hide_plan;
-        $(this).text(frm.hide_plan ? __("Show Plan") : __("Hide Plan"));
+        $(this).text(frm.hide_plan ? __("Show Plan", null, "Work Efforts") : __("Hide Plan", null, "Work Efforts"));
         project_workload_assignment.work_efforts.updateTable(frm, selectedPeriodType, selectedUnit);
         project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
     });
