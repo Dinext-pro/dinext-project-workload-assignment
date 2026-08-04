@@ -220,7 +220,7 @@ function check_plan_load_for_percentage_assignments(frm) {
         let problemsCount = Object.values(missingPlanMap).reduce((sum, roles) => sum + roles.length, 0);
         if (problemsCount > 0) {
             frappe.show_alert({
-                message: __("Найдено {0} задач с загрузкой в % от трудоемкости без плановых трудозатрат", [problemsCount]),
+                message: __("Found {0} tasks with workload as % of effort without planned work efforts", [problemsCount]),
                 indicator: "orange"
             }, 5);
         } else {

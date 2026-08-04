@@ -44,7 +44,7 @@
 			}
 
 			if (result.message.error) {
-				throw new Error(__("Ошибка сервера: {0}", [result.message.error]));
+				throw new Error(__("Server error: {0}", [result.message.error]));
 			}
 
 			const { tree_data, periods, metadata, users_count, tasks_count, assignments_count } =
@@ -80,7 +80,7 @@
 		} catch (error) {
 			NS.endTimer(timer);
 			console.error("Error loading project workload data:", error);
-			frappe.msgprint(__("Ошибка при загрузке данных: {0}", [error.message]));
+			frappe.msgprint(__("Error loading data: {0}", [error.message]));
 			return {
 				tree_data: [],
 				periods: [],

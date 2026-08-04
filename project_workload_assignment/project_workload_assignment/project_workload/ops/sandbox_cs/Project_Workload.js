@@ -850,7 +850,7 @@ async function get_project_workload_data(frm, forceRefresh = false) {
         }
         
         if (result.message.error) {
-            throw new Error(__('Ошибка сервера: {0}', [result.message.error]));
+            throw new Error(__('Server error: {0}', [result.message.error]));
         }
         
         const { tree_data, periods, metadata, users_count, tasks_count, assignments_count } = result.message;
@@ -889,7 +889,7 @@ async function get_project_workload_data(frm, forceRefresh = false) {
     } catch (error) {
         endTimer(timer);
         console.error('Error loading project workload data:', error);
-        frappe.msgprint(__('Ошибка при загрузке данных: {0}', [error.message]));
+        frappe.msgprint(__('Error loading data: {0}', [error.message]));
         return {
             tree_data: [],
             periods: []
@@ -1474,7 +1474,7 @@ async function render_project_workload_table(frm) {
         await ensureProjectWorkloadAgGrid();
     } catch (error) {
         console.error('Error loading ProjectsWorkloadAgGrid:', error);
-        frappe.msgprint(__('Не удалось загрузить компонент таблицы: {0}', [error.message]));
+        frappe.msgprint(__('Could not load table component: {0}', [error.message]));
         endTimer(timer);
         return;
     }

@@ -48,7 +48,7 @@
 			await NS.ensureProjectWorkloadAgGrid();
 		} catch (error) {
 			console.error("Error loading ProjectsWorkloadAgGrid:", error);
-			frappe.msgprint(__("Не удалось загрузить компонент таблицы: {0}", [error.message]));
+			frappe.msgprint(__("Could not load table component: {0}", [error.message]));
 			NS.endTimer(timer);
 			return;
 		}

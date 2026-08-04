@@ -42,7 +42,7 @@ function get_columns_definition(frm, periodType, unit) {
 
             if (missingRoles && missingRoles.length > 0) {
                 let rolesList = missingRoles.join(", ");
-                let tooltipText = __("Не определены трудозатраты для ролей: {0}", [rolesList]);
+                let tooltipText = __("Work efforts are not defined for roles: {0}", [rolesList]);
                 html += `class="missing-plan-task" data-tooltip="${tooltipText}"`;
             }
 
@@ -75,7 +75,7 @@ function get_columns_definition(frm, periodType, unit) {
                 role_data.forEach(r => {
                     let isMissing = missingRoles.includes(r.role);
                     let tooltipAttr = isMissing
-                        ? ` data-tooltip="${__("Не определены трудозатраты для роли: {0}", [r.role])}"`
+                        ? ` data-tooltip="${__("Work efforts are not defined for role: {0}", [r.role])}"`
                         : '';
 
                     roleLines += `<div class='we-role ${isMissing ? "miss-plan" : ""}' ${tooltipAttr}>`;
@@ -543,7 +543,7 @@ $(document).on('change', '.new-role-select', function(e) {
                 });
 
                 frappe.show_alert({
-                    message: __('Роль {0} добавлена', [newRole]),
+                    message: __('Role {0} added', [newRole]),
                     indicator: 'green'
                 }, 3);
             }).catch(err => {
@@ -564,7 +564,7 @@ $(document).on('click', '.delete-role-btn', function(e) {
     let role = btn.data("role");
 
     frappe.confirm(
-        __("Вы действительно хотите удалить роль {0} для задачи {1}?", [role, task]),
+        __("Are you sure you want to delete role {0} for task {1}?", [role, task]),
         () => {
             frappe.db.get_list("Project Work Efforts", {
                 filters: {

@@ -1,360 +1,373 @@
-%,%
-- {0} (row {1}),- {0} (строка {1})
-"- {0} (row {1}, role: {2})","- {0} (строка {1}, роль: {2})"
-"- {0} (row {1}, virtual member)","- {0} (строка {1}, виртуальный участник)"
-A timesheet already exists that overlaps these dates,Уже есть ТШ пересекающийся с этими датами
-Abs.,Отс.
-Absence,Отсутствие
-Absence hours,Часы отсутствия
-Absences,Отсутствия
-Actual,Факт
-Actual Only,Только факт
-Actual workload,Фактическая загрузка
-Actual/Forecast,Факт/Прогноз
-Add forecast,Добавить прогноз
-Add Role,Добавить роль
-Add utilization,Добавить утилизацию
-Added access with rights {0} for {1},Добавлен доступ с правами {0} для {1}
-Added read-only access for {0},Добавлен доступ только для чтения для {0}
-Adding forecast from work efforts for {0} tasks...,Добавление прогноза из трудозатрат для {0} задач...
-Adding forecast to budget...,Добавление прогноза в бюджет...
-All,Все
-All possible assignees are already assigned,Назначены все возможные исполнители
-All tasks,Все задачи
-Amount,Величина
-An error occurred while loading data. Please refresh the page.,"Произошла ошибка при загрузке данных. Пожалуйста, обновите страницу."
-Apply Selected,Выполнить выбранные
-Approval History,История согласований
-Are you sure you want to save the selected forecast / actual data as plan?,"Вы уверены, что хотите сохранить выбранные прогнозные / фактические данные как плановые?"
-As % of task work efforts,В % от трудоемкости задачи
-As % of working hours fund,В % от фонда рабочих часов
-Assign entire team,Назначить всю команду
-Assignment function is unavailable,Функция назначений недоступна
-Assignments,Назначения
-Assignments updated,Назначения обновлены
-Attention!,Внимание!
-Available hours,Доступные часы
-Base working hours,Базовые рабочие часы
-Calculated {0} amounts. Updated {1} budget records.,Рассчитано {0} сумм. Обновлено {1} записей в бюджете.
-Cancel,Отмена
-Cancel without saving,Отменить
-Capacity,Ёмкость
-Changes applied: {0},Выполнены изменения: {0}
-Changes will be saved. Continue?,Изменения данных будут сохранены. Продолжить?
-Charge Dept.,Учит. отд.
-Chart request failed,Не удалось загрузить график
-Check,Проверить
-Check all,Проверить все
-Check the tasks and roles to update the forecast,Отметьте галочками задачи и роли для обновления прогноза
-Checking project workload and work efforts...,Проверка загрузки и трудозатрат по проекту...
-Chronology,Хронолоогия
-Clear All Filters,Сбросить все фильтры
-Close,Закрыть
-Confirm,Подтвердите
-Continue,Продолжить
-Copy,Скопировать
-cost,затрат
-Cost forecast from work efforts,Затрат на основании прогноза трудозатрат
-Costs updated ({0} records). Revenue error: {1},Затраты обновлены ({0} записей). Ошибка выручки: {1}
-Costs: {0} records. Revenue: {1} records.,Затраты: {0} записей. Выручка: {1} записей.
-Could not determine date for opening absence request,Не удалось определить дату для открытия заявки на отсутствие
-Could not find the table container,Не удалось найти контейнер для таблицы
-Create subtask,Создать подзадачу
-Cumul.,Накоплен.
-Cumul. Plan,Накоплен. план
-Curr. End,Текущ. окончание
-Curr. Start,Текущ. начало
-d.,дн.
-Daily,Ежедневно
-Daily View,Отображение по дням
-Data from Planned Workload,Данные из плановой загрузки
-Data saved,Данные сохранены
-Data saved as plan successfully,Данные успешно сохранены как план
-Data saved successfully,Данные успешно сохранены
-Data updated successfully,Данные успешно обновлены
-Date,Дата
-Date-time,Дата-время
-Dates,Сроки
-Dates are not set,Даты не заданы
-Dependencies,Зависимости
-DinextAgGrid bootstrap failed to load,Не удалось загрузить DinextAgGrid
-Discrepancies between forecast work efforts and assigned workload,Расхождения прогноза трудозатрат и назначенной загрузки
-Discrepancy,Расхождение
-Down the tree,По дереву вниз
-Duplicates skipped: {0},Пропущено дубликатов: {0}
-Duration,Длит-сть
-Elapsed,Прошло
-Employee,Сотрудник
-Employee fact,Факт сотрудников
-Employee forecast,Прогноз сотрудников
-Employee or Supplier not found for project team member {0},Не найден Employee или Supplier для участника Проектной Коменды {0}
-Empty response from server,Пустой ответ от сервера
-Entry,Запись
-Error,Ошибка
-Error adding forecast,Ошибка при добавлении прогноза
-Error adding role,Ошибка при добавлении роли
-Error building chart,Ошибка при построении графика
-Error checking workload discrepancies,Ошибка при проверке расхождений загрузки
-Error deleting role,Ошибка при удалении роли
-Error determining timesheet dates!,Ошибка определение дат ТШ!
-Error loading work effort data,Ошибка при загрузке данных трудозатрат
-Error loading work efforts data,Ошибка при загрузке данных о трудозатратах
-Error processing request,Ошибка при обработке запроса
-Error processing timesheet positions. Please refresh the page and try again.,"Ошибка при обработке позиций ТШ. Пожалуйста, обновите страницу и попробуйте заново."
-Error saving data,Ошибка при сохранении данных
-Error saving data: ,Ошибка при сохранении данных:
-Error saving new positions,Ошибка при сохранении новых позиций
-Error saving timesheet,Ошибка при сохранении ТШ
-Error searching for absence request,Ошибка при поиске заявки на отсутствие
-Error updating forecast,Ошибка при обновлении прогноза
-Error updating forecast data,Ошибка при обновлении прогнозных данных
-Error updating parent accounts,Ошибка при обновлении родительских статей
-Error updating positions,Ошибка при обновлении позиций
-Error: {0},Ошибка: {0}
-Failed to load income accounts list,Не удалось загрузить список счетов доходов
-Failed to load work effort data,Не удалось загрузить данные трудозатрат
-Fetching project workload data...,Получение данных загрузки проекта...
-Fetching projects workload data...,Получение данных загрузки проектов...
-FF (Finish → Finish),ОО (Окончание → Окончание)
-Fix,Исправить
-"For Time & Materials (T&M) billing, bill rate is required:",При схеме 'Время и затраты (T&M)' обязательно укажите ставку реализации:
-"For virtual members, cost rate is required:",Для виртуальных участников обязательно укажите ставку себестоимости:
-Forecast,Прогнозные
-Forecast added successfully. Updated {0} records.,Прогноз успешно добавлен. Обновлено {0} записей.
-Forecast and actual,Прогноз и факт
-Forecast and Actual,Прогноз и факт
-Forecast Completion,Прогноз завершения
-Forecast exceeds workload. Recalculate forecast based on virtual project team member data?,Обнаружено превышение прогноза над загрузкой. Хотите выполнить пересчет прогноза на основании данных виртуальных участников проекта?
-Forecast increased for parent accounts: {0},Прогноз увеличен для родительских статей: {0}
-Forecast Only,Только прогноз
-Forecast Start,Прогноз начала
-Forecast Task Dates,Прогнозные сроки задачи
-Forecast will be added for all roles,В бюджет будут добавлены прогнозные часы по всем ролям
-"Forecast, h","Прогноз, ч"
-Fri,Пт
-From date,Дата с
-From Date,Дата с
-FS (Finish → Start),ОН (Окончание → Начало)
-FTE,FTE
-Go to project task list,Перейти к списку задач проекта
-Go to Timesheets,Перейти к Таймшитам
-h,ч.
-h.,ч.
-Half Year,Полугодие
-Hide chart,Скрыть график
-Hide Plan,Скрыть план
-Hide Δ,Скрыть Δ
-Hol.,Вых.
-Hours,Часы
-In working hours,В рабочих часах
-Income account,Счёт доходов
-Invalid server response format,Некорректный формат ответа от сервера
-Issues by type,Запросы по типам
-Jul,Июл
-Jun,Июн
-Labels,Метки
-Load next 20 users,Загрузить следующих 20 пользователей
-Loading chart...,Загрузка графика...
-Loading data..,Идет загрузка данных..
-Loading data...,Идет загрузка данных...
-Loading projects...,Загрузка проектов...
-Loading work effort data...,Загрузка данных трудозатрат...
-Loading work efforts data...,Загрузка данных о трудозатратах...
-Loading...,Загрузка...
-Lock,Блокировка
-Mandatory participant,Обязательный участник
-Maximum display period is 1 year,Максимальный период отображения - 1 год
-Meeting Notes,Протоколы встреч
-Member was found neither as Employee nor as Supplier,"Участник не найден ни как Сотрудник, ни как Поставщик"
-Mon,Пн
-Monthly,Ежемесячно
-Monthly available hours,Доступные часы за месяц
-Monthly View,Отображение по месяцам
-Monthly working hours fund,Месячный фонд рабочих часов
-Next month,Следующий месяц
-No changes to save.,Нет изменений для сохранения.
-No data to display.,Нет данных для отображения.
-No data to save.,Нет данных для сохранения.
-No discrepancies found,Расхождений не обнаружено
-No downward task dependency violations found,Не выявлено нарушений зависимостей вниз по дереву задач
-No Project,Нет проекта
-No required changes found due to task dependency violations,"Не выявлено необходимых изменений, вызванных нарушением зависимостей задач"
-No response from server,Нет ответа от сервера
-No Role,Без роли
-No tasks found with workload as % of effort without planned work efforts,Не найдено задач с загрузкой в % от трудоемкости без плановых трудозатрат
-No tasks selected,Не выбрано ни одной задачи
-No tasks with forecast work efforts or workload,Нет задач с прогнозными трудозатратами или загрузкой
-No tasks with work efforts in project,Нет задач с трудозатратами в проекте
-"No virtual team member found for role ""{0}"". Cannot distribute remaining forecast hours ({1}h).","Для роли ""{0}"" не найден виртуальный участник в команде проекта. Невозможно распределить остаток прогнозных часов ({1}ч)."
-No work effort data,Нет данных о трудозатратах
-No work efforts data,Нет данных по трудозатратам
-Norm,Норма
-Not set,Не задано
-Operation cancelled,Операция отменена
-Overdue Timesheets,Просроченные Таймшиты
-"Overload detected: assigned workload ({0}h) exceeds forecast work efforts ({1}h) for task ""{2}"", role ""{3}"", period {4}. Recalculate {5} forecast based on current workload?","Обнаружена перегрузка: назначенная загрузка ({0}ч) превышает прогнозные трудозатраты ({1}ч) по задаче ""{2}"", роли ""{3}"", периоду {4}. Выполнить пересчет прогноза {5} на основании текущей загрузки?"
-Partial absence,Частичное отсутствие
-Participant,Участник
-Participant / Project,Участник / Проект
-Participant / Role,Участник / Роль
-Participant / Role / Task,Участник / Роль / Задача
-Participant type,Тип участника
-Period available hours,Доступные часы периода
-Period date conflict,Конфликт дат периодов
-Plan,План
-Plan (line),План (линия)
-Plan / Actual / Forecast work efforts — by period and cumulative,План / Факт / Прогноз трудозатрат — по периодам и накопительно
-Plan is missing while workload is present,Отсутствует план при наличии загрузки
-Plan workload,Плановая загрузка
-Planned end,План завершения
-Planned start,План начала
-Planned Task Dates,Плановые сроки задачи
-Planned work efforts are not defined,Не определены плановые трудозатраты
-Planned work efforts are required for this task,Для данной задачи обязательно указание плановых трудозатрат
-Planned Work Efforts Present,Наличие плановых трудозатрат
-Please fill in all required fields,Пожалуйста заполните все необходимые поля
-Positions from Previous Timesheet,Позиции из предыдущего ТШ
-Posting...,Проводим...
-Previous month,Предыдущий месяц
-Priority,Приоритет
-Progress,Прогресс
-Project,Проект
-Project & User Holiday,Праздник проекта и пользователя
-Project business area: percent sum check,Бизнес-сфера проекта: проверка суммы %
-Project Holiday,Праздник проекта
-Project plan,План проекта
-Project Portfolio,Портфель проекта
-Project Role,Проектная роль
-Project Structure Plan,Структурный план проекта
-Project task list,Список задач проекта
-Project task tree,Дерево задач проекта
-Project workload summary,Сводка загрузки проекта
-Projects Workload Report,Отчет по загрузке Команды
-Prop. End,Предл. окончание
-Prop. Start,Предл. начало
-PWA dialog open function was not found,Функция открытия диалога PWA не найдена
-PWA plan,План PWA
-Quarter,Квартал
-"Rate is not set for virtual team member of role ""{0}"".","Для виртуального участника роли ""{0}"" не заполнена ставка."
-Reasons,Причины
-Refresh Data,Обновить данные
-Refresh the task tree after applying changes,Обновите дерево задач после выполнения изменений
-Remind later,Напомнить позже
-Repost Entries,Перепровести проводки
-Required changes to resolve task dependency violations,Необходимые изменения для устранения нарушений зависимостей задач
-Required roles are missing from the project team: {0},В команде проекта отсутствуют обязательные роли: {0}
-Resp.,Ответств.
-Retry,Повторить
-revenue,выручки
-Revenue,Выручка
-Revenue forecast from work efforts,Выручки на основании прогноза трудозатрат
-Role,Роль
-Role deleted,Роль удалена
-Sat,Сб
-Save,Сохранить
-Save Error,Ошибка сохранения
-Save Plan,Сохранить план
-Saving data,Сохранение данных
-Saving data..,Сохранение данных..
-Saving data...,Сохранение данных...
-Saving...,Сохранение...
-Select at least one overloaded task and role,Выберите хотя бы одну задачу и роль с перегрузкой
-Select at least one task,Выберите хотя бы одну задачу
-Select at least one task and role,Выберите хотя бы одну задачу и роль
-Select income account,Выберите счёт доходов
-Select tasks for adding forecast to budget,Выберите задачи для добавления прогноза в бюджет
-Select tasks to add forecast to budget,Отметьте галочками задачи для добавления прогноза
-Select tasks with data,Выберите задачи с данными
-Select the tasks for which plan data should be saved.,"Выберите задачи, для которых необходимо сохранить плановые данные."
-SF (Start → Finish),НО (Начало → Окончание)
-Show 20 more,Показать ещё 20
-Show chart,Показать график
-Show fact,Показать факт
-Show Plan,Показать план
-Show Δ,Показать Δ
-Skipped invalid: {0},Пропущено невалидных: {0}
-Sole participant,Единственный участник
-SS (Start → Start),НН (Начало → Начало)
-Status,Статус
-Successfully copied: {0},Успешно скопировано: {0}
-Sum of child task weights exceeds parent weight! Max weight: ,Сумма весов дочерних задач превышает родительскую! Максимальный вес:
-Sun,Вс
-Supplier,Подрядчик
-Supplier fact,Факт подрядчиков
-Supplier forecast,Прогноз подрядчиков
-Task,Задача
-Task business area: percent sum check,Бизнес-сфера задачи: проверка суммы %
-Task dates,Даты задачи
-Task tree,Дерево задач
-Tasks,Задачи
-Tasks by assignee,Задачи по ответственным
-Tasks by priority,Задачи по приоритетам
-Tasks by status,Задачи по статусам
-Team capacity,Ёмкость команды
-Team workload summary,Сводка загрузки команды
-"The ""From"" date cannot be later than the ""To"" date","Дата ""С"" не может быть больше даты ""По"""
-The entire timesheet will require re-approval!,Потребуется повторное согласование всего таймшита!
-The following errors were found:,Обнаружены следующие ошибки:
-Thu,Чт
-Timesheet filling errors:<br>,Ошибки заполнения ТШ:<br>
-Timesheet is overdue! Submit positions for approval immediately!,Таймшит просрочен! Срочно отправьте позиции на согласование!
-To date,Дата по
-To Date,Дата по
-Total,Итого
-TS,ТШ
-Tue,Вт
-Type,Тип
-Unable to save timesheet,Невозможно сохранить ТШ
-"Underload detected: forecast work efforts ({0}h) exceed assigned workload ({1}h) for task ""{2}"", role ""{3}"", period {4}. A virtual team member will cover the remainder ({5}h) when calculating {6}. Continue?","Обнаружена недогрузка: прогнозные трудозатраты ({0}ч) превышают назначенную загрузку ({1}ч) по задаче ""{2}"", роли ""{3}"", периоду {4}. Будет использован виртуальный участник для покрытия остатка ({5}ч) при расчёте {6}. Продолжить?"
-Unexpected server response,Неожиданный ответ от сервера
-Unknown error,Неизвестная ошибка
-Unknown error while updating forecast data,Неизвестная ошибка при обновлении прогнозных данных
-Unsaved timesheet data will be lost!,Несохраненные данные ТШ будут потеряны!
-Up the tree,По дереву вверх
-Update Work Efforts,Обновить трудозатраты
-Updated rights ({0}) for {1},Обновлены права ({0}) для {1}
-Updating forecast work efforts...,Обновление прогнозных трудозатрат...
-Updating parent accounts...,Обновление родительских статей...
-User,Пользователь
-User and date must be specified to open absence request,Для открытия заявки на отсутствие необходимо указать пользователя и дату
-User Group,Группы пользователей
-User Group Members,Члены группы
-User Holiday,Праздник пользователя
-Utilization forecast,Прогноз утилизации
-Utilization plan,План утилизации
-Validation error: {0},Ошибка проверки: {0}
-Validity period end date cannot be earlier than its start,Дата окончания периода действия не может быть раньше его начала
-Virtual Worker,Виртуальный участник
-Wait for budget data to load first,Сначала дождитесь загрузки данных бюджета
-Wait for the work efforts table data to load first,Сначала дождитесь загрузки данных таблицы трудозатрат
-Warning,Предупреждение
-Warning! Member '{0}' is already assigned to role '{1}' in an overlapping period (rows {2} and {3}),Внимание! Участник '{0}' уже назначен на роль '{1}' в пересекающийся период (строки {2} и {3})
-Warning! Virtual worker is already assigned to role '{0}' in an overlapping period (rows {1} and {2}),Внимание! Виртуальный работник уже назначен на роль '{0}' в пересекающийся период (строки {1} и {2})
-WE,ТРЗ
-Wed,Ср
-Weekly,Еженедельно
-Weekly available hours,Доступные часы за неделю
-Weekly View,Отображение по неделям
-Weekly working hours fund,Недельный фонд рабочих часов
-Weight exceeded,Превышен вес
-Without Client,Без Клиента
-Work,Работы
-Work efforts,Трудозатраты
-Work Efforts,Трудозатраты
-Work efforts accounted from,Учтены трудозатраты от
-Work efforts are not defined for role: {0},Не определены трудозатраты для роли: {0}
-Work efforts included from,Учтены трудозатраты от
-Work Efforts Plan vs Actual,План-факт трудозатрат
-Work efforts table is not initialized yet,Таблица трудозатрат еще не инициализирована
-Worker type,Тип работника
-Worker Type,Тип Исполнителя
-Working hours fund,Фонд рабочих часов
-Working Hours On Date,Справочник дат исключений
-Workload,Загрузка
-Workload assignment,Назначение загрузки
-Workload exceeds forecast work efforts,Загрузка превышает прогноз трудозатрат
-Workload exceeds forecast. Recalculate forecast based on current forecast values?,Обнаружено превышение загрузки над прогнозом. Хотите выполнить пересчет прогноза на основании текущих прогнозных значений?
-"Workload, h","Загрузка, ч"
-Year,Год
-You have overdue timesheets. Fill them in and submit for approval urgently!,У вас есть просроченные Таймшиты. Срочно заполните их и отправьте на согласование!
-You must select changes,Необходимо выбрать изменения
+"%","%",""
+"- {0} (row {1})","- {0} (строка {1})",""
+"- {0} (row {1}, role: {2})","- {0} (строка {1}, роль: {2})",""
+"- {0} (row {1}, virtual member)","- {0} (строка {1}, виртуальный участник)",""
+"A timesheet already exists that overlaps these dates","Уже есть ТШ пересекающийся с этими датами",""
+"Abs.","Отс.",""
+"Absence","Отсутствие",""
+"Absence hours","Часы отсутствия",""
+"Absences","Отсутствия",""
+"Actual","Факт",""
+"Actual Only","Только факт",""
+"Actual workload","Фактическая загрузка",""
+"Actual/Forecast","Факт/Прогноз",""
+"Add forecast","Добавить прогноз",""
+"Add Role","Добавить роль",""
+"Add utilization","Добавить утилизацию",""
+"Added access with rights {0} for {1}","Добавлен доступ с правами {0} для {1}",""
+"Added read-only access for {0}","Добавлен доступ только для чтения для {0}",""
+"Adding forecast from work efforts for {0} tasks...","Добавление прогноза из трудозатрат для {0} задач...",""
+"Adding forecast to budget...","Добавление прогноза в бюджет...",""
+"All","Все",""
+"All possible assignees are already assigned","Назначены все возможные исполнители",""
+"All tasks","Все задачи",""
+"Amount","Величина",""
+"An error occurred while loading data. Please refresh the page.","Произошла ошибка при загрузке данных. Пожалуйста, обновите страницу.",""
+"Apply Selected","Выполнить выбранные",""
+"Approval History","История согласований",""
+"Are you sure you want to delete role {0} for task {1}?","Вы действительно хотите удалить роль {0} для задачи {1}?",""
+"Are you sure you want to save the selected forecast / actual data as plan?","Вы уверены, что хотите сохранить выбранные прогнозные / фактические данные как плановые?",""
+"As % of task work efforts","В % от трудоемкости задачи",""
+"As % of working hours fund","В % от фонда рабочих часов",""
+"Assign entire team","Назначить всю команду",""
+"Assignment function is unavailable","Функция назначений недоступна",""
+"Assignments","Назначения",""
+"Assignments updated","Назначения обновлены",""
+"Attention!","Внимание!",""
+"Available hours","Доступные часы",""
+"Base working hours","Базовые рабочие часы",""
+"Calculated {0} amounts. Updated {1} budget records.","Рассчитано {0} сумм. Обновлено {1} записей в бюджете.",""
+"Cancel","Отмена",""
+"Cancel without saving","Отменить",""
+"Capacity","Ёмкость",""
+"Changes applied: {0}","Выполнены изменения: {0}",""
+"Changes will be saved. Continue?","Изменения данных будут сохранены. Продолжить?",""
+"Charge Dept.","Учит. отд.",""
+"Chart request failed","Не удалось загрузить график",""
+"Check","Проверить",""
+"Check all","Проверить все",""
+"Check the tasks and roles to update the forecast","Отметьте галочками задачи и роли для обновления прогноза",""
+"Checking project workload and work efforts...","Проверка загрузки и трудозатрат по проекту...",""
+"Chronology","Хронолоогия",""
+"Clear All Filters","Сбросить все фильтры",""
+"Close","Закрыть",""
+"Confirm","Подтвердите",""
+"Continue","Продолжить",""
+"Copy","Скопировать",""
+"cost","затрат",""
+"Cost forecast from work efforts","Затрат на основании прогноза трудозатрат",""
+"Costs updated ({0} records). Revenue error: {1}","Затраты обновлены ({0} записей). Ошибка выручки: {1}",""
+"Costs: {0} records. Revenue: {1} records.","Затраты: {0} записей. Выручка: {1} записей.",""
+"Could not determine date for opening absence request","Не удалось определить дату для открытия заявки на отсутствие",""
+"Could not find the table container","Не удалось найти контейнер для таблицы",""
+"Could not load table component: {0}","Не удалось загрузить компонент таблицы: {0}",""
+"Create subtask","Создать подзадачу",""
+"Cumul.","Накоплен.",""
+"Cumul. Plan","Накоплен. план",""
+"Curr. End","Текущ. окончание",""
+"Curr. Start","Текущ. начало",""
+"d.","дн.",""
+"Daily","Ежедневно",""
+"Daily View","Отображение по дням",""
+"Data from Planned Workload","Данные из плановой загрузки",""
+"Data saved","Данные сохранены",""
+"Data saved as plan successfully","Данные успешно сохранены как план",""
+"Data saved successfully","Данные успешно сохранены",""
+"Data updated successfully","Данные успешно обновлены",""
+"Date","Дата",""
+"Date-time","Дата-время",""
+"Dates","Сроки",""
+"Dates are not set","Даты не заданы",""
+"Dependencies","Зависимости",""
+"DinextAgGrid bootstrap failed to load","Не удалось загрузить DinextAgGrid",""
+"Discrepancies between forecast work efforts and assigned workload","Расхождения прогноза трудозатрат и назначенной загрузки",""
+"Discrepancy","Расхождение",""
+"Down the tree","По дереву вниз",""
+"Duplicates skipped: {0}","Пропущено дубликатов: {0}",""
+"Duration","Длит-сть",""
+"Elapsed","Прошло",""
+"Employee","Сотрудник",""
+"Employee fact","Факт сотрудников",""
+"Employee forecast","Прогноз сотрудников",""
+"Employee or Supplier not found for project team member {0}","Не найден Employee или Supplier для участника Проектной Коменды {0}",""
+"Empty response from server","Пустой ответ от сервера",""
+"Entry","Запись",""
+"Error","Ошибка",""
+"Error adding forecast","Ошибка при добавлении прогноза",""
+"Error adding role","Ошибка при добавлении роли",""
+"Error building chart","Ошибка при построении графика",""
+"Error checking workload discrepancies","Ошибка при проверке расхождений загрузки",""
+"Error checking: {0}","Ошибка при проверке: {0}",""
+"Error deleting role","Ошибка при удалении роли",""
+"Error determining timesheet dates!","Ошибка определение дат ТШ!",""
+"Error loading data: {0}","Ошибка при загрузке данных: {0}",""
+"Error loading work effort data","Ошибка при загрузке данных трудозатрат",""
+"Error loading work efforts data","Ошибка при загрузке данных о трудозатратах",""
+"Error processing request","Ошибка при обработке запроса",""
+"Error processing timesheet positions. Please refresh the page and try again.","Ошибка при обработке позиций ТШ. Пожалуйста, обновите страницу и попробуйте заново.",""
+"Error saving data","Ошибка при сохранении данных",""
+"Error saving data: ","Ошибка при сохранении данных:",""
+"Error saving new positions","Ошибка при сохранении новых позиций",""
+"Error saving timesheet","Ошибка при сохранении ТШ",""
+"Error searching for absence request","Ошибка при поиске заявки на отсутствие",""
+"Error updating forecast","Ошибка при обновлении прогноза",""
+"Error updating forecast data","Ошибка при обновлении прогнозных данных",""
+"Error updating parent accounts","Ошибка при обновлении родительских статей",""
+"Error updating positions","Ошибка при обновлении позиций",""
+"Error updating: {0}","Ошибка при обновлении: {0}",""
+"Error: {0}","Ошибка: {0}",""
+"Failed to load income accounts list","Не удалось загрузить список счетов доходов",""
+"Failed to load work effort data","Не удалось загрузить данные трудозатрат",""
+"Fetching project workload data...","Получение данных загрузки проекта...",""
+"Fetching projects workload data...","Получение данных загрузки проектов...",""
+"FF (Finish → Finish)","ОО (Окончание → Окончание)",""
+"Fix","Исправить",""
+"For Time & Materials (T&M) billing, bill rate is required:","При схеме 'Время и затраты (T&M)' обязательно укажите ставку реализации:",""
+"For virtual members, cost rate is required:","Для виртуальных участников обязательно укажите ставку себестоимости:",""
+"Forecast","Прогнозные",""
+"Forecast added successfully. Updated {0} records.","Прогноз успешно добавлен. Обновлено {0} записей.",""
+"Forecast and actual","Прогноз и факт",""
+"Forecast and Actual","Прогноз и факт",""
+"Forecast Completion","Прогноз завершения",""
+"Forecast data successfully updated for {0} positions","Прогнозные данные успешно обновлены для {0} позиций",""
+"Forecast exceeds workload. Recalculate forecast based on virtual project team member data?","Обнаружено превышение прогноза над загрузкой. Хотите выполнить пересчет прогноза на основании данных виртуальных участников проекта?",""
+"Forecast increased for parent accounts: {0}","Прогноз увеличен для родительских статей: {0}",""
+"Forecast Only","Только прогноз",""
+"Forecast Start","Прогноз начала",""
+"Forecast Task Dates","Прогнозные сроки задачи",""
+"Forecast will be added for all roles","В бюджет будут добавлены прогнозные часы по всем ролям",""
+"Forecast, h","Прогноз, ч",""
+"Found {0} tasks with workload as % of effort without planned work efforts","Найдено {0} задач с загрузкой в % от трудоемкости без плановых трудозатрат",""
+"Fri","Пт",""
+"From date","Дата с",""
+"From Date","Дата с",""
+"FS (Finish → Start)","ОН (Окончание → Начало)",""
+"FTE","FTE",""
+"Go to project task list","Перейти к списку задач проекта",""
+"Go to Timesheets","Перейти к Таймшитам",""
+"h","ч.",""
+"h.","ч.",""
+"Half Year","Полугодие",""
+"Hide chart","Скрыть график",""
+"Hide Plan","Скрыть план",""
+"Hide Δ","Скрыть Δ",""
+"Hol.","Вых.",""
+"Hours","Часы",""
+"In working hours","В рабочих часах",""
+"Income account","Счёт доходов",""
+"Invalid server response format","Некорректный формат ответа от сервера",""
+"Issues by type","Запросы по типам",""
+"Jul","Июл",""
+"Jun","Июн",""
+"Labels","Метки",""
+"Load next 20 users","Загрузить следующих 20 пользователей",""
+"Loading chart...","Загрузка графика...",""
+"Loading data..","Идет загрузка данных..",""
+"Loading data...","Идет загрузка данных...",""
+"Loading projects...","Загрузка проектов...",""
+"Loading work effort data...","Загрузка данных трудозатрат...",""
+"Loading work efforts data...","Загрузка данных о трудозатратах...",""
+"Loading...","Загрузка...",""
+"Lock","Блокировка",""
+"Mandatory participant","Обязательный участник",""
+"Maximum display period is 1 year","Максимальный период отображения - 1 год",""
+"Meeting Notes","Протоколы встреч",""
+"Member was found neither as Employee nor as Supplier","Участник не найден ни как Сотрудник, ни как Поставщик",""
+"Mon","Пн",""
+"Monthly","Ежемесячно",""
+"Monthly available hours","Доступные часы за месяц",""
+"Monthly View","Отображение по месяцам",""
+"Monthly working hours fund","Месячный фонд рабочих часов",""
+"Next month","Следующий месяц",""
+"No changes to save.","Нет изменений для сохранения.",""
+"No data to display.","Нет данных для отображения.",""
+"No data to save.","Нет данных для сохранения.",""
+"No discrepancies found","Расхождений не обнаружено",""
+"No downward task dependency violations found","Не выявлено нарушений зависимостей вниз по дереву задач",""
+"No Project","Нет проекта",""
+"No required changes found due to task dependency violations","Не выявлено необходимых изменений, вызванных нарушением зависимостей задач",""
+"No response from server","Нет ответа от сервера",""
+"No Role","Без роли",""
+"No tasks found with workload as % of effort without planned work efforts","Не найдено задач с загрузкой в % от трудоемкости без плановых трудозатрат",""
+"No tasks selected","Не выбрано ни одной задачи",""
+"No tasks with forecast work efforts or workload","Нет задач с прогнозными трудозатратами или загрузкой",""
+"No tasks with work efforts in project","Нет задач с трудозатратами в проекте",""
+"No virtual team member found for role ""{0}"". Cannot distribute remaining forecast hours ({1}h).","Для роли ""{0}"" не найден виртуальный участник в команде проекта. Невозможно распределить остаток прогнозных часов ({1}ч).",""
+"No work effort data","Нет данных о трудозатратах",""
+"No work efforts data","Нет данных по трудозатратам",""
+"Norm","Норма",""
+"Not set","Не задано",""
+"Operation cancelled","Операция отменена",""
+"Overdue Timesheets","Просроченные Таймшиты",""
+"Overload detected: assigned workload ({0}h) exceeds forecast work efforts ({1}h) for task ""{2}"", role ""{3}"", period {4}. Recalculate {5} forecast based on current workload?","Обнаружена перегрузка: назначенная загрузка ({0}ч) превышает прогнозные трудозатраты ({1}ч) по задаче ""{2}"", роли ""{3}"", периоду {4}. Выполнить пересчет прогноза {5} на основании текущей загрузки?",""
+"Partial absence","Частичное отсутствие",""
+"Participant","Участник",""
+"Participant / Project","Участник / Проект",""
+"Participant / Role","Участник / Роль",""
+"Participant / Role / Task","Участник / Роль / Задача",""
+"Participant type","Тип участника",""
+"Period available hours","Доступные часы периода",""
+"Period date conflict","Конфликт дат периодов",""
+"Plan","План",""
+"Plan (line)","План (линия)",""
+"Plan / Actual / Forecast work efforts — by period and cumulative","План / Факт / Прогноз трудозатрат — по периодам и накопительно",""
+"Plan is missing while workload is present","Отсутствует план при наличии загрузки",""
+"Plan workload","Плановая загрузка",""
+"Planned end","План завершения",""
+"Planned start","План начала",""
+"Planned Task Dates","Плановые сроки задачи",""
+"Planned work efforts are not defined","Не определены плановые трудозатраты",""
+"Planned work efforts are required for this task","Для данной задачи обязательно указание плановых трудозатрат",""
+"Planned Work Efforts Present","Наличие плановых трудозатрат",""
+"Please fill in all required fields","Пожалуйста заполните все необходимые поля",""
+"Positions from Previous Timesheet","Позиции из предыдущего ТШ",""
+"Posting...","Проводим...",""
+"Previous month","Предыдущий месяц",""
+"Priority","Приоритет",""
+"Progress","Прогресс",""
+"Project","Проект",""
+"Project & User Holiday","Праздник проекта и пользователя",""
+"Project business area: percent sum check","Бизнес-сфера проекта: проверка суммы %",""
+"Project Holiday","Праздник проекта",""
+"Project plan","План проекта",""
+"Project Portfolio","Портфель проекта",""
+"Project Role","Проектная роль",""
+"Project Structure Plan","Структурный план проекта",""
+"Project task list","Список задач проекта",""
+"Project task tree","Дерево задач проекта",""
+"Project workload summary","Сводка загрузки проекта",""
+"Projects Workload Report","Отчет по загрузке Команды",""
+"Prop. End","Предл. окончание",""
+"Prop. Start","Предл. начало",""
+"PWA dialog open function was not found","Функция открытия диалога PWA не найдена",""
+"PWA plan","План PWA",""
+"Quarter","Квартал",""
+"Rate is not set for virtual team member of role ""{0}"".","Для виртуального участника роли ""{0}"" не заполнена ставка.",""
+"Reasons","Причины",""
+"Refresh Data","Обновить данные",""
+"Refresh the task tree after applying changes","Обновите дерево задач после выполнения изменений",""
+"Remind later","Напомнить позже",""
+"Repost Entries","Перепровести проводки",""
+"Required changes to resolve task dependency violations","Необходимые изменения для устранения нарушений зависимостей задач",""
+"Required roles are missing from the project team: {0}","В команде проекта отсутствуют обязательные роли: {0}",""
+"Resp.","Ответств.",""
+"Retry","Повторить",""
+"revenue","выручки",""
+"Revenue","Выручка",""
+"Revenue forecast from work efforts","Выручки на основании прогноза трудозатрат",""
+"Role","Роль",""
+"Role deleted","Роль удалена",""
+"Role {0} added","Роль {0} добавлена",""
+"Sat","Сб",""
+"Save","Сохранить",""
+"Save Error","Ошибка сохранения",""
+"Save Plan","Сохранить план",""
+"Saving data","Сохранение данных",""
+"Saving data..","Сохранение данных..",""
+"Saving data...","Сохранение данных...",""
+"Saving...","Сохранение...",""
+"Select at least one overloaded task and role","Выберите хотя бы одну задачу и роль с перегрузкой",""
+"Select at least one task","Выберите хотя бы одну задачу",""
+"Select at least one task and role","Выберите хотя бы одну задачу и роль",""
+"Select income account","Выберите счёт доходов",""
+"Select tasks for adding forecast to budget","Выберите задачи для добавления прогноза в бюджет",""
+"Select tasks to add forecast to budget","Отметьте галочками задачи для добавления прогноза",""
+"Select tasks with data","Выберите задачи с данными",""
+"Select the tasks for which plan data should be saved.","Выберите задачи, для которых необходимо сохранить плановые данные.",""
+"Server error: {0}","Ошибка сервера: {0}",""
+"SF (Start → Finish)","НО (Начало → Окончание)",""
+"Show 20 more","Показать ещё 20",""
+"Show chart","Показать график",""
+"Show fact","Показать факт",""
+"Show Plan","Показать план",""
+"Show Δ","Показать Δ",""
+"Skipped invalid: {0}","Пропущено невалидных: {0}",""
+"Sole participant","Единственный участник",""
+"SS (Start → Start)","НН (Начало → Начало)",""
+"Status","Статус",""
+"Successfully copied: {0}","Успешно скопировано: {0}",""
+"Sum of child task weights exceeds parent weight! Max weight: ","Сумма весов дочерних задач превышает родительскую! Максимальный вес:",""
+"Sun","Вс",""
+"Supplier","Подрядчик",""
+"Supplier fact","Факт подрядчиков",""
+"Supplier forecast","Прогноз подрядчиков",""
+"Task","Задача",""
+"Task business area: percent sum check","Бизнес-сфера задачи: проверка суммы %",""
+"Task dates","Даты задачи",""
+"Task tree","Дерево задач",""
+"Tasks","Задачи",""
+"Tasks by assignee","Задачи по ответственным",""
+"Tasks by priority","Задачи по приоритетам",""
+"Tasks by status","Задачи по статусам",""
+"Team capacity","Ёмкость команды",""
+"Team workload summary","Сводка загрузки команды",""
+"The ""From"" date cannot be later than the ""To"" date","Дата ""С"" не может быть больше даты ""По""",""
+"The entire timesheet will require re-approval!","Потребуется повторное согласование всего таймшита!",""
+"The following errors were found:","Обнаружены следующие ошибки:",""
+"Thu","Чт",""
+"Timesheet filling errors:<br>","Ошибки заполнения ТШ:<br>",""
+"Timesheet is overdue! Submit positions for approval immediately!","Таймшит просрочен! Срочно отправьте позиции на согласование!",""
+"To date","Дата по",""
+"To Date","Дата по",""
+"Total","Итого",""
+"TS","ТШ",""
+"Tue","Вт",""
+"Type","Тип",""
+"Unable to save timesheet","Невозможно сохранить ТШ",""
+"Underload detected: forecast work efforts ({0}h) exceed assigned workload ({1}h) for task ""{2}"", role ""{3}"", period {4}. A virtual team member will cover the remainder ({5}h) when calculating {6}. Continue?","Обнаружена недогрузка: прогнозные трудозатраты ({0}ч) превышают назначенную загрузку ({1}ч) по задаче ""{2}"", роли ""{3}"", периоду {4}. Будет использован виртуальный участник для покрытия остатка ({5}ч) при расчёте {6}. Продолжить?",""
+"Unexpected server response","Неожиданный ответ от сервера",""
+"Unknown error","Неизвестная ошибка",""
+"Unknown error while updating forecast data","Неизвестная ошибка при обновлении прогнозных данных",""
+"Unsaved timesheet data will be lost!","Несохраненные данные ТШ будут потеряны!",""
+"Up the tree","По дереву вверх",""
+"Update forecast for {0} positions?","Обновить прогноз для {0} позиций?",""
+"Update Work Efforts","Обновить трудозатраты",""
+"Updated rights ({0}) for {1}","Обновлены права ({0}) для {1}",""
+"Updating forecast work efforts...","Обновление прогнозных трудозатрат...",""
+"Updating parent accounts...","Обновление родительских статей...",""
+"User","Пользователь",""
+"User and date must be specified to open absence request","Для открытия заявки на отсутствие необходимо указать пользователя и дату",""
+"User Group","Группы пользователей",""
+"User Group Members","Члены группы",""
+"User Holiday","Праздник пользователя",""
+"Utilization forecast","Прогноз утилизации",""
+"Utilization plan","План утилизации",""
+"Validation error: {0}","Ошибка проверки: {0}",""
+"Validity period end date cannot be earlier than its start","Дата окончания периода действия не может быть раньше его начала",""
+"Value cannot be less than the sum of child task work efforts (","Значение не может быть меньше суммы трудозатрат дочерних задач (",""
+"Virtual Worker","Виртуальный участник",""
+"Wait for budget data to load first","Сначала дождитесь загрузки данных бюджета",""
+"Wait for the work efforts table data to load first","Сначала дождитесь загрузки данных таблицы трудозатрат",""
+"Warning","Предупреждение",""
+"Warning! Member '{0}' is already assigned to role '{1}' in an overlapping period (rows {2} and {3})","Внимание! Участник '{0}' уже назначен на роль '{1}' в пересекающийся период (строки {2} и {3})",""
+"Warning! Virtual worker is already assigned to role '{0}' in an overlapping period (rows {1} and {2})","Внимание! Виртуальный работник уже назначен на роль '{0}' в пересекающийся период (строки {1} и {2})",""
+"WE","ТРЗ",""
+"Wed","Ср",""
+"Weekly","Еженедельно",""
+"Weekly available hours","Доступные часы за неделю",""
+"Weekly View","Отображение по неделям",""
+"Weekly working hours fund","Недельный фонд рабочих часов",""
+"Weight exceeded","Превышен вес",""
+"Without Client","Без Клиента",""
+"Work","Работы",""
+"Work effort value cannot exceed ","Значение трудозатрат не может превышать",""
+"Work efforts","Трудозатраты",""
+"Work Efforts","Трудозатраты",""
+"Work efforts accounted from","Учтены трудозатраты от",""
+"Work efforts are not defined for role: {0}","Не определены трудозатраты для роли: {0}",""
+"Work efforts are not defined for roles: {0}","Не определены трудозатраты для ролей: {0}",""
+"Work efforts included from","Учтены трудозатраты от",""
+"Work Efforts Plan vs Actual","План-факт трудозатрат",""
+"Work efforts table is not initialized yet","Таблица трудозатрат еще не инициализирована",""
+"Worker type","Тип работника",""
+"Worker Type","Тип Исполнителя",""
+"Working hours fund","Фонд рабочих часов",""
+"Working Hours On Date","Справочник дат исключений",""
+"Workload","Загрузка",""
+"Workload assignment","Назначение загрузки",""
+"Workload exceeds forecast work efforts","Загрузка превышает прогноз трудозатрат",""
+"Workload exceeds forecast. Recalculate forecast based on current forecast values?","Обнаружено превышение загрузки над прогнозом. Хотите выполнить пересчет прогноза на основании текущих прогнозных значений?",""
+"Workload, h","Загрузка, ч",""
+"Year","Год",""
+"You have overdue timesheets. Fill them in and submit for approval urgently!","У вас есть просроченные Таймшиты. Срочно заполните их и отправьте на согласование!",""
+"You must select changes","Необходимо выбрать изменения",""

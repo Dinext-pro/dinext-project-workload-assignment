@@ -287,7 +287,7 @@ $(document).on('blur', '.we-edit-input', function(e) {
     if (isParent) {
         let childrenSum = get_child_forecast_sum(task, role, period, aggregatedTasks);
         if (new_value < childrenSum) {
-            frappe.msgprint(__("Значение не может быть меньше суммы трудозатрат дочерних задач (" + childrenSum + ")"));
+            frappe.msgprint(__("Value cannot be less than the sum of child task work efforts (" + childrenSum + ")"));
             $input.addClass("error");
             return;
         }
@@ -295,7 +295,7 @@ $(document).on('blur', '.we-edit-input', function(e) {
 
     let parentLimit = get_parent_forecast_limit(task, role, period, aggregatedTasks);
     if (parentLimit !== null && (new_value > parentLimit)) {
-        frappe.msgprint(__("Значение трудозатрат не может превышать " + parentLimit + " (ограничение родительской задачи)"));
+        frappe.msgprint(__("Work effort value cannot exceed " + parentLimit + " (ограничение родительской задачи)"));
         $input.addClass("error");
         return;
     }

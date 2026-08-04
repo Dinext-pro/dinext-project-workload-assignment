@@ -51,7 +51,7 @@ function perform_overload_check(frm) {
                 project_workload_assignment.work_efforts.show_overload_details_dialog(overloads, frm);
             } else if (r.message && r.message.error) {
                 console.error("Server error:", r.message.error);
-                frappe.msgprint(__("Ошибка при проверке: {0}", [r.message.error]));
+                frappe.msgprint(__("Error checking: {0}", [r.message.error]));
             } else {
                 console.error("Unexpected response structure:", r);
                 frappe.msgprint(__("Unexpected server response"));
@@ -191,7 +191,7 @@ function show_overload_details_dialog(overloads, frm) {
             }
             
             frappe.confirm(
-                __("Обновить прогноз для {0} позиций?", [selected_rows.length]),
+                __("Update forecast for {0} positions?", [selected_rows.length]),
                 () => project_workload_assignment.work_efforts.update_forecast_from_assignments(frm, selected_rows, dialog)
             );
         },
@@ -357,7 +357,7 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
         callback: function(r) {
             if (r.message && r.message.success) {
                 frappe.show_alert({
-                    message: __("Прогнозные данные успешно обновлены для {0} позиций", [r.message.updated_count]),
+                    message: __("Forecast data successfully updated for {0} positions", [r.message.updated_count]),
                     indicator: 'green'
                 }, 5);
                 
@@ -372,7 +372,7 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
                 
                 project_workload_assignment.work_efforts.load_work_efforts_data(frm, "month", "hours", true);
             } else if (r.message && r.message.error) {
-                frappe.msgprint(__("Ошибка при обновлении: {0}", [r.message.error]));
+                frappe.msgprint(__("Error updating: {0}", [r.message.error]));
             } else {
                 frappe.msgprint(__("Unknown error while updating forecast data"));
             }
