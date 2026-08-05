@@ -135,8 +135,23 @@ function closeAddRoleMenu() {
 }
 
 /**
- * Desk-themed dropdown (Bootstrap menu classes), portaled to body so AG Grid
- * cell overflow does not clip it. Same visual language as WE «Проверить».
+ * Native fullscreen only paints fullscreenElement subtree — body portals hidden.
+ * @returns {HTMLElement}
+ */
+function getPortalHost() {
+    return (
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement ||
+        document.body
+    );
+}
+
+/**
+ * Desk-themed dropdown (Bootstrap menu classes), portaled so AG Grid cell
+ * overflow does not clip it. Host = fullscreenElement when active, else body.
+ * Same visual language as WE «Проверить».
  */
 function openAddRoleMenu(frm, taskId, anchorEl, options) {
     closeAddRoleMenu();
@@ -167,7 +182,7 @@ function openAddRoleMenu(frm, taskId, anchorEl, options) {
         menu.appendChild(li);
     }
 
-    document.body.appendChild(menu);
+    getPortalHost().appendChild(menu);
     const rect = anchorEl.getBoundingClientRect();
     const menuWidth = menu.offsetWidth || 160;
     let left = rect.right - menuWidth;

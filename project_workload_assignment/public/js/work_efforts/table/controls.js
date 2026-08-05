@@ -186,15 +186,32 @@ function mount_toolbar_controls(frm, host) {
 }
 
 /**
- * Same idea as roles.js add-role menu: fixed menu on body escapes overflow clip.
+ * Portal host for overlays. Native fullscreen only paints fullscreenElement subtree —
+ * body portals are invisible there.
+ * @returns {HTMLElement}
+ */
+function get_portal_host() {
+	return (
+		document.fullscreenElement ||
+		document.webkitFullscreenElement ||
+		document.mozFullScreenElement ||
+		document.msFullscreenElement ||
+		document.body
+	);
+}
+
+/**
+ * Same idea as roles.js add-role menu: fixed menu escapes overflow clip.
+ * Host = fullscreenElement when active, else body.
  * @param {JQuery} $btnGroup
  */
 function bindCheckDropdownPortal($btnGroup) {
 	const $toggle = $btnGroup.find(".dropdown-toggle");
 	const $menu = $btnGroup.find(".dropdown-menu");
+	const isPortaled = () => !$menu.parent().is($btnGroup);
 
 	const closeMenu = () => {
-		if (!$menu.parent().is(document.body)) {
+		if (!isPortaled()) {
 			return;
 		}
 		$menu
@@ -225,9 +242,9 @@ function bindCheckDropdownPortal($btnGroup) {
 
 	const openMenu = () => {
 		const rect = $toggle[0].getBoundingClientRect();
-		// Clear BS `.dropdown-menu-right { right: 0 }` — with body + left it stretches full viewport.
+		// Clear BS `.dropdown-menu-right { right: 0 }` — with portal + left it stretches full viewport.
 		$menu
-			.appendTo(document.body)
+			.appendTo(get_portal_host())
 			.addClass("we-toolbar-check-menu")
 			.css({
 				display: "block",
@@ -254,7 +271,7 @@ function bindCheckDropdownPortal($btnGroup) {
 	$toggle.on("click", (e) => {
 		e.preventDefault();
 		e.stopPropagation();
-		if ($menu.parent().is(document.body) && $menu.is(":visible")) {
+		if (isPortaled() && $menu.is(":visible")) {
 			closeMenu();
 			return;
 		}
@@ -352,7 +369,7 @@ function mount_legend_help(host) {
 		closePanel();
 		$panel = $(`<div class="we-legend-popover" role="dialog" aria-label="${__("Легенда")}"></div>`);
 		$panel.html(get_legend_html());
-		$panel.appendTo(document.body);
+		$panel.appendTo(get_portal_host());
 
 		const rect = $btn[0].getBoundingClientRect();
 		const panelWidth = Math.min(360, window.innerWidth - 16);
