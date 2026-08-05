@@ -6,6 +6,4 @@ include:
     file: /ci/dinext-app.yml
 
 variables:
-  # Temporary: main still calls frappe.utils.ping (broken). Pin script clone to the fix branch.
-  # Revert to "main" after erpnext/dinext/dinext_control_center!fix/ci-smoke-frappe-ping is merged.
-  DINEXT_CONTROL_CENTER_REF: "fix/ci-smoke-frappe-ping"
+  DINEXT_CONTROL_CENTER_REF: "main"
