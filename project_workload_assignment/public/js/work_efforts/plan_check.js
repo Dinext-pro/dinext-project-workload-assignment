@@ -316,3 +316,4 @@ export function missingPlanRoleTooltipValue(frm) {
         return __("Work efforts are not defined for role: {0}", [row.role]);
     };
 }
+
