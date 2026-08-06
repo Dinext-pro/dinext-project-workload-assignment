@@ -46,6 +46,9 @@ function buildTableOptions(frm, state) {
         mergeGroup: MERGE_GROUP,
         gridOptions: {
             enableCellSpan: true,
+            // Missing-plan orange cells: browser title tooltips (works in fullscreen)
+            enableBrowserTooltips: true,
+            tooltipShowDelay: 400,
             // Density close to legacy role line (24px) + AG Grid chrome
             rowHeight: 28,
             headerHeight: 32,

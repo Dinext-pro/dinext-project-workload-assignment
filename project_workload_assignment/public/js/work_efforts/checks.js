@@ -119,7 +119,7 @@ function check_plan_load_for_percentage_assignments(frm) {
 
     if (frm.hide_plan) {
         frm.hide_plan = false;
-        $('#toggle_plan').text(__("Скрыть план"));
+        $('#toggle_plan').text(__("Hide plan"));
     }
 
     project_workload_assignment.work_efforts.load_detailed_assignments(frm).then(() => {
@@ -374,9 +374,17 @@ let tooltipTimeout = null;
 let currentTooltipTarget = null;
 
 function initCustomTooltip() {
-    if ($customTooltip) return;
+    const host =
+        project_workload_assignment.work_efforts.get_portal_host?.() || document.body;
 
-    $customTooltip = $('<div class="custom-workload-tooltip"></div>').appendTo('body');
+    if ($customTooltip) {
+        if ($customTooltip[0].parentNode !== host) {
+            $customTooltip.appendTo(host);
+        }
+        return;
+    }
+
+    $customTooltip = $('<div class="custom-workload-tooltip"></div>').appendTo(host);
     $customTooltip.css({
         position: 'fixed',
         background: 'var(--alert-bg-warning)',

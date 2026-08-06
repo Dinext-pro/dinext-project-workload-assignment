@@ -186,7 +186,7 @@ export async function runMissingPlanCheck(frm) {
 
     if (frm.hide_plan) {
         frm.hide_plan = false;
-        $("#toggle_plan").text(__("Скрыть план"));
+        $("#toggle_plan").text(__("Hide plan"));
         window.WorkEfforts?.onTogglePlanOrDelta?.(frm);
     }
 
@@ -222,6 +222,7 @@ export async function runMissingPlanCheck(frm) {
             3
         );
     }
+    project_workload_assignment.work_efforts.bring_overlays_into_fullscreen?.();
 }
 
 export function missingPlanTaskClassRules(frm) {
@@ -253,5 +254,28 @@ export function missingPlanCellClassRules(frm, period) {
             const periods = frm._missingPlanPeriodsMap?.[row.task_id]?.[row.role] || [];
             return periods.some((p) => p.period_key === period.key || `${p.year}_${p.month}` === period.key);
         },
+    };
+}
+
+/** Browser tooltip for orange task cells (legacy data-tooltip). */
+export function missingPlanTaskTooltipValue(frm) {
+    return (params) => {
+        const row = params.data;
+        if (!row || row.merge_group_id === SUMMARY_ROW_ID) return undefined;
+        if (row.merge_group_index !== 0) return undefined;
+        const roles = frm._missingPlanMap?.[row.task_id];
+        if (!roles?.length) return undefined;
+        return __("Work efforts are not defined for roles: {0}", [roles.join(", ")]);
+    };
+}
+
+/** Browser tooltip for orange role cells (legacy data-tooltip). */
+export function missingPlanRoleTooltipValue(frm) {
+    return (params) => {
+        const row = params.data;
+        if (!row || row.merge_group_id === SUMMARY_ROW_ID || !row.role) return undefined;
+        const roles = frm._missingPlanMap?.[row.task_id] || [];
+        if (!roles.includes(row.role)) return undefined;
+        return __("Work efforts are not defined for role: {0}", [row.role]);
     };
 }

@@ -5,7 +5,9 @@ import { assignmentsCellRenderer } from "./assignments.js";
 import {
     missingPlanCellClassRules,
     missingPlanRoleClassRules,
+    missingPlanRoleTooltipValue,
     missingPlanTaskClassRules,
+    missingPlanTaskTooltipValue,
 } from "./plan_check.js";
 import {
     actualPeriodClassRules,
@@ -328,6 +330,7 @@ export function getColumns(frm, periods) {
             tree: true,
             spanRows,
             cellClassRules: missingPlanTaskClassRules(form || {}),
+            tooltipValueGetter: missingPlanTaskTooltipValue(form || {}),
         },
         {
             field: "role",
@@ -341,6 +344,7 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             cellRenderer: roleCellRenderer(form || {}),
             cellClassRules: missingPlanRoleClassRules(form || {}),
+            tooltipValueGetter: missingPlanRoleTooltipValue(form || {}),
         },
         withCenterAlign({
             field: "assignments",

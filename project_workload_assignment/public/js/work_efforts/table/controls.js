@@ -108,9 +108,9 @@ function mount_toolbar_controls(frm, host) {
 	mount_legend_help(host);
 
 	host.append(`
-		<button class="btn btn-default" id="we_save_plan" type="button">${__("Сохранить план")}</button>
-		<button class="btn btn-default" id="toggle_plan" type="button">${__("Показать план")}</button>
-		<button class="btn btn-default" id="toggle_delta" type="button">${__("Показать Δ")}</button>
+		<button class="btn btn-default" id="we_save_plan" type="button">${__("Save plan")}</button>
+		<button class="btn btn-default" id="toggle_plan" type="button">${__("Show plan")}</button>
+		<button class="btn btn-default" id="toggle_delta" type="button">${__("Show Δ")}</button>
 	`);
 
 	addViewOptionsControl(frm, host);
@@ -121,7 +121,8 @@ function mount_toolbar_controls(frm, host) {
 		df: {
 			fieldtype: "Check",
 			fieldname: "show_assignments",
-			label: __("Назначения"),
+			// Distinct from dinext_projects "Assignments"→«Поручения»
+			label: __("Show assignments"),
 			onchange: function () {
 				frm.show_assignments = this.get_value();
 				// onAssignmentsToggle loads assignment cache itself when needed
@@ -137,18 +138,18 @@ function mount_toolbar_controls(frm, host) {
 	host.append(`
 		<div class="btn-group we-toolbar-check-group">
 			<button class="btn btn-default dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
-				${__("Проверить")} <span class="caret"></span>
+				${__("Check")} <span class="caret"></span>
 			</button>
 			<ul class="dropdown-menu dropdown-menu-right">
-				<li id="check_plan_load">${__("Наличие плановых трудозатрат")}</li>
-				<li id="check_workload_overload">${__("Загрузка превышает прогноз трудозатрат")}</li>
+				<li id="check_plan_load">${__("Presence of planned work efforts")}</li>
+				<li id="check_workload_overload">${__("Workload exceeds forecast work efforts")}</li>
 			</ul>
 		</div>
 	`);
 
 	// Defaults set in render.js ensureWeDefaults before mount.
-	host.find("#toggle_plan").text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
-	host.find("#toggle_delta").text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
+	host.find("#toggle_plan").text(frm.hide_plan ? __("Show plan") : __("Hide plan"));
+	host.find("#toggle_delta").text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
 
 	host.find("#we_save_plan").on("click", function () {
 		window.WorkEfforts.saveForecastAsPlan(frm);
@@ -156,7 +157,7 @@ function mount_toolbar_controls(frm, host) {
 
 	host.find("#toggle_plan").on("click", function () {
 		frm.hide_plan = !frm.hide_plan;
-		$(this).text(frm.hide_plan ? __("Показать план") : __("Скрыть план"));
+		$(this).text(frm.hide_plan ? __("Show plan") : __("Hide plan"));
 		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
 		project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
 		window.WorkEfforts.onTogglePlanOrDelta(frm);
@@ -164,7 +165,7 @@ function mount_toolbar_controls(frm, host) {
 
 	host.find("#toggle_delta").on("click", function () {
 		frm.hide_delta = !frm.hide_delta;
-		$(this).text(frm.hide_delta ? __("Показать Δ") : __("Скрыть Δ"));
+		$(this).text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
 		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
 		window.WorkEfforts.onTogglePlanOrDelta(frm);
 	});
@@ -187,7 +188,7 @@ function mount_toolbar_controls(frm, host) {
 
 /**
  * Portal host for overlays. Native fullscreen only paints fullscreenElement subtree —
- * body portals are invisible there.
+ * body / #body portals are invisible there.
  * @returns {HTMLElement}
  */
 function get_portal_host() {
@@ -198,6 +199,26 @@ function get_portal_host() {
 		document.msFullscreenElement ||
 		document.body
 	);
+}
+
+/**
+ * Move desk overlays (modals, freeze, toasts) into the fullscreen element so they
+ * remain visible while Work Efforts table is in native fullscreen.
+ * @param {JQuery|HTMLElement|string} [selector]
+ */
+function bring_overlays_into_fullscreen(selector) {
+	const host = get_portal_host();
+	if (!host || host === document.body) {
+		return;
+	}
+	const $nodes = selector
+		? $(selector)
+		: $("#freeze, #dialog-container, .modal, .modal-backdrop");
+	$nodes.each(function () {
+		if (this.parentNode !== host) {
+			host.appendChild(this);
+		}
+	});
 }
 
 /**
@@ -412,4 +433,6 @@ Object.assign(project_workload_assignment.work_efforts, {
 	get_project_roles,
 	get_display_periods,
 	mount_toolbar_controls,
+	get_portal_host,
+	bring_overlays_into_fullscreen,
 });
