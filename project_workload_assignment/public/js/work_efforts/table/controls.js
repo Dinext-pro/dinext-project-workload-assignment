@@ -279,26 +279,6 @@ function stop_fullscreen_overlay_watch() {
 }
 
 /**
- * Move desk overlays (modals, freeze, toasts) into the fullscreen element so they
- * remain visible while Work Efforts table is in native fullscreen.
- * @param {JQuery|HTMLElement|string} [selector]
- */
-function bring_overlays_into_fullscreen(selector) {
-	const host = get_portal_host();
-	if (!host || host === document.body) {
-		return;
-	}
-	const $nodes = selector
-		? $(selector)
-		: $("#freeze, #dialog-container, .modal, .modal-backdrop");
-	$nodes.each(function () {
-		if (this.parentNode !== host) {
-			host.appendChild(this);
-		}
-	});
-}
-
-/**
  * Same idea as roles.js add-role menu: fixed menu escapes overflow clip.
  * Host = fullscreenElement when active, else body.
  * @param {JQuery} $btnGroup
