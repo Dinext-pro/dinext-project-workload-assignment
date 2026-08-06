@@ -14,9 +14,64 @@ import { ensureWorkloadPeriods } from "./period-markers.js";
 import { onAssignmentsToggle } from "./assignments.js";
 import { onCellDoubleClicked, syncPlFromWe } from "./navigation.js";
 import { buildToolbarItems } from "./toolbar.js";
+import {
+    missingPlanRoleTooltipValue,
+    missingPlanTaskTooltipValue,
+} from "./plan_check.js";
+
+function bindMissingPlanTooltips(frm, gridOptions) {
+    const prevOver = gridOptions.onCellMouseOver;
+    const prevOut = gridOptions.onCellMouseOut;
+    gridOptions.enableBrowserTooltips = false;
+    gridOptions.onCellMouseOver = (params) => {
+        if (typeof prevOver === "function") prevOver(params);
+        const we = project_workload_assignment.work_efforts;
+        const colId = params?.column?.getColId?.() || params?.colDef?.field || "";
+        let text;
+        if (colId === "task_subject" || colId === "task_serial") {
+            text = missingPlanTaskTooltipValue(frm)({ data: params?.data });
+        } else if (colId === "role") {
+            text = missingPlanRoleTooltipValue(frm)({ data: params?.data });
+        }
+        if (!text) return;
+        const el =
+            params?.event?.target?.closest?.(".ag-cell") || params?.event?.target;
+        if (el && we?.showCustomTooltip) {
+            // colored legacy tip (.custom-workload-tooltip), not AG browser title
+            we.showCustomTooltip(el, text);
+        }
+    };
+    gridOptions.onCellMouseOut = (params) => {
+        if (typeof prevOut === "function") prevOut(params);
+        project_workload_assignment.work_efforts?.hideCustomTooltip?.();
+    };
+}
+
+function bindFullscreenOverlayPortal(options) {
+    const prevEnter = options.onFullscreenEnter;
+    const prevExit = options.onFullscreenExit;
+    options.onFullscreenEnter = (ctx) => {
+        if (typeof prevEnter === "function") prevEnter(ctx);
+        project_workload_assignment.work_efforts?.start_fullscreen_overlay_watch?.();
+        project_workload_assignment.work_efforts?.bring_overlays_into_fullscreen?.();
+    };
+    options.onFullscreenExit = (ctx) => {
+        if (typeof prevExit === "function") prevExit(ctx);
+        project_workload_assignment.work_efforts?.stop_fullscreen_overlay_watch?.();
+    };
+}
 
 function buildTableOptions(frm, state) {
-    return {
+    const gridOptions = {
+        enableCellSpan: true,
+        // Density close to legacy role line (24px) + AG Grid chrome
+        rowHeight: 28,
+        headerHeight: 32,
+        groupHeaderHeight: 28,
+    };
+    bindMissingPlanTooltips(frm, gridOptions);
+
+    const options = {
         container: state.container,
         data: state.rows,
         columns: getColumns(frm, state.periods),
@@ -44,14 +99,10 @@ function buildTableOptions(frm, state) {
         onSaveCells: (ctx) => onSaveCells(frm, ctx),
         onCellDoubleClicked: (params) => onCellDoubleClicked(frm, params),
         mergeGroup: MERGE_GROUP,
-        gridOptions: {
-            enableCellSpan: true,
-            // Density close to legacy role line (24px) + AG Grid chrome
-            rowHeight: 28,
-            headerHeight: 32,
-            groupHeaderHeight: 28,
-        },
+        gridOptions,
     };
+    bindFullscreenOverlayPortal(options);
+    return options;
 }
 
 function applyRuntime(frm, table) {
