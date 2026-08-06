@@ -1,6 +1,13 @@
 // we-table/controls.js — period helpers + toolbar domain chrome (incl. legend help)
 // ISS-2025-01239
 
+import {
+	VIEW_OPTION_FACT_ONLY,
+	VIEW_OPTION_FORECAST_AND_FACT,
+	VIEW_OPTION_FORECAST_ONLY,
+	normalizeViewMode,
+} from "../constants.js";
+
 /**
  * @param {WorkEffortsForm} frm
  * @returns {string[]}
@@ -22,7 +29,7 @@ function get_project_roles(frm) {
 function get_display_periods(frm, periodType) {
     if (frm.we_periods && frm.we_periods[periodType]) return frm.we_periods[periodType];
     if (!frm.we_periods) frm.we_periods = {};
-    frm.view_options = frm.view_options || __("Прогноз и факт");
+    frm.view_options = frm.view_options || __(VIEW_OPTION_FORECAST_AND_FACT);
 
     let periods = [];
     let month_start = frappe.datetime.month_start();
@@ -35,12 +42,16 @@ function get_display_periods(frm, periodType) {
 
     if (periodType === "month") {
         let current = start;
+        const mode = normalizeViewMode(frm.view_options);
         while (frappe.datetime.obj_to_str(current) <= frappe.datetime.obj_to_str(end)) {
             let year = current.getFullYear();
             let i = current.getMonth();
-            let is_past = (frm.view_options == __("Прогноз и факт"))
-                ? frappe.datetime.obj_to_str(current) < month_start
-                : (frm.view_options == __("Только факт"));
+            let is_past =
+                mode === "forecast_only"
+                    ? false
+                    : mode === "fact_only"
+                        ? true
+                        : frappe.datetime.obj_to_str(current) < month_start;
             periods.push({ year: year, month: i + 1, is_past: is_past });
             current = frappe.datetime.str_to_obj(frappe.datetime.add_months(current, 1));
         }
@@ -55,16 +66,16 @@ function get_display_periods(frm, periodType) {
  * @param {JQuery} controls
  */
 function addViewOptionsControl(frm, controls) {
-	frm.view_options = frm.view_options || __("Прогноз и факт");
+	frm.view_options = frm.view_options || __(VIEW_OPTION_FORECAST_AND_FACT);
 	frappe.ui.form.make_control({
 		parent: controls,
 		df: {
 			fieldtype: "Select",
 			fieldname: "view-options",
 			options: [
-				__("Прогноз и факт"),
-				__("Только прогноз"),
-				__("Только факт"),
+				__(VIEW_OPTION_FORECAST_AND_FACT),
+				__(VIEW_OPTION_FORECAST_ONLY),
+				__(VIEW_OPTION_FACT_ONLY),
 			],
 			get_status: function () {
 				return "Write";
@@ -75,11 +86,6 @@ function addViewOptionsControl(frm, controls) {
 				}
 				frm.we_periods = {};
 				frm.view_options = this.value;
-				project_workload_assignment.work_efforts.updateTable(
-					frm,
-					frm._we_period_type || "month",
-					frm._we_unit || "hours"
-				);
 				project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
 				window.WorkEfforts.onViewOptionsChange(frm);
 			},
@@ -201,6 +207,12 @@ function get_portal_host() {
 	);
 }
 
+const OVERLAY_SELECTOR =
+	"#freeze, #dialog-container, .modal, .modal-backdrop, .frappe-toast-area, .awesomplete > ul";
+
+let _overlayWatchObserver = null;
+let _overlayWatchRaf = null;
+
 /**
  * Move desk overlays (modals, freeze, toasts) into the fullscreen element so they
  * remain visible while Work Efforts table is in native fullscreen.
@@ -211,14 +223,59 @@ function bring_overlays_into_fullscreen(selector) {
 	if (!host || host === document.body) {
 		return;
 	}
-	const $nodes = selector
-		? $(selector)
-		: $("#freeze, #dialog-container, .modal, .modal-backdrop");
+	const $nodes = selector ? $(selector) : $(OVERLAY_SELECTOR);
 	$nodes.each(function () {
-		if (this.parentNode !== host) {
-			host.appendChild(this);
+		if (!this || !this.parentNode) {
+			return;
+		}
+		if (host.contains(this) && this.parentNode === host) {
+			return;
+		}
+		// Prefer moving the .modal root (frappe.ui.Dialog.$wrapper), not an inner node.
+		const modalRoot = this.classList?.contains("modal")
+			? this
+			: this.closest?.(".modal");
+		const node = modalRoot && modalRoot !== host ? modalRoot : this;
+		if (node.parentNode !== host) {
+			host.appendChild(node);
+		}
+		if (node.classList?.contains("modal")) {
+			node.style.zIndex = "10050";
+		}
+		if (node.classList?.contains("modal-backdrop")) {
+			node.style.zIndex = "10040";
 		}
 	});
+	// Custom colored tooltip must live in fullscreen host too
+	project_workload_assignment.work_efforts.initCustomTooltip?.();
+}
+
+/** Watch body for late-mounted Dialog / backdrop while table is fullscreen. */
+function start_fullscreen_overlay_watch() {
+	stop_fullscreen_overlay_watch();
+	bring_overlays_into_fullscreen();
+	const schedule = () => {
+		if (_overlayWatchRaf) cancelAnimationFrame(_overlayWatchRaf);
+		_overlayWatchRaf = requestAnimationFrame(() => {
+			_overlayWatchRaf = null;
+			bring_overlays_into_fullscreen();
+		});
+	};
+	_overlayWatchObserver = new MutationObserver(schedule);
+	_overlayWatchObserver.observe(document.body, { childList: true, subtree: true });
+	// Catch Bootstrap append after dialog.show()
+	[0, 50, 150, 300].forEach((ms) => setTimeout(bring_overlays_into_fullscreen, ms));
+}
+
+function stop_fullscreen_overlay_watch() {
+	if (_overlayWatchObserver) {
+		_overlayWatchObserver.disconnect();
+		_overlayWatchObserver = null;
+	}
+	if (_overlayWatchRaf) {
+		cancelAnimationFrame(_overlayWatchRaf);
+		_overlayWatchRaf = null;
+	}
 }
 
 /**
@@ -435,4 +492,6 @@ Object.assign(project_workload_assignment.work_efforts, {
 	mount_toolbar_controls,
 	get_portal_host,
 	bring_overlays_into_fullscreen,
+	start_fullscreen_overlay_watch,
+	stop_fullscreen_overlay_watch,
 });

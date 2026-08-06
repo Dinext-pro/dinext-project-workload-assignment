@@ -55,6 +55,7 @@ function getParentForecastLimit(rows, taskId, role, periodKey, excluded = []) {
 function validateForecastChange(frm, change) {
     const field = change.field;
     if (!field?.startsWith("actual_")) return true;
+    if (change.row?.we_remaining) return true;
 
     const periodKey = field.slice(7);
     const row = change.row;
@@ -97,7 +98,7 @@ export function onValidateCells(frm, { changes }) {
 
 function buildSavePayload(changes) {
     return changes
-        .filter((change) => change.field?.startsWith("actual_"))
+        .filter((change) => change.field?.startsWith("actual_") && !change.row?.we_remaining)
         .map((change) => {
             const periodKey = change.field.slice(7);
             const [year, month] = periodKey.split("_");

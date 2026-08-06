@@ -374,12 +374,51 @@
 	font-weight: 700;
 }
 
-/* Missing plan — цвет текста (как legacy missing-plan-highlight) */
+/* Missing plan — цвет текста (как legacy .missing-plan-highlight; бить .we-cell--zero) */
 .work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-task,
 .work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-role,
+.work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-cell,
+.work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-cell.we-cell--zero {
+	color: var(--alert-text-warning) !important;
+	font-weight: 700 !important;
+	opacity: 1 !important;
+}
+
+@keyframes we-pulse-warning-text {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
 .work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-cell {
-	color: var(--alert-text-warning);
-	font-weight: 600;
+	animation: we-pulse-warning-text 1.5s ease-in-out 3;
+}
+
+/* Legacy colored tooltip (checks.js .custom-workload-tooltip) */
+.custom-workload-tooltip {
+	font-family: inherit;
+	max-width: 320px;
+	white-space: normal;
+	word-wrap: break-word;
+	line-height: 1.4;
+	background: var(--alert-bg-warning) !important;
+	color: var(--alert-text-warning) !important;
+	border: 1px solid var(--alert-border-warning, var(--alert-text-warning));
+	z-index: 10060 !important;
+}
+
+/* Dialogs above DinextTable while native fullscreen owns stacking */
+:fullscreen .modal,
+:fullscreen .modal.show,
+:fullscreen .modal.in {
+	z-index: 10050 !important;
+}
+:fullscreen .modal-backdrop {
+	z-index: 10040 !important;
 }
 
 /* Нулевые значения — приглушённый цвет (legacy .we-role-value.zero) */

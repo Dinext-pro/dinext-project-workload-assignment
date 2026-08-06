@@ -220,9 +220,14 @@ function show_overload_details_dialog(overloads, frm) {
     });
     
     dialog.show();
+    // Reparent Dialog.$wrapper + backdrop into native fullscreen host (watch late mounts)
+    project_workload_assignment.work_efforts.start_fullscreen_overlay_watch?.();
+    if (dialog.$wrapper?.[0]) {
+        project_workload_assignment.work_efforts.bring_overlays_into_fullscreen?.(dialog.$wrapper);
+    }
     bring_we_overlays_into_fullscreen();
-    // Bootstrap appends .modal-backdrop after show; catch it on next tick
     setTimeout(bring_we_overlays_into_fullscreen, 0);
+    setTimeout(bring_we_overlays_into_fullscreen, 50);
     
     setTimeout(() => {
         let container = dialog.$wrapper.find('.overload-table-container');

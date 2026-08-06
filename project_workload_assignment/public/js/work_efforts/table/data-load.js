@@ -36,7 +36,7 @@ function ensure_aggregated_tasks(frm) {
             method: "project_workload_assignment.api.get_work_efforts_consolidated_data",
             args: {
                 project: frm.doc.name,
-                view_options: frm.view_options || "Прогноз и факт",
+                view_options: frm.view_options || "Forecast and Fact",
             },
             freeze: true,
             freeze_message: __("Загрузка данных о трудозатратах..."),

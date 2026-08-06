@@ -386,17 +386,21 @@ function initCustomTooltip() {
 
     $customTooltip = $('<div class="custom-workload-tooltip"></div>').appendTo(host);
     $customTooltip.css({
-        position: 'fixed',
-        background: 'var(--alert-bg-warning)',
-        color: 'var(--alert-text-warning)',
-        padding: '5px 10px',
-        borderRadius: '4px',
-        fontSize: '12px',
-        zIndex: '99999',
-        pointerEvents: 'none',
-        whiteSpace: 'nowrap',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-        display: 'none'
+        position: "fixed",
+        background: "var(--alert-bg-warning)",
+        color: "var(--alert-text-warning)",
+        padding: "6px 10px",
+        borderRadius: "4px",
+        fontSize: "12px",
+        lineHeight: "1.4",
+        zIndex: "10060",
+        pointerEvents: "none",
+        whiteSpace: "normal",
+        maxWidth: "320px",
+        wordWrap: "break-word",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
+        border: "1px solid var(--alert-border-warning, var(--alert-text-warning))",
+        display: "none",
     });
 }
 
@@ -438,7 +442,9 @@ function showCustomTooltip(target, text) {
 }
 
 function hideCustomTooltip() {
-    $customTooltip.hide();
+    if ($customTooltip) {
+        $customTooltip.hide();
+    }
     currentTooltipTarget = null;
 
     if (tooltipTimeout) {

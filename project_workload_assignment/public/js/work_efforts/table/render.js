@@ -77,7 +77,7 @@ function ensureWeDefaults(frm) {
     }
     frm._we_period_type = frm._we_period_type || "month";
     frm._we_unit = frm._we_unit || "hours";
-    frm.view_options = frm.view_options || __("Прогноз и факт");
+    frm.view_options = frm.view_options || __("Forecast and Fact");
 }
 
 /**

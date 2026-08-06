@@ -19,6 +19,13 @@ _VIEW_OPTIONS_MAP: dict[str, ViewMode] = {
 	"Прогноз и факт": VIEW_MODE_FORECAST_AND_FACT,
 	"Только прогноз": VIEW_MODE_FORECAST_ONLY,
 	"Только факт": VIEW_MODE_FACT_ONLY,
+	# EN source labels (WE toolbar / columns i18n)
+	"Forecast and Fact": VIEW_MODE_FORECAST_AND_FACT,
+	"Forecast and Actual": VIEW_MODE_FORECAST_AND_FACT,
+	"Forecast and actual": VIEW_MODE_FORECAST_AND_FACT,
+	"Forecast Only": VIEW_MODE_FORECAST_ONLY,
+	"Fact Only": VIEW_MODE_FACT_ONLY,
+	"Actual Only": VIEW_MODE_FACT_ONLY,
 }
 
 

@@ -209,7 +209,7 @@ function buildPeriodColumns(frm, periods) {
 
     return (periods || []).map((period) => {
         const key = period.key;
-        const actualLabel = period.is_past ? __("Факт") : __("Прогноз");
+        const actualLabel = period.is_past ? __("Fact") : __("Forecast");
 
         return {
             colId: `period_${key}`,
@@ -220,7 +220,7 @@ function buildPeriodColumns(frm, periods) {
                 buildPeriodLeaf({
                     field: `plan_${key}`,
                     colId: `plan_${key}`,
-                    headerName: __("План"),
+                    headerName: __("Plan"),
                     width: leafWidth,
                     hide: hidePlan,
                     valueFormatter: formatNumber,
@@ -234,7 +234,11 @@ function buildPeriodColumns(frm, periods) {
                     colId: `actual_${key}`,
                     headerName: actualLabel,
                     width: leafWidth,
-                    edit: (row) => !period.is_past && !isSummaryRow(row) && !!row?.role,
+                    edit: (row) =>
+                        !period.is_past
+                        && !isSummaryRow(row)
+                        && !!row?.role
+                        && !row?.we_remaining,
                     valueFormatter: formatNumber,
                     cellClassRules: {
                         ...actualPeriodClassRules(frm, period),
@@ -271,7 +275,7 @@ function buildTotalColumn(frm, periods) {
             buildPeriodLeaf({
                 field: "total_plan",
                 colId: "total_plan",
-                headerName: __("План"),
+                headerName: __("Plan"),
                 width: leafWidth,
                 hide: hidePlan,
                 pinned: "right",
@@ -281,7 +285,7 @@ function buildTotalColumn(frm, periods) {
             buildPeriodLeaf({
                 field: "total_actual",
                 colId: "total_actual",
-                headerName: __("Прогноз"),
+                headerName: __("Forecast"),
                 width: leafWidth,
                 pinned: "right",
                 valueGetter: totalActualGetter(periods),
