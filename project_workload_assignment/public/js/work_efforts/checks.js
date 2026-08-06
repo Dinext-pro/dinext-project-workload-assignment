@@ -119,7 +119,7 @@ function check_plan_load_for_percentage_assignments(frm) {
 
     if (frm.hide_plan) {
         frm.hide_plan = false;
-        $('#toggle_plan').text(__("Hide Plan"));
+        $('#toggle_plan').text(__("Hide plan"));
     }
 
     project_workload_assignment.work_efforts.load_detailed_assignments(frm).then(() => {
@@ -374,21 +374,33 @@ let tooltipTimeout = null;
 let currentTooltipTarget = null;
 
 function initCustomTooltip() {
-    if ($customTooltip) return;
+    const host =
+        project_workload_assignment.work_efforts.get_portal_host?.() || document.body;
 
-    $customTooltip = $('<div class="custom-workload-tooltip"></div>').appendTo('body');
+    if ($customTooltip) {
+        if ($customTooltip[0].parentNode !== host) {
+            $customTooltip.appendTo(host);
+        }
+        return;
+    }
+
+    $customTooltip = $('<div class="custom-workload-tooltip"></div>').appendTo(host);
     $customTooltip.css({
-        position: 'fixed',
-        background: 'var(--alert-bg-warning)',
-        color: 'var(--alert-text-warning)',
-        padding: '5px 10px',
-        borderRadius: '4px',
-        fontSize: '12px',
-        zIndex: '99999',
-        pointerEvents: 'none',
-        whiteSpace: 'nowrap',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-        display: 'none'
+        position: "fixed",
+        background: "var(--alert-bg-warning)",
+        color: "var(--alert-text-warning)",
+        padding: "6px 10px",
+        borderRadius: "4px",
+        fontSize: "12px",
+        lineHeight: "1.4",
+        zIndex: "10060",
+        pointerEvents: "none",
+        whiteSpace: "normal",
+        maxWidth: "320px",
+        wordWrap: "break-word",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
+        border: "1px solid var(--alert-border-warning, var(--alert-text-warning))",
+        display: "none",
     });
 }
 
@@ -430,7 +442,9 @@ function showCustomTooltip(target, text) {
 }
 
 function hideCustomTooltip() {
-    $customTooltip.hide();
+    if ($customTooltip) {
+        $customTooltip.hide();
+    }
     currentTooltipTarget = null;
 
     if (tooltipTimeout) {

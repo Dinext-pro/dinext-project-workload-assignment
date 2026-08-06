@@ -128,7 +128,10 @@ function computeMissingPlanMaps(frm) {
         const taskRoleRows = roleRows.get(taskId) || new Map();
 
         Object.keys(rolePeriodLoad).forEach((roleName) => {
-            const gridRow = taskRoleRows.get(roleName);
+            const gridRow =
+                taskRoleRows.get(roleName)
+                || (roleName === "Без роли" ? taskRoleRows.get("") : null)
+                || taskRoleRows.get(String(roleName).trim());
             const loadedPeriods = Array.from(rolePeriodLoad[roleName]);
             if (!loadedPeriods.length) return;
 
@@ -136,7 +139,15 @@ function computeMissingPlanMaps(frm) {
             const missingPeriods = [];
 
             loadedPeriods.forEach((periodKey) => {
-                const planValue = gridRow ? parseFloat(gridRow[`plan_${periodKey}`]) || 0 : 0;
+                // period.key may be "2026_5"; also try unpadded / string month
+                let planValue = gridRow ? parseFloat(gridRow[`plan_${periodKey}`]) || 0 : 0;
+                if (!planValue && gridRow) {
+                    const [y, m] = String(periodKey).split("_");
+                    planValue =
+                        parseFloat(gridRow[`plan_${y}_${parseInt(m, 10)}`])
+                        || parseFloat(gridRow[`plan_${periodKey}`])
+                        || 0;
+                }
                 if (planValue > 0) {
                     hasPlan = true;
                 } else {
@@ -168,8 +179,14 @@ function computeMissingPlanMaps(frm) {
 
 export function refreshCheckHighlight(frm) {
     const api = frm.we?.table?.api;
-    if (!api?.refreshCells) return;
-    api.refreshCells({ force: true });
+    if (!api) return;
+    // force re-run cellClassRules (missing-plan orange on plan zeros)
+    if (typeof api.refreshCells === "function") {
+        api.refreshCells({ force: true });
+    }
+    if (typeof api.redrawRows === "function") {
+        api.redrawRows();
+    }
 }
 
 /** Missing plan check (highlight + expand parents in DinextTable). */
@@ -186,7 +203,7 @@ export async function runMissingPlanCheck(frm) {
 
     if (frm.hide_plan) {
         frm.hide_plan = false;
-        $("#toggle_plan").text(__("Hide Plan"));
+        $("#toggle_plan").text(__("Hide plan"));
         window.WorkEfforts?.onTogglePlanOrDelta?.(frm);
     }
 
@@ -221,6 +238,7 @@ export async function runMissingPlanCheck(frm) {
             3
         );
     }
+    project_workload_assignment.work_efforts.bring_overlays_into_fullscreen?.();
 }
 
 export function missingPlanTaskClassRules(frm) {
@@ -238,19 +256,64 @@ export function missingPlanRoleClassRules(frm) {
     return {
         "we-missing-plan-role": (params) => {
             const row = params.data;
-            if (!row || row.merge_group_id === SUMMARY_ROW_ID || !row.role) return false;
-            return !!(frm._missingPlanMap?.[row.task_id] || []).includes(row.role);
+            if (!row || row.merge_group_id === SUMMARY_ROW_ID) return false;
+            const roles = frm._missingPlanMap?.[row.task_id] || [];
+            const key = roleKeyForMissingMap(row.role);
+            return roles.includes(key) || (!!row.role && roles.includes(row.role));
         },
     };
+}
+
+function roleKeyForMissingMap(role) {
+    return role ? String(role).trim() : "Без роли";
+}
+
+function missingPeriodsForRow(frm, row) {
+    const byRole = frm._missingPlanPeriodsMap?.[row.task_id];
+    if (!byRole) return [];
+    const key = roleKeyForMissingMap(row.role);
+    return byRole[key] || byRole[row.role] || byRole[""] || [];
 }
 
 export function missingPlanCellClassRules(frm, period) {
     return {
         "we-missing-plan-cell": (params) => {
             const row = params.data;
-            if (!row || row.merge_group_id === SUMMARY_ROW_ID || !row.role) return false;
-            const periods = frm._missingPlanPeriodsMap?.[row.task_id]?.[row.role] || [];
-            return periods.some((p) => p.period_key === period.key || `${p.year}_${p.month}` === period.key);
+            if (!row || row.merge_group_id === SUMMARY_ROW_ID) return false;
+            // remaining / empty role still highlight plan zeros when mapped
+            const periods = missingPeriodsForRow(frm, row);
+            if (!periods.length) return false;
+            const periodKey = period.key || `${period.year}_${period.month}`;
+            return periods.some(
+                (p) =>
+                    p.period_key === periodKey
+                    || `${p.year}_${p.month}` === periodKey
+                    || (p.year == period.year && p.month == period.month)
+            );
         },
     };
 }
+
+/** Tooltip text for orange task cells (legacy data-tooltip / custom colored tip). */
+export function missingPlanTaskTooltipValue(frm) {
+    return (params) => {
+        const row = params.data;
+        if (!row || row.merge_group_id === SUMMARY_ROW_ID) return undefined;
+        if (row.merge_group_index !== 0) return undefined;
+        const roles = frm._missingPlanMap?.[row.task_id];
+        if (!roles?.length) return undefined;
+        return __("Work efforts are not defined for roles: {0}", [roles.join(", ")]);
+    };
+}
+
+/** Tooltip text for orange role cells. */
+export function missingPlanRoleTooltipValue(frm) {
+    return (params) => {
+        const row = params.data;
+        if (!row || row.merge_group_id === SUMMARY_ROW_ID || !row.role) return undefined;
+        const roles = frm._missingPlanMap?.[row.task_id] || [];
+        if (!roles.includes(row.role)) return undefined;
+        return __("Work efforts are not defined for role: {0}", [row.role]);
+    };
+}
+

@@ -8,7 +8,12 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = [
+    "dinext_common",
+    "dinext_projects",
+    "dinext_projects_pl",
+    "dinext_timesheets",
+]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
