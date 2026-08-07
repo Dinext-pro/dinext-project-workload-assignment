@@ -5,9 +5,7 @@ import { assignmentsCellRenderer } from "./assignments.js";
 import {
     missingPlanCellClassRules,
     missingPlanRoleClassRules,
-    missingPlanRoleTooltipValue,
     missingPlanTaskClassRules,
-    missingPlanTaskTooltipValue,
 } from "./plan_check.js";
 import {
     actualPeriodClassRules,
@@ -142,6 +140,11 @@ function withCenterAlign(col) {
     };
 }
 
+/** DinextTable filter layer: opt-out for non-searchable columns. */
+function withoutColumnFilter(col) {
+    return { ...col, filterable: false };
+}
+
 function sumPeriodField(row, periods, fieldPrefix) {
     let sum = 0;
     for (const period of periods || []) {
@@ -180,7 +183,7 @@ function buildPeriodLeaf(opts) {
         cellClassRules,
         pinned,
     } = opts;
-    const col = withCenterAlign({
+    const col = withoutColumnFilter(withCenterAlign({
         field,
         colId,
         headerName,
@@ -195,7 +198,7 @@ function buildPeriodLeaf(opts) {
             ...ZERO_CELL_CLASS_RULES,
             ...(cellClassRules || {}),
         },
-    });
+    }));
     if (edit !== undefined) col.edit = edit;
     if (valueGetter) col.valueGetter = valueGetter;
     if (pinned) col.pinned = pinned;
@@ -311,7 +314,7 @@ export function getColumns(frm, periods) {
     const periodList = periods || form?.we?.periods || [];
 
     const baseColumns = [
-        withCenterAlign({
+        withoutColumnFilter(withCenterAlign({
             field: "task_serial",
             colId: "task_serial",
             headerName: "#",
@@ -323,7 +326,7 @@ export function getColumns(frm, periods) {
             tree: false,
             spanRows,
             valueGetter: serialValueGetter,
-        }),
+        })),
         {
             field: "task_subject",
             headerName: __("Tasks"),
@@ -334,7 +337,6 @@ export function getColumns(frm, periods) {
             tree: true,
             spanRows,
             cellClassRules: missingPlanTaskClassRules(form || {}),
-            tooltipValueGetter: missingPlanTaskTooltipValue(form || {}),
         },
         {
             field: "role",
@@ -348,9 +350,8 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             cellRenderer: roleCellRenderer(form || {}),
             cellClassRules: missingPlanRoleClassRules(form || {}),
-            tooltipValueGetter: missingPlanRoleTooltipValue(form || {}),
         },
-        withCenterAlign({
+        withoutColumnFilter(withCenterAlign({
             field: "assignments",
             colId: "assignments",
             headerName: __("Assignments"),
@@ -363,7 +364,7 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             hide: !(form && form.show_assignments),
             cellRenderer: assignmentsCellRenderer(form || {}),
-        }),
+        })),
     ];
 
     return [...baseColumns, ...buildPeriodColumns(form || {}, periodList), buildTotalColumn(form || {}, periodList)];

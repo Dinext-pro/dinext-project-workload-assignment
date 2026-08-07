@@ -34,10 +34,12 @@ function bindMissingPlanTooltips(frm, gridOptions) {
             text = missingPlanRoleTooltipValue(frm)({ data: params?.data });
         }
         if (!text) return;
+        params?.api?.hideTooltip?.();
         const el =
             params?.event?.target?.closest?.(".ag-cell") || params?.event?.target;
         if (el && we?.showCustomTooltip) {
-            // colored legacy tip (.custom-workload-tooltip), not AG browser title
+            // Colored legacy tip only; colDef must not set tooltipValueGetter (AG white popup).
+            el.removeAttribute("title");
             we.showCustomTooltip(el, text);
         }
     };
@@ -85,6 +87,14 @@ function buildTableOptions(frm, state) {
         rowCheck: { enabled: true, unit: "mergeHead", selectAll: true },
         // Gutter DnD default-on in DinextTable; WE merge-groups are not reorder targets.
         rowReorder: { enabled: false },
+        filter: {
+            // Role search keeps matching roles, not the whole task merge block.
+            mergeMatchMode: "rows",
+            // A parent kept only as a path to a matching child needs one context row.
+            mergeAncestorMode: "head",
+            // Role tails inherit the visually merged task value while filtering.
+            mergeInheritedFields: ["task_subject"],
+        },
         toolbar: {
             persistKey: `work-efforts:${frm.doc?.name || "new"}`,
             items: buildToolbarItems(frm),
