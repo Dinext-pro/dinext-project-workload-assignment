@@ -1,3 +1,7 @@
+function bring_we_overlays_into_fullscreen() {
+    project_workload_assignment.work_efforts.bring_overlays_into_fullscreen?.();
+}
+
 /**
  * Проверка перегрузки PWA относительно прогноза PWE.
  * @param {WorkEffortsForm} frm
@@ -23,6 +27,7 @@ function perform_overload_check(frm) {
                         message: __("No discrepancies found"),
                         indicator: 'green'
                     }, 3);
+                    bring_we_overlays_into_fullscreen();
                     return;
                 }
                 
@@ -59,16 +64,21 @@ function perform_overload_check(frm) {
             } else if (r.message && r.message.error) {
                 console.error("Server error:", r.message.error);
                 frappe.msgprint(__("Error checking: {0}", [r.message.error]));
+                bring_we_overlays_into_fullscreen();
             } else {
                 console.error("Unexpected response structure:", r);
                 frappe.msgprint(__("Unexpected server response"));
+                bring_we_overlays_into_fullscreen();
             }
         },
         error: function(err) {
             console.error("AJAX Error:", err);
             frappe.msgprint(__("Error checking workload discrepancies"));
+            bring_we_overlays_into_fullscreen();
         }
     });
+    // freeze (#freeze) is appended under desk #body — reparent into fullscreen host
+    bring_we_overlays_into_fullscreen();
 }
 
 /**
@@ -201,6 +211,7 @@ function show_overload_details_dialog(overloads, frm) {
                 __("Update forecast for {0} positions?", [selected_rows.length]),
                 () => project_workload_assignment.work_efforts.update_forecast_from_assignments(frm, selected_rows, dialog)
             );
+            bring_we_overlays_into_fullscreen();
         },
         secondary_action_label: __("Close"),
         secondary_action: function() {
@@ -209,6 +220,14 @@ function show_overload_details_dialog(overloads, frm) {
     });
     
     dialog.show();
+    // Reparent Dialog.$wrapper + backdrop into native fullscreen host (watch late mounts)
+    project_workload_assignment.work_efforts.start_fullscreen_overlay_watch?.();
+    if (dialog.$wrapper?.[0]) {
+        project_workload_assignment.work_efforts.bring_overlays_into_fullscreen?.(dialog.$wrapper);
+    }
+    bring_we_overlays_into_fullscreen();
+    setTimeout(bring_we_overlays_into_fullscreen, 0);
+    setTimeout(bring_we_overlays_into_fullscreen, 50);
     
     setTimeout(() => {
         let container = dialog.$wrapper.find('.overload-table-container');
@@ -367,6 +386,7 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
                     message: __("Forecast data successfully updated for {0} positions", [r.message.updated_count]),
                     indicator: 'green'
                 }, 5);
+                bring_we_overlays_into_fullscreen();
                 
                 if (dialog) dialog.hide();
                 
@@ -382,15 +402,19 @@ function update_forecast_from_assignments(frm, selectedRows, dialog) {
                 }
             } else if (r.message && r.message.error) {
                 frappe.msgprint(__("Error updating: {0}", [r.message.error]));
+                bring_we_overlays_into_fullscreen();
             } else {
                 frappe.msgprint(__("Unknown error while updating forecast data"));
+                bring_we_overlays_into_fullscreen();
             }
         },
         error: function(err) {
             console.error("AJAX Error:", err);
             frappe.msgprint(__("Error updating forecast data"));
+            bring_we_overlays_into_fullscreen();
         }
     });
+    bring_we_overlays_into_fullscreen();
 }
 
 Object.assign(project_workload_assignment.work_efforts, {

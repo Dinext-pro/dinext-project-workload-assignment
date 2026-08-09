@@ -1,0 +1,59 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-27 11:12:51.685783",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "type",
+  "limit",
+  "view",
+  "notification"
+ ],
+ "fields": [
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "\u041f\u0440\u0435\u0434\u0443\u043f\u0440\u0435\u0436\u0434\u0435\u043d\u0438\u0435\n\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435\n\u0411\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u043a\u0430"
+  },
+  {
+   "fieldname": "limit",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Limit",
+   "precision": "2"
+  },
+  {
+   "fieldname": "view",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "View",
+   "options": "\u0421\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\nNotification"
+  },
+  {
+   "depends_on": "eval: doc.type == '\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435'",
+   "fieldname": "notification",
+   "fieldtype": "Link",
+   "label": "Notification",
+   "options": "Notification"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-06 02:56:52.560552",
+ "modified_by": "Administrator",
+ "module": "Project Workload Assignment",
+ "name": "Limit Control",
+ "owner": "iodyshev@dinord.email",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

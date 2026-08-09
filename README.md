@@ -2,6 +2,8 @@
 
 `project_workload_assignment` — Frappe-приложение для управления и визуализации загрузки участников по проектам и задачам. Приложение добавляет собственный DocType назначения загрузки, расширяет формы `Task` и `Issue`, а также предоставляет отдельный экран отчёта `Projects Workload Report`.
 
+Канонический владелец плановых трудозатрат и утилизации: `Project Work Efforts` / `Project Work Efforts Amount`, `Limit Control`, `Worker Utilization Table`, `Project Utilization Table` и связанные Project Custom Fields. Зависит от `dinext_projects`, `dinext_projects_pl` и `dinext_timesheets` (`Worker`).
+
 Ключевая особенность репозитория: заметная часть бизнес-логики реализована не в Python-контроллерах, а в `hooks.py`, клиентских скриптах и экспортированных `Server Script` / `Client Script` fixtures. Для сопровождения и доработки приложения именно эти файлы являются основным источником правды.
 
 ## Что делает приложение

@@ -1,0 +1,43 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-30 07:02:24.730362",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "util_valid_from",
+  "utilization"
+ ],
+ "fields": [
+  {
+   "fieldname": "util_valid_from",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Valid From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "utilization",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Utilization",
+   "precision": "1"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-06 02:38:43.708295",
+ "modified_by": "Administrator",
+ "module": "Project Workload Assignment",
+ "name": "Worker Utilization Table",
+ "owner": "iodyshev@dinord.email",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

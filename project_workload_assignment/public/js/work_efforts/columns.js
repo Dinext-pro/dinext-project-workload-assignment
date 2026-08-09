@@ -5,7 +5,9 @@ import { assignmentsCellRenderer } from "./assignments.js";
 import {
     missingPlanCellClassRules,
     missingPlanRoleClassRules,
+    missingPlanRoleTooltipValue,
     missingPlanTaskClassRules,
+    missingPlanTaskTooltipValue,
 } from "./plan_check.js";
 import {
     actualPeriodClassRules,
@@ -207,7 +209,7 @@ function buildPeriodColumns(frm, periods) {
 
     return (periods || []).map((period) => {
         const key = period.key;
-        const actualLabel = period.is_past ? __("Actual") : __("Forecast");
+        const actualLabel = period.is_past ? __("Fact") : __("Forecast");
 
         return {
             colId: `period_${key}`,
@@ -232,7 +234,11 @@ function buildPeriodColumns(frm, periods) {
                     colId: `actual_${key}`,
                     headerName: actualLabel,
                     width: leafWidth,
-                    edit: (row) => !period.is_past && !isSummaryRow(row) && !!row?.role,
+                    edit: (row) =>
+                        !period.is_past
+                        && !isSummaryRow(row)
+                        && !!row?.role
+                        && !row?.we_remaining,
                     valueFormatter: formatNumber,
                     cellClassRules: {
                         ...actualPeriodClassRules(frm, period),
@@ -328,6 +334,7 @@ export function getColumns(frm, periods) {
             tree: true,
             spanRows,
             cellClassRules: missingPlanTaskClassRules(form || {}),
+            tooltipValueGetter: missingPlanTaskTooltipValue(form || {}),
         },
         {
             field: "role",
@@ -341,6 +348,7 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             cellRenderer: roleCellRenderer(form || {}),
             cellClassRules: missingPlanRoleClassRules(form || {}),
+            tooltipValueGetter: missingPlanRoleTooltipValue(form || {}),
         },
         withCenterAlign({
             field: "assignments",

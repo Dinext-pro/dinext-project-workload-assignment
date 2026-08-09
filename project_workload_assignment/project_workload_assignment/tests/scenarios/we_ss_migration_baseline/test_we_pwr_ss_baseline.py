@@ -15,7 +15,7 @@ from .data_setup_pwr import (
 	TC01_PERIODS,
 	TC01_VIEW_OPTIONS,
 	call_check_workload_overload,
-	call_update_forecast_from_assignments,
+	call_update_forecast_from_assignments_python,
 	get_pwe_expected_by_fy_month,
 	prepare_case_update_forecast_from_assignments,
 	reset_owned_data,
@@ -108,7 +108,7 @@ class TestWEPwrSsMigrationBaseline(FrappeTestCase):
 				self.assertAlmostEqual(am["assigned_hours"], float(em["assigned_hours"]), delta=0.05)
 
 	def test_tc02_update_forecast_from_assignments_owned_pwa_pwe(self):
-		"""TC-02: update_forecast_from_assignments обновляет pwea_expected только на owned данных."""
+		"""TC-02: Python update_forecast_from_assignments обновляет pwea_expected на owned данных."""
 		if not frappe.db.exists("DocType", "Project Work Efforts"):
 			self.skipTest("DocType Project Work Efforts не установлен")
 
@@ -126,7 +126,8 @@ class TestWEPwrSsMigrationBaseline(FrappeTestCase):
 		self.assertAlmostEqual(before, float(ctx["initial_forecast"]), delta=0.01)
 
 		frappe.set_user("Administrator")
-		result = call_update_forecast_from_assignments(
+		# Legacy Server Script disabled=1; контракт перенесён в Python-модуль.
+		result = call_update_forecast_from_assignments_python(
 			project,
 			[
 				{

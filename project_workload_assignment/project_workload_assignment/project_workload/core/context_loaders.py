@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from datetime import date
 
 import frappe
-from frappe.utils import getdate, nowdate
+from frappe.utils import getdate
 
 from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
 	AbsenceEntry,
@@ -403,7 +403,8 @@ def load_user_absences(
 		return user_absences
 
 	if min_end_date is None:
-		min_end_date = nowdate()
+		# Call through frappe.utils so tests can monkeypatch nowdate.
+		min_end_date = frappe.utils.nowdate()
 
 	absences = frappe.qb.get_query(
 		"Application For Leave",
