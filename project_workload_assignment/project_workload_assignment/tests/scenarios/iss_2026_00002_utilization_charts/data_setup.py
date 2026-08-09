@@ -5,6 +5,10 @@ from __future__ import annotations
 
 import frappe
 
+from project_workload_assignment.project_workload_assignment.tests.scenarios._ci_worker_bootstrap import (
+	ensure_admin_worker_context,
+)
+
 PREFIX = "ISS-2026-00002-UTIL"
 ROLE_NAME = f"{PREFIX} Role"
 USER_GROUP_NAME = f"{PREFIX}-UG"
@@ -100,12 +104,12 @@ def _restore_company_default_holiday_list_if_saved() -> None:
 
 
 def _admin_worker_template_context() -> dict | None:
-	return frappe.db.get_value(
-		"Worker",
-		{"wuser": BUSINESS_USER},
-		["wtimesheet_template", "wuser_group", "wholiday_list"],
-		as_dict=True,
-	)
+	ctx = ensure_admin_worker_context()
+	return {
+		"wtimesheet_template": ctx["wtimesheet_template"],
+		"wuser_group": ctx["wuser_group"],
+		"wholiday_list": ctx["wholiday_list"],
+	}
 
 
 def _ensure_test_user(email: str, first_name: str) -> str:
@@ -139,16 +143,8 @@ def _ensure_worker(
 		worker_name = existing
 	else:
 		admin_w = _admin_worker_template_context()
-		if not admin_w or not admin_w.get("wtimesheet_template"):
-			frappe.throw("У Administrator нет Worker/wtimesheet_template — сценарий недоступен")
 		whl = admin_w.get("wholiday_list")
-		if not whl:
-			company = _default_company()
-			if company:
-				whl = frappe.db.get_value("Company", company, "default_holiday_list")
 		ug = admin_w.get("wuser_group")
-		if not whl or not ug:
-			frappe.throw("Нет wholiday_list или wuser_group для создания Worker")
 		doc = frappe.get_doc(
 			{
 				"doctype": "Worker",

@@ -10,8 +10,10 @@ from project_workload_assignment.project_workload_assignment.forecast.forecast_f
 from project_workload_assignment.project_workload_assignment.forecast.forecast_from_work_efforts import run_add_forecast_from_work_efforts
 from project_workload_assignment.project_workload_assignment.project_workload.canonical import run_project_workload_tree_canonical, run_team_workload_grid_canonical
 from project_workload_assignment.project_workload_assignment.project_workload.project_report.overload_check import run_check_workload_overload
+from project_workload_assignment.project_workload_assignment.project_workload.project_report.single_project_workload_tree import run_get_project_workload_data
 from project_workload_assignment.project_workload_assignment.project_workload.project_report.tasks_forecast_workload import run_get_tasks_forecast_and_workload
 from project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates import run_get_project_workload_charts, run_get_team_workload_charts
+from project_workload_assignment.project_workload_assignment.project_workload.team_report.team_workload_grid import run_get_projects_workload_data_v2
 from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import run_get_work_efforts_consolidated_data
 from project_workload_assignment.project_workload_assignment.work_efforts.grid_data import run_get_work_efforts_grid
 from project_workload_assignment.project_workload_assignment.work_efforts.models import ConsolidatedDataFormInput, ConsolidatedDataResponse, SaveForecastAsPlanFormInput, TimesheetLimitsFormInput, TimesheetLimitsResponse, WeGridFormInput, WeGridResponse, WeSaveForecastFormInput
@@ -21,17 +23,38 @@ from project_workload_assignment.project_workload_assignment.work_efforts.timesh
 from project_workload_assignment.project_workload_assignment.project_workload.models import (
 	ChartResponse,
 	ErrorOverloadResponse,
+	ErrorResponse,
 	ErrorTasksResponse,
+	ErrorTeamWorkloadResponse,
 	OverloadCheckFormInput,
 	OverloadCheckResponse,
 	ProjectChartFormInput,
 	ProjectWorkloadFormInput,
+	ProjectWorkloadResponse,
 	TasksForecastFormInput,
 	TasksForecastResponse,
 	TeamChartFormInput,
 	TeamWorkloadFormInput,
+	TeamWorkloadResponse,
 	UpdateForecastFromAssignmentsFormInput,
 )
+
+@frappe.whitelist()
+def pwr_run_team_workload_grid(**kwargs) -> TeamWorkloadResponse | ErrorTeamWorkloadResponse:
+	"""Legacy team grid wire (pre-canonical). Prefer ``pwr_run_team_workload_grid_canonical``."""
+	form_input: TeamWorkloadFormInput = frappe._dict(frappe.form_dict)
+	for key, value in kwargs.items():
+		if value is not None:
+			form_input[key] = value
+	return run_get_projects_workload_data_v2(form_input)
+
+
+@frappe.whitelist()
+def pwr_run_project_workload_tree() -> ProjectWorkloadResponse | ErrorResponse:
+	"""Legacy project tree wire (pre-canonical). Prefer ``pwr_run_project_workload_tree_canonical``."""
+	form_input: ProjectWorkloadFormInput = frappe.form_dict
+	return run_get_project_workload_data(form_input)
+
 
 @frappe.whitelist()
 def pwr_run_team_workload_grid_canonical(**kwargs) -> dict:
@@ -78,6 +101,12 @@ def pwr_run_project_workload_charts() -> ChartResponse:
 def pwr_run_add_forecast_from_work_efforts():
 	"""Add P&L forecast from work efforts."""
 	return run_add_forecast_from_work_efforts(frappe.form_dict)
+
+
+@frappe.whitelist()
+def pwr_run_check_workload_overload() -> OverloadCheckResponse | ErrorOverloadResponse:
+	"""Legacy alias of ``check_workload_overload``."""
+	return check_workload_overload()
 
 
 @frappe.whitelist()

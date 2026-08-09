@@ -233,11 +233,12 @@ function get_chart_data(frm, selectedRole) {
     }
 
     let datasets = [];
-    let view =  __("Actual/Forecast");
-    if ( frm.view_options == __("Forecast Only") ) {
+    let view = __("Fact/Forecast");
+    const viewMode = String(frm.view_options || "");
+    if (viewMode === __("Forecast Only") || viewMode === "Forecast Only" || viewMode === "Только прогноз") {
         view = __("Forecast");
-    } else if ( frm.view_options == __("Actual Only") ) {
-        view = __("Actual");
+    } else if (viewMode === __("Fact Only") || viewMode === "Fact Only" || viewMode === "Actual Only" || viewMode === "Только факт") {
+        view = __("Fact");
     }
     
     if ( !frm.hide_plan ) {
@@ -320,7 +321,7 @@ function render_work_efforts_chart(frm, init = true) {
              frm._we_chart_instance = new frappe.Chart($chartContainer[0], get_we_chart_options( frm, data ));
         } catch (err) {
             console.error("Chart creation failed:", err );
-            $chartContainer.html(`<div style="padding:24px;color:#900;">${__("Error building chart")}</div>`);
+            $chartContainer.html(`<div style="padding:24px;color:#900;">${__("Ошибка при построении графика")}</div>`);
             return;
         }
         
