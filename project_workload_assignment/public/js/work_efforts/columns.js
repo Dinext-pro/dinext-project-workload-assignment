@@ -170,6 +170,35 @@ function totalDeltaGetter(periods) {
     };
 }
 
+/** Hours editor: digits + decimal only; reject letters / negatives at parse. */
+function weHoursValueParser(params) {
+    const raw = params.newValue;
+    if (raw == null || raw === "") {
+        return 0;
+    }
+    if (typeof raw === "number") {
+        if (!Number.isFinite(raw) || raw < 0) {
+            return params.oldValue;
+        }
+        return raw;
+    }
+    const trimmed = String(raw).trim().replace(/\s/g, "");
+    if (!trimmed) {
+        return 0;
+    }
+    if (!/^\d+([.,]\d+)?$/.test(trimmed)) {
+        return params.oldValue;
+    }
+    const normalized = trimmed.includes(",") && !trimmed.includes(".")
+        ? trimmed.replace(",", ".")
+        : trimmed.replace(/,/g, "");
+    const value = Number(normalized);
+    if (!Number.isFinite(value) || value < 0) {
+        return params.oldValue;
+    }
+    return value;
+}
+
 function buildPeriodLeaf(opts) {
     const {
         field,
@@ -199,7 +228,16 @@ function buildPeriodLeaf(opts) {
             ...(cellClassRules || {}),
         },
     }));
-    if (edit !== undefined) col.edit = edit;
+    if (edit !== undefined) {
+        col.edit = edit;
+        // Editable forecast hours: block letters / minus in editor; parser rejects junk.
+        col.cellEditor = "agNumberCellEditor";
+        col.cellEditorParams = {
+            min: 0,
+            allowedCharPattern: "\\d\\.,",
+        };
+        col.valueParser = weHoursValueParser;
+    }
     if (valueGetter) col.valueGetter = valueGetter;
     if (pinned) col.pinned = pinned;
     return col;
@@ -351,7 +389,7 @@ export function getColumns(frm, periods) {
             cellRenderer: roleCellRenderer(form || {}),
             cellClassRules: missingPlanRoleClassRules(form || {}),
         },
-        withoutColumnFilter(withCenterAlign({
+        withCenterAlign({
             field: "assignments",
             colId: "assignments",
             headerName: __("Assignments", null, "Work Efforts"),
@@ -364,7 +402,7 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             hide: !(form && form.show_assignments),
             cellRenderer: assignmentsCellRenderer(form || {}),
-        })),
+        }),
     ];
 
     return [...baseColumns, ...buildPeriodColumns(form || {}, periodList), buildTotalColumn(form || {}, periodList)];

@@ -1,4 +1,4 @@
-// we-table/controls.js — period helpers + toolbar domain chrome (incl. legend help)
+// we-table/controls.js — period helpers + toolbar domain chrome + under-table legend
 // ISS-2025-01239
 
 import {
@@ -110,8 +110,6 @@ function mount_toolbar_controls(frm, host) {
 
 	const periodType = frm._we_period_type || "month";
 	const unit = frm._we_unit || "hours";
-
-	mount_legend_help(host);
 
 	host.append(`
 		<button class="btn btn-default" id="we_save_plan" type="button">${__("Save plan")}</button>
@@ -361,11 +359,10 @@ function bindCheckDropdownPortal($btnGroup) {
 	});
 }
 
-const LEGEND_HELP_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.35"/><path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" d="M6.2 6.1a1.85 1.85 0 0 1 3.55.7c0 1.15-.95 1.55-1.55 1.95-.35.25-.5.45-.5.9"/><circle cx="8" cy="11.6" r=".9" fill="currentColor"/></svg>`;
-
-function get_legend_html() {
-	return `
-		<div class="we-legend-panel">
+/** Under-table legend (sticky/original parity — not toolbar popover). */
+function render_legend(container) {
+	container.html(`
+		<div class="we-legend-panel we-legend-panel--inline">
 			<div class="we-legend-row">
 				<div class="we-legend-swatch we-legend-plan-swatch"></div>
 				<span>${__("Planned Task Dates")}</span>
@@ -402,94 +399,14 @@ function get_legend_html() {
 				</div>
 			</div>
 		</div>
-	`;
-}
-
-/**
- * Toolbar "?" control — toggles portaled legend popover.
- * @param {JQuery} host
- */
-function mount_legend_help(host) {
-	if (host.data("we-legend-mounted")) {
-		return;
-	}
-	host.data("we-legend-mounted", true);
-
-	const $btn = $(`
-		<button type="button" class="dinext-table-toolbar-item we-legend-help-btn" title="${__("Legend")}" aria-label="${__("Legend")}" aria-haspopup="dialog" aria-expanded="false">
-			<span class="dinext-table-toolbar-item-icon">${LEGEND_HELP_ICON}</span>
-		</button>
 	`);
-	host.append($btn);
-
-	let $panel = null;
-
-	const closePanel = () => {
-		if (!$panel) {
-			return;
-		}
-		$panel.remove();
-		$panel = null;
-		$btn.attr("aria-expanded", "false");
-		document.removeEventListener("mousedown", onDocDown, true);
-		window.removeEventListener("resize", closePanel);
-		window.removeEventListener("scroll", closePanel, true);
-	};
-
-	const onDocDown = (event) => {
-		if ($panel?.[0]?.contains(event.target) || $btn[0].contains(event.target)) {
-			return;
-		}
-		closePanel();
-	};
-
-	const openPanel = () => {
-		closePanel();
-		$panel = $(`<div class="we-legend-popover" role="dialog" aria-label="${__("Legend")}"></div>`);
-		$panel.html(get_legend_html());
-		$panel.appendTo(get_portal_host());
-
-		const rect = $btn[0].getBoundingClientRect();
-		const panelWidth = Math.min(360, window.innerWidth - 16);
-		let left = rect.right - panelWidth;
-		if (left < 8) {
-			left = 8;
-		}
-		let top = rect.bottom + 6;
-		const panelHeight = $panel.outerHeight() || 200;
-		if (top + panelHeight > window.innerHeight - 8) {
-			top = Math.max(8, rect.top - panelHeight - 6);
-		}
-		$panel.css({
-			position: "fixed",
-			top,
-			left,
-			width: panelWidth,
-			zIndex: 1050,
-		});
-		$btn.attr("aria-expanded", "true");
-		setTimeout(() => {
-			document.addEventListener("mousedown", onDocDown, true);
-			window.addEventListener("resize", closePanel);
-			window.addEventListener("scroll", closePanel, true);
-		}, 0);
-	};
-
-	$btn.on("click", (e) => {
-		e.preventDefault();
-		e.stopPropagation();
-		if ($panel) {
-			closePanel();
-			return;
-		}
-		openPanel();
-	});
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
 	get_project_roles,
 	get_display_periods,
 	mount_toolbar_controls,
+	render_legend,
 	get_portal_host,
 	bring_overlays_into_fullscreen,
 	start_fullscreen_overlay_watch,

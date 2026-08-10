@@ -42,6 +42,48 @@ export function getRoleAssignments(taskId, role) {
     return all.filter((a) => assignmentRoleKey(a.role) === want);
 }
 
+/** DinextTable column filter reads row.assignments (renderer ignores it). */
+export function buildRoleAssignmentsSearchText(taskId, role) {
+    const users = getRoleAssignments(taskId, role);
+    if (!users.length) {
+        return "";
+    }
+    const parts = [];
+    for (const a of users) {
+        const name = a.user_full_name ? String(a.user_full_name).trim() : "";
+        const email = a.user ? String(a.user).trim() : "";
+        if (name) {
+            parts.push(name);
+        }
+        if (email && email !== name) {
+            parts.push(email);
+        }
+    }
+    return parts.join(" ");
+}
+
+function walkAssignmentRows(rows, fn) {
+    for (const row of rows || []) {
+        fn(row);
+        if (row.children?.length) {
+            walkAssignmentRows(row.children, fn);
+        }
+    }
+}
+
+export function applyAssignmentsSearchFields(frm) {
+    const rows = frm.we?.rows;
+    if (!rows?.length) {
+        return;
+    }
+    walkAssignmentRows(rows, (row) => {
+        if (row.merge_group_id === SUMMARY_ROW_ID) {
+            return;
+        }
+        row.assignments = buildRoleAssignmentsSearchText(row.task_id, row.role);
+    });
+}
+
 export async function ensureAssignmentsLoaded(frm) {
     const we = project_workload_assignment.work_efforts;
     if (!we?.load_all_assignments_if_needed) {
@@ -52,6 +94,7 @@ export async function ensureAssignmentsLoaded(frm) {
         return;
     }
     await we.load_all_assignments_if_needed(frm);
+    applyAssignmentsSearchFields(frm);
 }
 
 function resolveTaskSubject(frm, row) {
@@ -91,6 +134,7 @@ function openPwaDialog(frm, row) {
 }
 
 export function refreshAssignmentsCells(frm) {
+    applyAssignmentsSearchFields(frm);
     const api = frm.we?.table?.api;
     if (!api?.refreshCells) return;
     api.refreshCells({ columns: ["assignments"], force: true });
@@ -129,6 +173,7 @@ function makeRemainingRow(head, role, index, size) {
         custom_planned_end_date: head.custom_planned_end_date || null,
         act_start_date: head.act_start_date || null,
         act_end_date: head.act_end_date || null,
+        assignments: "",
     };
 }
 
@@ -186,6 +231,7 @@ export function applyRemainingAssignmentRows(frm) {
     }
 
     state.rows = processLevel(state.rows);
+    applyAssignmentsSearchFields(frm);
 }
 
 /** Toggle колонки «Назначения» + remaining rows (фаза 13 / legacy remainingRoles). */
