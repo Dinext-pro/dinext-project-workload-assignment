@@ -8,6 +8,7 @@ import "./checks.js";
 import "./table/data-load.js";
 import "./table/limits.js";
 import "./chart.js";
+import "./work_efforts_progress.js";
 import "./overload.js";
 import "./table/controls.js";
 import "./table/render.js";
