@@ -51,12 +51,15 @@ def _sync_assignments(task, items):
 	desc = _get_task_subject(task)
 
 	if to_add:
+		# add_multiple expects a single args dict (or form_dict), not kwargs
 		frappe.call(
 			"frappe.desk.form.assign_to.add_multiple",
-			assign_to=list(to_add),
-			doctype="Task",
-			name=json.dumps([task]),
-			description=desc,
+			{
+				"assign_to": list(to_add),
+				"doctype": "Task",
+				"name": json.dumps([task]),
+				"description": desc,
+			},
 		)
 
 	for u in to_remove:
