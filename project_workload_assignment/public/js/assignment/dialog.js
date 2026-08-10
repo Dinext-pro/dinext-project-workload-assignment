@@ -534,7 +534,7 @@ function get_pwe_fields() {
 
 async function submit_pwa_and_todo(rows) {
   await frappe.call({
-    method: 'bulk_process_pwa',
+    method: 'project_workload_assignment.pwa_dates.bulk.bulk_process_pwa',
     args: { rows: rows },
     freeze: true,
   });
