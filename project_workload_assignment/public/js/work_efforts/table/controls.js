@@ -97,7 +97,42 @@ function addViewOptionsControl(frm, controls) {
 }
 
 /**
+ * Toolbar Check control (label left of box — Frappe Check chrome).
+ * @param {JQuery} host
+ * @param {{ fieldname: string, label: string, value: number|boolean, onchange: Function }} opts
+ */
+function addToolbarCheckbox(host, opts) {
+	const wrapper = $('<div class="we-toolbar-checkbox-wrapper"></div>').appendTo(host);
+	const control = frappe.ui.form.make_control({
+		parent: wrapper,
+		df: {
+			fieldtype: "Check",
+			fieldname: opts.fieldname,
+			label: opts.label,
+			onchange: opts.onchange,
+		},
+		value: opts.value,
+		only_input: false,
+		render_input: true,
+	});
+	control.refresh();
+	return control;
+}
+
+/**
+ * Sync Plan checkbox UI after code forces plan visible (e.g. missing-plan check).
+ * @param {boolean} show
+ */
+function set_plan_checkbox(show) {
+	const $input = $(".work-efforts-controls [data-fieldname='show_plan'] input[type='checkbox']");
+	if ($input.length) {
+		$input.prop("checked", !!show);
+	}
+}
+
+/**
  * Mount former shell controls into DinextTable toolbar custom host (once).
+ * Order: view mode → Check → Save plan → Plan → Δ → Assignments.
  * @param {WorkEffortsForm} frm
  * @param {JQuery} host
  */
@@ -111,33 +146,7 @@ function mount_toolbar_controls(frm, host) {
 	const periodType = frm._we_period_type || "month";
 	const unit = frm._we_unit || "hours";
 
-	host.append(`
-		<button class="btn btn-default" id="we_save_plan" type="button">${__("Save plan")}</button>
-		<button class="btn btn-default" id="toggle_plan" type="button">${__("Show plan")}</button>
-		<button class="btn btn-default" id="toggle_delta" type="button">${__("Show Δ")}</button>
-	`);
-
 	addViewOptionsControl(frm, host);
-
-	const checkbox_wrapper = $('<div class="assignments-checkbox-wrapper"></div>').appendTo(host);
-	const assignments_checkbox = frappe.ui.form.make_control({
-		parent: checkbox_wrapper,
-		df: {
-			fieldtype: "Check",
-			fieldname: "show_assignments",
-			// Distinct from dinext_projects "Assignments"→«Поручения»
-			label: __("Show assignments"),
-			onchange: function () {
-				frm.show_assignments = this.get_value();
-				// onAssignmentsToggle loads assignment cache itself when needed
-				window.WorkEfforts.onAssignmentsToggle(frm);
-			},
-		},
-		value: frm.show_assignments,
-		only_input: false,
-		render_input: true,
-	});
-	assignments_checkbox.refresh();
 
 	host.append(`
 		<div class="btn-group we-toolbar-check-group">
@@ -151,27 +160,52 @@ function mount_toolbar_controls(frm, host) {
 		</div>
 	`);
 
+	host.append(`
+		<button class="btn btn-default we-save-plan-btn" id="we_save_plan" type="button"
+			title="${__("Save plan")}" aria-label="${__("Save plan")}">
+			<i class="fa fa-save" aria-hidden="true"></i>
+			<span class="we-save-plan-label">${__("Plan")}</span>
+		</button>
+	`);
+
 	// Defaults set in render.js ensureWeDefaults before mount.
-	host.find("#toggle_plan").text(frm.hide_plan ? __("Show plan") : __("Hide plan"));
-	host.find("#toggle_delta").text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
+	addToolbarCheckbox(host, {
+		fieldname: "show_plan",
+		label: __("Plan"),
+		value: !frm.hide_plan,
+		onchange: function () {
+			frm.hide_plan = !this.get_value();
+			project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
+			project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
+			window.WorkEfforts.onTogglePlanOrDelta(frm);
+		},
+	});
+
+	addToolbarCheckbox(host, {
+		fieldname: "show_delta",
+		label: __("Δ"),
+		value: !frm.hide_delta,
+		onchange: function () {
+			frm.hide_delta = !this.get_value();
+			project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
+			window.WorkEfforts.onTogglePlanOrDelta(frm);
+		},
+	});
+
+	addToolbarCheckbox(host, {
+		fieldname: "show_assignments",
+		// Context: dinext_projects "Assignments"→«Поручения» without context
+		label: __("Assignments", null, "Work Efforts"),
+		value: frm.show_assignments,
+		onchange: function () {
+			frm.show_assignments = this.get_value();
+			// onAssignmentsToggle loads assignment cache itself when needed
+			window.WorkEfforts.onAssignmentsToggle(frm);
+		},
+	});
 
 	host.find("#we_save_plan").on("click", function () {
 		window.WorkEfforts.saveForecastAsPlan(frm);
-	});
-
-	host.find("#toggle_plan").on("click", function () {
-		frm.hide_plan = !frm.hide_plan;
-		$(this).text(frm.hide_plan ? __("Show plan") : __("Hide plan"));
-		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
-		project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-		window.WorkEfforts.onTogglePlanOrDelta(frm);
-	});
-
-	host.find("#toggle_delta").on("click", function () {
-		frm.hide_delta = !frm.hide_delta;
-		$(this).text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
-		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
-		window.WorkEfforts.onTogglePlanOrDelta(frm);
 	});
 
 	host.find("#check_plan_load").on("click", function (e) {
@@ -406,6 +440,7 @@ Object.assign(project_workload_assignment.work_efforts, {
 	get_project_roles,
 	get_display_periods,
 	mount_toolbar_controls,
+	set_plan_checkbox,
 	render_legend,
 	get_portal_host,
 	bring_overlays_into_fullscreen,

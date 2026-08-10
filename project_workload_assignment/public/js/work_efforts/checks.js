@@ -119,7 +119,7 @@ function check_plan_load_for_percentage_assignments(frm) {
 
     if (frm.hide_plan) {
         frm.hide_plan = false;
-        $('#toggle_plan').text(__("Hide plan"));
+        project_workload_assignment.work_efforts.set_plan_checkbox?.(true);
     }
 
     project_workload_assignment.work_efforts.load_detailed_assignments(frm).then(() => {
