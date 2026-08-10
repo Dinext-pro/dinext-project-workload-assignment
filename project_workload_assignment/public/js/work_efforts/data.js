@@ -39,6 +39,7 @@ function toGridRow(apiRow, index) {
         merge_group_index: apiRow.merge_group_index,
         merge_group_size: apiRow.merge_group_size,
         has_children: apiRow.has_children,
+        assignments: "",
     };
     copyTaskDates(apiRow, gridRow);
     copyPeriodFields(apiRow, gridRow);
