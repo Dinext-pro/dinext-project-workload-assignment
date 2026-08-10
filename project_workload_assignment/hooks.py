@@ -215,13 +215,17 @@ after_migrate = "project_workload_assignment.install.after_migrate"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+# Layer 4a PWA dates (ISS-2026-03288). SS still enabled until local cutover reload.
+_pwa_dates = "project_workload_assignment.pwa_dates"
+
+doc_events = {
+	"Task": {
+		"on_update": f"{_pwa_dates}.task_sync.sync_task_dates_to_pwa",
+	},
+	"Issue": {
+		"on_update": f"{_pwa_dates}.issue_sync.sync_issue_dates_to_pwa",
+	},
+}
 
 # Scheduled Tasks
 # ---------------
