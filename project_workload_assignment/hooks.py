@@ -204,7 +204,7 @@ after_migrate = "project_workload_assignment.install.after_migrate"
 # ---------------
 # Hook on document methods and events
 
-# Layer 4a PWA dates (ISS-2026-03288). SS still enabled until local cutover reload.
+# Layer 4a PWA dates (ISS-2026-03288). Local cutover: SS disabled; prod SS still on.
 _pwa_dates = "project_workload_assignment.pwa_dates"
 
 doc_events = {
