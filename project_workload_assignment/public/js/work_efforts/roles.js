@@ -231,22 +231,17 @@ function buildAddRoleControl(frm, taskId) {
 }
 
 function buildDeleteRoleControl(frm, row) {
-    const blockedByFact = hasFactOnRow(row);
+    if (hasFactOnRow(row)) {
+        return null;
+    }
 
     const del = document.createElement("button");
     del.type = "button";
     del.className = "btn btn-default btn-xs we-role-delete";
     del.textContent = "×";
     del.setAttribute("aria-label", __("Удалить роль"));
-    del.addEventListener("mousedown", stopGridEvent);
-
-    if (blockedByFact) {
-        del.disabled = true;
-        del.title = __("Нельзя удалить роль: по строке есть фактические трудозатраты");
-        return del;
-    }
-
     del.title = __("Удалить роль");
+    del.addEventListener("mousedown", stopGridEvent);
     del.addEventListener("click", (e) => {
         e.stopPropagation();
         confirmDeleteRole(frm, row.task_id, row.role);
@@ -275,7 +270,10 @@ export function roleCellRenderer(frm) {
         actions.className = "we-role-actions";
 
         if (row.role && !row.we_remaining) {
-            actions.appendChild(buildDeleteRoleControl(frm, row));
+            const del = buildDeleteRoleControl(frm, row);
+            if (del) {
+                actions.appendChild(del);
+            }
         }
 
         // "+" — merge head only (summary already returned above); not on remaining
