@@ -218,3 +218,14 @@ class TimesheetLimitResult(TypedDict, total=False):
 
 
 TimesheetLimitsResponse = list[TimesheetLimitResult]
+
+
+# --- get_work_efforts_progress ---
+
+
+class WorkEffortsProgressResponse(TypedDict, total=False):
+	"""Scalars for Project Details «Трудозатраты» bar."""
+
+	plan_hours: float
+	fact_hours: float
+	percent: float
