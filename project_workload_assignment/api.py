@@ -16,7 +16,8 @@ from project_workload_assignment.project_workload_assignment.project_workload.te
 from project_workload_assignment.project_workload_assignment.project_workload.team_report.team_workload_grid import run_get_projects_workload_data_v2
 from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import run_get_work_efforts_consolidated_data
 from project_workload_assignment.project_workload_assignment.work_efforts.grid_data import run_get_work_efforts_grid
-from project_workload_assignment.project_workload_assignment.work_efforts.models import ConsolidatedDataFormInput, ConsolidatedDataResponse, SaveForecastAsPlanFormInput, TimesheetLimitsFormInput, TimesheetLimitsResponse, WeGridFormInput, WeGridResponse, WeSaveForecastFormInput
+from project_workload_assignment.project_workload_assignment.work_efforts.models import ConsolidatedDataFormInput, ConsolidatedDataResponse, SaveForecastAsPlanFormInput, TimesheetLimitsFormInput, TimesheetLimitsResponse, WeGridFormInput, WeGridResponse, WeSaveForecastFormInput, WorkEffortsProgressResponse
+from project_workload_assignment.project_workload_assignment.work_efforts.work_efforts_progress import run_get_work_efforts_progress
 from project_workload_assignment.project_workload_assignment.work_efforts.save_changes import run_save_forecast_changes
 from project_workload_assignment.project_workload_assignment.work_efforts.save_forecast_as_plan import run_save_forecast_as_plan
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits import run_calculate_timesheet_limits
@@ -121,6 +122,13 @@ def get_work_efforts_consolidated_data() -> ConsolidatedDataResponse:
 	"""Consolidated Work Efforts data for a project."""
 	form_input: ConsolidatedDataFormInput = frappe.form_dict
 	return run_get_work_efforts_consolidated_data(form_input)
+
+
+@frappe.whitelist()
+def get_work_efforts_progress(project: str | None = None) -> WorkEffortsProgressResponse:
+	"""Plan/fact scalars for Project Details «Трудозатраты» percent bar."""
+	project = project or frappe.form_dict.get("project")
+	return run_get_work_efforts_progress(project)
 
 
 @frappe.whitelist()

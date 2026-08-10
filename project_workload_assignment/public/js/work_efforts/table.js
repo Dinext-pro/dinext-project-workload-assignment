@@ -66,8 +66,8 @@ function bindFullscreenOverlayPortal(options) {
 function buildTableOptions(frm, state) {
     const gridOptions = {
         enableCellSpan: true,
-        // Density close to legacy role line (24px) + AG Grid chrome
-        rowHeight: 28,
+        suppressMovableColumns: true,   // WE column order fixed (Task/Role/periods); no header drag-reorder.
+        rowHeight: 28,                  // Density close to legacy role line (24px) + AG Grid chrome
         headerHeight: 32,
         groupHeaderHeight: 28,
     };
@@ -141,8 +141,8 @@ export async function initTable(frm) {
             applyRuntime(frm, table);
             syncPlFromWe(frm);
             project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm);
-            if (typeof render_labour_percentage_chart === "function") {
-                render_labour_percentage_chart(frm);
+            if (typeof render_work_efforts_percentage_chart === "function") {
+                render_work_efforts_percentage_chart(frm);
             }
             return table;
         } finally {
@@ -156,8 +156,8 @@ export async function initTable(frm) {
 function afterWeDataReady(frm) {
     syncPlFromWe(frm);
     project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm, false);
-    if (typeof render_labour_percentage_chart === "function") {
-        render_labour_percentage_chart(frm);
+    if (typeof render_work_efforts_percentage_chart === "function") {
+        render_work_efforts_percentage_chart(frm);
     }
 }
 
