@@ -33,10 +33,8 @@
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: 6px;
-	/* Fill custom toolbar zone so «Проверить» can stick right when space allows. */
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	min-width: 0;
-	width: 100%;
 }
 
 /*
@@ -61,15 +59,14 @@
 	line-height: 1.2;
 }
 
-.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper {
-	margin-left: 10px;
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-checkbox-wrapper {
 	display: inline-flex;
 	align-items: center;
 	flex: 0 0 auto;
 }
 
-.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper .frappe-control,
-.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper .checkbox {
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-checkbox-wrapper .frappe-control,
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-checkbox-wrapper .checkbox {
 	margin: 0;
 	display: inline-flex;
 	align-items: center;
@@ -86,9 +83,16 @@
 	flex-shrink: 0;
 }
 
-/* Last domain control — right edge when leftover space in custom zone. */
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-save-plan-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding-left: 8px;
+	padding-right: 8px;
+}
+
 .work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-check-group {
-	margin-left: auto;
+	margin-left: 0;
 }
 
 /* Portaled «Проверить» menu (body) — hug content; reset BS right:0 stretch. */
