@@ -203,7 +203,7 @@ export async function runMissingPlanCheck(frm) {
 
     if (frm.hide_plan) {
         frm.hide_plan = false;
-        $("#toggle_plan").text(__("Hide plan"));
+        project_workload_assignment.work_efforts.set_plan_checkbox?.(true);
         window.WorkEfforts?.onTogglePlanOrDelta?.(frm);
     }
 
