@@ -52,14 +52,52 @@ function getParentForecastLimit(rows, taskId, role, periodKey, excluded = []) {
     return getParentForecastLimit(rows, parentId, role, periodKey, [...excluded, taskId]);
 }
 
+function parseHoursInput(raw) {
+    if (raw == null || raw === "") {
+        return { ok: true, value: 0 };
+    }
+    if (typeof raw === "number") {
+        if (!Number.isFinite(raw)) {
+            return { ok: false, error: __("Часы должны быть числом") };
+        }
+        return { ok: true, value: raw };
+    }
+
+    const trimmed = String(raw).trim().replace(/\s/g, "");
+    if (!trimmed) {
+        return { ok: true, value: 0 };
+    }
+    // Digits + optional decimal (dot/comma). Reject letters and other junk.
+    if (!/^\d+([.,]\d+)?$/.test(trimmed)) {
+        return { ok: false, error: __("Часы должны быть числом") };
+    }
+
+    const normalized = trimmed.includes(",") && !trimmed.includes(".")
+        ? trimmed.replace(",", ".")
+        : trimmed.replace(/,/g, "");
+    const value = Number(normalized);
+    if (!Number.isFinite(value)) {
+        return { ok: false, error: __("Часы должны быть числом") };
+    }
+    return { ok: true, value };
+}
+
 function validateForecastChange(frm, change) {
     const field = change.field;
     if (!field?.startsWith("actual_")) return true;
     if (change.row?.we_remaining) return true;
 
+    const parsed = parseHoursInput(change.newValue);
+    if (!parsed.ok) {
+        return parsed.error;
+    }
+    if (parsed.value < 0) {
+        return __("Часы не могут быть отрицательными");
+    }
+
     const periodKey = field.slice(7);
     const row = change.row;
-    const value = Number(change.newValue || 0);
+    const value = parsed.value;
     const taskId = row?.task_id;
     const role = row?.role || "";
     const rows = frm.we?.rows || [];
