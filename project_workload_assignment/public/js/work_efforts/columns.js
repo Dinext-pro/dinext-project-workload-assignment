@@ -376,7 +376,7 @@ export function getColumns(frm, periods) {
             spanRows,
             cellClassRules: missingPlanTaskClassRules(form || {}),
         },
-        {
+        withoutColumnFilter({
             field: "role",
             headerName: __("Роли"),
             headerClass: HEADER_CENTER,
@@ -388,8 +388,8 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             cellRenderer: roleCellRenderer(form || {}),
             cellClassRules: missingPlanRoleClassRules(form || {}),
-        },
-        withCenterAlign({
+        }),
+        withoutColumnFilter(withCenterAlign({
             field: "assignments",
             colId: "assignments",
             headerName: __("Назначения"),
@@ -402,7 +402,7 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             hide: !(form && form.show_assignments),
             cellRenderer: assignmentsCellRenderer(form || {}),
-        }),
+        })),
     ];
 
     return [...baseColumns, ...buildPeriodColumns(form || {}, periodList), buildTotalColumn(form || {}, periodList)];
