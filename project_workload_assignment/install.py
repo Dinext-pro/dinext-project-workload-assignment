@@ -43,7 +43,25 @@ def ensure_report_indexes():
 		frappe.db.add_index(doctype, fields, index_name)
 
 
+OWNED_PROJECT_TEAM_FIELDS = (
+	"notifications_on_limits",
+)
+
+
+def detach_owned_project_team_fields() -> None:
+	"""Detach DocFields re-owned as Custom Fields before fixture sync.
+
+	CI still pins dinext_projects releases that define these as DocFields.
+	`after_install` runs before sync_fixtures, so delete_fields makes install idempotent.
+	"""
+	from frappe.model import delete_fields
+
+	delete_fields({"Project Team Details": list(OWNED_PROJECT_TEAM_FIELDS)}, delete=0)
+	frappe.clear_cache(doctype="Project Team Details")
+
+
 def after_install():
+	detach_owned_project_team_fields()
 	ensure_report_indexes()
 
 
