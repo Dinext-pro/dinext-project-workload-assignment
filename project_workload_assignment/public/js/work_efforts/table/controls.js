@@ -1,4 +1,4 @@
-// we-table/controls.js — period helpers + toolbar domain chrome (incl. legend help)
+// we-table/controls.js — period helpers + toolbar domain chrome + under-table legend
 // ISS-2025-01239
 
 import {
@@ -97,7 +97,42 @@ function addViewOptionsControl(frm, controls) {
 }
 
 /**
+ * Toolbar Check control (label left of box — Frappe Check chrome).
+ * @param {JQuery} host
+ * @param {{ fieldname: string, label: string, value: number|boolean, onchange: Function }} opts
+ */
+function addToolbarCheckbox(host, opts) {
+	const wrapper = $('<div class="we-toolbar-checkbox-wrapper"></div>').appendTo(host);
+	const control = frappe.ui.form.make_control({
+		parent: wrapper,
+		df: {
+			fieldtype: "Check",
+			fieldname: opts.fieldname,
+			label: opts.label,
+			onchange: opts.onchange,
+		},
+		value: opts.value,
+		only_input: false,
+		render_input: true,
+	});
+	control.refresh();
+	return control;
+}
+
+/**
+ * Sync Plan checkbox UI after code forces plan visible (e.g. missing-plan check).
+ * @param {boolean} show
+ */
+function set_plan_checkbox(show) {
+	const $input = $(".work-efforts-controls [data-fieldname='show_plan'] input[type='checkbox']");
+	if ($input.length) {
+		$input.prop("checked", !!show);
+	}
+}
+
+/**
  * Mount former shell controls into DinextTable toolbar custom host (once).
+ * Order: view mode → Check → Save plan → Plan → Δ → Assignments.
  * @param {WorkEffortsForm} frm
  * @param {JQuery} host
  */
@@ -111,35 +146,7 @@ function mount_toolbar_controls(frm, host) {
 	const periodType = frm._we_period_type || "month";
 	const unit = frm._we_unit || "hours";
 
-	mount_legend_help(host);
-
-	host.append(`
-		<button class="btn btn-default" id="we_save_plan" type="button">${__("Save plan")}</button>
-		<button class="btn btn-default" id="toggle_plan" type="button">${__("Show plan")}</button>
-		<button class="btn btn-default" id="toggle_delta" type="button">${__("Show Δ")}</button>
-	`);
-
 	addViewOptionsControl(frm, host);
-
-	const checkbox_wrapper = $('<div class="assignments-checkbox-wrapper"></div>').appendTo(host);
-	const assignments_checkbox = frappe.ui.form.make_control({
-		parent: checkbox_wrapper,
-		df: {
-			fieldtype: "Check",
-			fieldname: "show_assignments",
-			// Distinct from dinext_projects "Assignments"→«Поручения»
-			label: __("Show assignments"),
-			onchange: function () {
-				frm.show_assignments = this.get_value();
-				// onAssignmentsToggle loads assignment cache itself when needed
-				window.WorkEfforts.onAssignmentsToggle(frm);
-			},
-		},
-		value: frm.show_assignments,
-		only_input: false,
-		render_input: true,
-	});
-	assignments_checkbox.refresh();
 
 	host.append(`
 		<div class="btn-group we-toolbar-check-group">
@@ -153,27 +160,52 @@ function mount_toolbar_controls(frm, host) {
 		</div>
 	`);
 
+	host.append(`
+		<button class="btn btn-default we-save-plan-btn" id="we_save_plan" type="button"
+			title="${__("Save plan")}" aria-label="${__("Save plan")}">
+			<i class="fa fa-save" aria-hidden="true"></i>
+			<span class="we-save-plan-label">${__("Plan")}</span>
+		</button>
+	`);
+
 	// Defaults set in render.js ensureWeDefaults before mount.
-	host.find("#toggle_plan").text(frm.hide_plan ? __("Show plan") : __("Hide plan"));
-	host.find("#toggle_delta").text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
+	addToolbarCheckbox(host, {
+		fieldname: "show_plan",
+		label: __("Plan"),
+		value: !frm.hide_plan,
+		onchange: function () {
+			frm.hide_plan = !this.get_value();
+			project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
+			project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
+			window.WorkEfforts.onTogglePlanOrDelta(frm);
+		},
+	});
+
+	addToolbarCheckbox(host, {
+		fieldname: "show_delta",
+		label: __("Δ"),
+		value: !frm.hide_delta,
+		onchange: function () {
+			frm.hide_delta = !this.get_value();
+			project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
+			window.WorkEfforts.onTogglePlanOrDelta(frm);
+		},
+	});
+
+	addToolbarCheckbox(host, {
+		fieldname: "show_assignments",
+		// Context: dinext_projects "Assignments"→«Поручения» without context
+		label: __("Assignments", null, "Work Efforts"),
+		value: frm.show_assignments,
+		onchange: function () {
+			frm.show_assignments = this.get_value();
+			// onAssignmentsToggle loads assignment cache itself when needed
+			window.WorkEfforts.onAssignmentsToggle(frm);
+		},
+	});
 
 	host.find("#we_save_plan").on("click", function () {
 		window.WorkEfforts.saveForecastAsPlan(frm);
-	});
-
-	host.find("#toggle_plan").on("click", function () {
-		frm.hide_plan = !frm.hide_plan;
-		$(this).text(frm.hide_plan ? __("Show plan") : __("Hide plan"));
-		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
-		project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-		window.WorkEfforts.onTogglePlanOrDelta(frm);
-	});
-
-	host.find("#toggle_delta").on("click", function () {
-		frm.hide_delta = !frm.hide_delta;
-		$(this).text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
-		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
-		window.WorkEfforts.onTogglePlanOrDelta(frm);
 	});
 
 	host.find("#check_plan_load").on("click", function (e) {
@@ -361,11 +393,10 @@ function bindCheckDropdownPortal($btnGroup) {
 	});
 }
 
-const LEGEND_HELP_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.35"/><path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" d="M6.2 6.1a1.85 1.85 0 0 1 3.55.7c0 1.15-.95 1.55-1.55 1.95-.35.25-.5.45-.5.9"/><circle cx="8" cy="11.6" r=".9" fill="currentColor"/></svg>`;
-
-function get_legend_html() {
-	return `
-		<div class="we-legend-panel">
+/** Under-table legend (sticky/original parity — not toolbar popover). */
+function render_legend(container) {
+	container.html(`
+		<div class="we-legend-panel we-legend-panel--inline">
 			<div class="we-legend-row">
 				<div class="we-legend-swatch we-legend-plan-swatch"></div>
 				<span>${__("Planned Task Dates")}</span>
@@ -402,94 +433,15 @@ function get_legend_html() {
 				</div>
 			</div>
 		</div>
-	`;
-}
-
-/**
- * Toolbar "?" control — toggles portaled legend popover.
- * @param {JQuery} host
- */
-function mount_legend_help(host) {
-	if (host.data("we-legend-mounted")) {
-		return;
-	}
-	host.data("we-legend-mounted", true);
-
-	const $btn = $(`
-		<button type="button" class="dinext-table-toolbar-item we-legend-help-btn" title="${__("Legend")}" aria-label="${__("Legend")}" aria-haspopup="dialog" aria-expanded="false">
-			<span class="dinext-table-toolbar-item-icon">${LEGEND_HELP_ICON}</span>
-		</button>
 	`);
-	host.append($btn);
-
-	let $panel = null;
-
-	const closePanel = () => {
-		if (!$panel) {
-			return;
-		}
-		$panel.remove();
-		$panel = null;
-		$btn.attr("aria-expanded", "false");
-		document.removeEventListener("mousedown", onDocDown, true);
-		window.removeEventListener("resize", closePanel);
-		window.removeEventListener("scroll", closePanel, true);
-	};
-
-	const onDocDown = (event) => {
-		if ($panel?.[0]?.contains(event.target) || $btn[0].contains(event.target)) {
-			return;
-		}
-		closePanel();
-	};
-
-	const openPanel = () => {
-		closePanel();
-		$panel = $(`<div class="we-legend-popover" role="dialog" aria-label="${__("Legend")}"></div>`);
-		$panel.html(get_legend_html());
-		$panel.appendTo(get_portal_host());
-
-		const rect = $btn[0].getBoundingClientRect();
-		const panelWidth = Math.min(360, window.innerWidth - 16);
-		let left = rect.right - panelWidth;
-		if (left < 8) {
-			left = 8;
-		}
-		let top = rect.bottom + 6;
-		const panelHeight = $panel.outerHeight() || 200;
-		if (top + panelHeight > window.innerHeight - 8) {
-			top = Math.max(8, rect.top - panelHeight - 6);
-		}
-		$panel.css({
-			position: "fixed",
-			top,
-			left,
-			width: panelWidth,
-			zIndex: 1050,
-		});
-		$btn.attr("aria-expanded", "true");
-		setTimeout(() => {
-			document.addEventListener("mousedown", onDocDown, true);
-			window.addEventListener("resize", closePanel);
-			window.addEventListener("scroll", closePanel, true);
-		}, 0);
-	};
-
-	$btn.on("click", (e) => {
-		e.preventDefault();
-		e.stopPropagation();
-		if ($panel) {
-			closePanel();
-			return;
-		}
-		openPanel();
-	});
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
 	get_project_roles,
 	get_display_periods,
 	mount_toolbar_controls,
+	set_plan_checkbox,
+	render_legend,
 	get_portal_host,
 	bring_overlays_into_fullscreen,
 	start_fullscreen_overlay_watch,

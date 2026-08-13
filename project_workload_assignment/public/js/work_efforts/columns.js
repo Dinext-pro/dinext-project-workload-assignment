@@ -5,9 +5,7 @@ import { assignmentsCellRenderer } from "./assignments.js";
 import {
     missingPlanCellClassRules,
     missingPlanRoleClassRules,
-    missingPlanRoleTooltipValue,
     missingPlanTaskClassRules,
-    missingPlanTaskTooltipValue,
 } from "./plan_check.js";
 import {
     actualPeriodClassRules,
@@ -142,6 +140,11 @@ function withCenterAlign(col) {
     };
 }
 
+/** DinextTable filter layer: opt-out for non-searchable columns. */
+function withoutColumnFilter(col) {
+    return { ...col, filterable: false };
+}
+
 function sumPeriodField(row, periods, fieldPrefix) {
     let sum = 0;
     for (const period of periods || []) {
@@ -167,6 +170,35 @@ function totalDeltaGetter(periods) {
     };
 }
 
+/** Hours editor: digits + decimal only; reject letters / negatives at parse. */
+function weHoursValueParser(params) {
+    const raw = params.newValue;
+    if (raw == null || raw === "") {
+        return 0;
+    }
+    if (typeof raw === "number") {
+        if (!Number.isFinite(raw) || raw < 0) {
+            return params.oldValue;
+        }
+        return raw;
+    }
+    const trimmed = String(raw).trim().replace(/\s/g, "");
+    if (!trimmed) {
+        return 0;
+    }
+    if (!/^\d+([.,]\d+)?$/.test(trimmed)) {
+        return params.oldValue;
+    }
+    const normalized = trimmed.includes(",") && !trimmed.includes(".")
+        ? trimmed.replace(",", ".")
+        : trimmed.replace(/,/g, "");
+    const value = Number(normalized);
+    if (!Number.isFinite(value) || value < 0) {
+        return params.oldValue;
+    }
+    return value;
+}
+
 function buildPeriodLeaf(opts) {
     const {
         field,
@@ -180,7 +212,7 @@ function buildPeriodLeaf(opts) {
         cellClassRules,
         pinned,
     } = opts;
-    const col = withCenterAlign({
+    const col = withoutColumnFilter(withCenterAlign({
         field,
         colId,
         headerName,
@@ -195,8 +227,17 @@ function buildPeriodLeaf(opts) {
             ...ZERO_CELL_CLASS_RULES,
             ...(cellClassRules || {}),
         },
-    });
-    if (edit !== undefined) col.edit = edit;
+    }));
+    if (edit !== undefined) {
+        col.edit = edit;
+        // Editable forecast hours: block letters / minus in editor; parser rejects junk.
+        col.cellEditor = "agNumberCellEditor";
+        col.cellEditorParams = {
+            min: 0,
+            allowedCharPattern: "\\d\\.,",
+        };
+        col.valueParser = weHoursValueParser;
+    }
     if (valueGetter) col.valueGetter = valueGetter;
     if (pinned) col.pinned = pinned;
     return col;
@@ -311,7 +352,7 @@ export function getColumns(frm, periods) {
     const periodList = periods || form?.we?.periods || [];
 
     const baseColumns = [
-        withCenterAlign({
+        withoutColumnFilter(withCenterAlign({
             field: "task_serial",
             colId: "task_serial",
             headerName: "#",
@@ -323,7 +364,7 @@ export function getColumns(frm, periods) {
             tree: false,
             spanRows,
             valueGetter: serialValueGetter,
-        }),
+        })),
         {
             field: "task_subject",
             headerName: __("Tasks"),
@@ -334,9 +375,8 @@ export function getColumns(frm, periods) {
             tree: true,
             spanRows,
             cellClassRules: missingPlanTaskClassRules(form || {}),
-            tooltipValueGetter: missingPlanTaskTooltipValue(form || {}),
         },
-        {
+        withoutColumnFilter({
             field: "role",
             headerName: __("Roles"),
             headerClass: HEADER_CENTER,
@@ -348,9 +388,8 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             cellRenderer: roleCellRenderer(form || {}),
             cellClassRules: missingPlanRoleClassRules(form || {}),
-            tooltipValueGetter: missingPlanRoleTooltipValue(form || {}),
-        },
-        withCenterAlign({
+        }),
+        withoutColumnFilter(withCenterAlign({
             field: "assignments",
             colId: "assignments",
             headerName: __("Assignments", null, "Work Efforts"),
@@ -363,7 +402,7 @@ export function getColumns(frm, periods) {
             suppressMovable: true,
             hide: !(form && form.show_assignments),
             cellRenderer: assignmentsCellRenderer(form || {}),
-        }),
+        })),
     ];
 
     return [...baseColumns, ...buildPeriodColumns(form || {}, periodList), buildTotalColumn(form || {}, periodList)];
