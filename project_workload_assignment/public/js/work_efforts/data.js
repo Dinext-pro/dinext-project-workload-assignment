@@ -134,7 +134,7 @@ export async function loadGridData(frm, periodType) {
         return applyGridResponse(frm, message);
     } catch (err) {
         console.error("[WorkEfforts] grid load failed", err);
-        frappe.msgprint(__("Ошибка загрузки данных трудозатрат"));
+        frappe.msgprint(__("Error loading work efforts data"));
         throw err;
     }
 }
