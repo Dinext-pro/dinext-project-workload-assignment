@@ -34,10 +34,12 @@ function bindMissingPlanTooltips(frm, gridOptions) {
             text = missingPlanRoleTooltipValue(frm)({ data: params?.data });
         }
         if (!text) return;
+        params?.api?.hideTooltip?.();
         const el =
             params?.event?.target?.closest?.(".ag-cell") || params?.event?.target;
         if (el && we?.showCustomTooltip) {
-            // colored legacy tip (.custom-workload-tooltip), not AG browser title
+            // Colored legacy tip only; colDef must not set tooltipValueGetter (AG white popup).
+            el.removeAttribute("title");
             we.showCustomTooltip(el, text);
         }
     };
@@ -64,8 +66,8 @@ function bindFullscreenOverlayPortal(options) {
 function buildTableOptions(frm, state) {
     const gridOptions = {
         enableCellSpan: true,
-        // Density close to legacy role line (24px) + AG Grid chrome
-        rowHeight: 28,
+        suppressMovableColumns: true,   // WE column order fixed (Task/Role/periods); no header drag-reorder.
+        rowHeight: 28,                  // Density close to legacy role line (24px) + AG Grid chrome
         headerHeight: 32,
         groupHeaderHeight: 28,
     };
@@ -85,6 +87,14 @@ function buildTableOptions(frm, state) {
         rowCheck: { enabled: true, unit: "mergeHead", selectAll: true },
         // Gutter DnD default-on in DinextTable; WE merge-groups are not reorder targets.
         rowReorder: { enabled: false },
+        filter: {
+            // Role search keeps matching roles, not the whole task merge block.
+            mergeMatchMode: "rows",
+            // A parent kept only as a path to a matching child needs one context row.
+            mergeAncestorMode: "head",
+            // Role tails inherit the visually merged task value while filtering.
+            mergeInheritedFields: ["task_subject"],
+        },
         toolbar: {
             persistKey: `work-efforts:${frm.doc?.name || "new"}`,
             items: buildToolbarItems(frm),
@@ -131,8 +141,8 @@ export async function initTable(frm) {
             applyRuntime(frm, table);
             syncPlFromWe(frm);
             project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm);
-            if (typeof render_labour_percentage_chart === "function") {
-                render_labour_percentage_chart(frm);
+            if (typeof render_work_efforts_percentage_chart === "function") {
+                render_work_efforts_percentage_chart(frm);
             }
             return table;
         } finally {
@@ -146,8 +156,8 @@ export async function initTable(frm) {
 function afterWeDataReady(frm) {
     syncPlFromWe(frm);
     project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm, false);
-    if (typeof render_labour_percentage_chart === "function") {
-        render_labour_percentage_chart(frm);
+    if (typeof render_work_efforts_percentage_chart === "function") {
+        render_work_efforts_percentage_chart(frm);
     }
 }
 
