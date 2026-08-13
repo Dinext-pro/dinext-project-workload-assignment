@@ -321,7 +321,7 @@ function render_work_efforts_chart(frm, init = true) {
              frm._we_chart_instance = new frappe.Chart($chartContainer[0], get_we_chart_options( frm, data ));
         } catch (err) {
             console.error("Chart creation failed:", err );
-            $chartContainer.html(`<div style="padding:24px;color:#900;">${__("Ошибка при построении графика")}</div>`);
+            $chartContainer.html(`<div style="padding:24px;color:#900;">${__("Error building chart")}</div>`);
             return;
         }
         
