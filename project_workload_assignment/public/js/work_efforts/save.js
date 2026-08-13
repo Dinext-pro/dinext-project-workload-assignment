@@ -58,7 +58,7 @@ function parseHoursInput(raw) {
     }
     if (typeof raw === "number") {
         if (!Number.isFinite(raw)) {
-            return { ok: false, error: __("Часы должны быть числом") };
+            return { ok: false, error: __("Hours must be a number") };
         }
         return { ok: true, value: raw };
     }
@@ -69,7 +69,7 @@ function parseHoursInput(raw) {
     }
     // Digits + optional decimal (dot/comma). Reject letters and other junk.
     if (!/^\d+([.,]\d+)?$/.test(trimmed)) {
-        return { ok: false, error: __("Часы должны быть числом") };
+        return { ok: false, error: __("Hours must be a number") };
     }
 
     const normalized = trimmed.includes(",") && !trimmed.includes(".")
@@ -77,7 +77,7 @@ function parseHoursInput(raw) {
         : trimmed.replace(/,/g, "");
     const value = Number(normalized);
     if (!Number.isFinite(value)) {
-        return { ok: false, error: __("Часы должны быть числом") };
+        return { ok: false, error: __("Hours must be a number") };
     }
     return { ok: true, value };
 }
@@ -92,7 +92,7 @@ function validateForecastChange(frm, change) {
         return parsed.error;
     }
     if (parsed.value < 0) {
-        return __("Часы не могут быть отрицательными");
+        return __("Hours cannot be negative");
     }
 
     const periodKey = field.slice(7);
