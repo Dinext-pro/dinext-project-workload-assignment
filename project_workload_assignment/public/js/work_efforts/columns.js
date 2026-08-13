@@ -353,7 +353,7 @@ export function getColumns(frm, periods) {
         withCenterAlign({
             field: "assignments",
             colId: "assignments",
-            headerName: __("Assignments"),
+            headerName: __("Assignments", null, "Work Efforts"),
             width: 95,
             minWidth: 80,
             maxWidth: 120,
