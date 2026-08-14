@@ -134,12 +134,45 @@ function ensure_work_efforts_progress_bar( frm ) {
     frappe.require( [ frappe.assets.bundled_asset( "work-efforts.bundle.js" ) ], loadFn );
 }
 
-globalThis.render_revenue_percentage_chart = ( frm ) => {
-    if ( frm.aggregatedBudget && frm.dashboard.chart_area.grid && !frm.revenue_percentage_chart ) {
-        let revenue_data = get_revenue_data(frm);
-        frm.revenue_percentage_chart = render_linear_chart( frm.dashboard.chart_area.grid, __("Revenue"), revenue_data.percent, revenue_data.details );
+function render_revenue_percentage_chart( frm ) {
+    if ( !frm.aggregatedBudget || !frm.dashboard?.chart_area?.grid ) return;
+
+    let revenue_data = get_revenue_data(frm);
+    let title = __("Revenue");
+    let $grid = frm.dashboard.chart_area.grid;
+    let $group = get_chart_group( $grid, "dashboard-percents" );
+    let $card = $group.find( ".linear-card" ).filter( function () {
+        return $( this ).find( ".chart-title" ).first().text() === title;
+    } );
+
+    if ( $card.length ) {
+        let width_percent = Math.min( 100, Math.max( 0, revenue_data.percent ) );
+        $card.find( ".chart-percent" ).text( revenue_data.percent + "%" );
+        $card.find( ".progress-bar-fill" ).css( "width", width_percent + "%" );
+        $card.find( ".progress-bar-container" ).attr( "title", revenue_data.details );
+        $card.find( ".custom-tooltip" ).html( revenue_data.details );
+        let $tail = $card.find( ".progress-bar-tail" );
+        if ( revenue_data.percent < 100 ) {
+            if ( !$tail.length ) {
+                $card.find( ".progress-bar-container" ).append(
+                    '<div class="progress-bar-tail" style="left: ' + width_percent + '%;"></div>'
+                );
+            } else {
+                $tail.css( "left", width_percent + "%" );
+            }
+        } else {
+            $tail.remove();
+        }
+        frm.revenue_percentage_chart = $card;
+        return;
     }
+
+    frm.revenue_percentage_chart = render_linear_chart(
+        $grid, title, revenue_data.percent, revenue_data.details
+    );
 }
+
+globalThis.render_revenue_percentage_chart = render_revenue_percentage_chart;
 
 function load_and_render_project_dashboard(frm) {
     // Очистка и подготовка контейнера
@@ -461,18 +494,20 @@ function get_work_efforts_data(frm) {
 function get_revenue_data(frm) {
     let plan = 0, fact = 0;
     try {
-        if(typeof _get_revenue_values === 'function') {
-            let vals = _get_revenue_values(frm);
-            plan = vals.planned; fact = vals.actual;
+        let vals = _get_revenue_values(frm);
+        if ( vals ) {
+            plan = Number( vals.planned ) || 0;
+            fact = Number( vals.actual ) || 0;
         }
     } catch(e) {}
 
     let pct = 0;
     if (plan > 0) pct = (fact / plan) * 100;
-    
-    return { 
-        percent: Math.round(pct*100)/100, 
-        details: __("Plan") + ": " + format_currency(plan) + "<br>" + __("Actual") + ": " + format_currency(fact) 
+    else if (fact > 0) pct = 100;
+
+    return {
+        percent: Math.round(pct*100)/100,
+        details: __("Plan") + ": " + format_currency(plan) + "<br>" + __("Actual") + ": " + format_currency(fact)
     };
 }
 
@@ -782,38 +817,24 @@ function _get_plant_fact_efforts( frm ) {
 }
 
 function _get_revenue_values( frm ) {
-    if ( frm.aggregatedBudget ) {
-        let periods = get_budget_display_periods(frm, "month");
-        let plan_income_sum = 0;
-        let actual_income_sum = 0;
-    
-        periods.forEach(function(period) {
-            let plan_income = 0;
-            let actual_income = 0;
-        
-            for ( const child of Object.values(frm.aggregatedBudget) ) {
-                let bucket = (child.dimension_data || [])[0];//.find(r => r.role === role);
-                
-                if ( child.type == "Income" ) {
-                    let plan = parseFloat(bucket[`plan_${period.year}_${period.month}`]) || 0;
-                    let actual = (parseFloat(bucket[`fact_${period.year}_${period.month}`]) || 0);
-                
-                    if ( !actual_income && actual ) {
-                        actual_income = actual;
-                    }
-                    if ( !plan_income && plan ) {
-                        plan_income = plan;
-                    }
-                }
-                
-                if ( actual_income  && plan_income ) break;
-            }
-            
-            plan_income_sum += plan_income;
-            actual_income_sum += actual_income;
-        });
-        
-        return { planned: plan_income_sum, actual: actual_income_sum};
+    if ( !frm.aggregatedBudget ) return null;
+    if ( typeof get_budget_display_periods !== "function" || typeof calc_column_total !== "function" ) {
+        return null;
     }
-    return null;
+
+    let periods = get_budget_display_periods(frm, "month") || [];
+    let roots = typeof getFinancialRootRows === "function"
+        ? getFinancialRootRows(frm.aggregatedBudget)
+        : Object.values(frm.aggregatedBudget).filter(
+            (b) => !b.parent_account && !b.task && !b._parentKey && !b.risk
+        );
+
+    let planned = 0;
+    let actual = 0;
+    periods.forEach(function(period) {
+        let r = calc_column_total(frm, period, roots, true, true);
+        planned += Number(r.plan_income) || 0;
+        actual += Number(r.actual_income) || 0;
+    });
+    return { planned, actual };
 }
