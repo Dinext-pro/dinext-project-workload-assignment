@@ -96,6 +96,7 @@ doctype_js = {
                 # Scripts: workload-reports/report-form/entry.js (app_include_js).
                 ,"Project":[
                     "public/js/core/form-tab.js",
+                    "public/js/project/dashboard.js",
                     "public/js/assignment/dialog.js",
                     "public/js/work_efforts/entry.js",
                     "public/js/forecast/pl-from-we.js",
