@@ -364,6 +364,7 @@ def run_calculate_timesheet_limits(
         if year is not None and month is not None:
             total: HoursData = {"total": 0}
             users: set[str] = set()
+            user_hours: dict[str, float] = {}
             for pos in local_positions:
                 pos_task = pos.get("document_name")
                 pos_role = pos.get("project_role", "")
@@ -378,8 +379,12 @@ def run_calculate_timesheet_limits(
                     hrs = frappe.utils.flt(pos.get("all_hours", 0))
                     total["total"] = total.get("total", 0) + hrs
                     total[pos.get("status", "")] = total.get(pos.get("status", ""), 0) + hrs
-                    users.add(pos.get("custom_username", ""))
+                    local_user = pos.get("custom_username") or ""
+                    users.add(local_user)
+                    if local_user:
+                        user_hours[local_user] = user_hours.get(local_user, 0.0) + hrs
             total["users"] = users
+            total["user_hours"] = user_hours
             cache["total_hours"][ck] = total
             return total
 
@@ -395,23 +400,30 @@ def run_calculate_timesheet_limits(
 
         total: HoursData = {}
         users: set[str] = set()
+        user_hours: dict[str, float] = {}
         for r in db_rows:
             hrs = frappe.utils.flt(r.all_hours or 0.0)
             total["total"] = total.get("total", 0.0) + hrs
             total[r.status] = total.get(r.status, 0.0) + hrs
             users.add(r.custom_username)
+            if r.custom_username:
+                user_hours[r.custom_username] = user_hours.get(r.custom_username, 0.0) + hrs
 
         if timesheet_name and timesheet_status:
             for pos in local_positions:
                 task = pos.get("document_name")
                 task_role = pos.get("project_role", "")
                 local_hours = pos.get("all_hours")
-                users.add(pos.get("custom_username"))
+                local_user = pos.get("custom_username")
+                users.add(local_user)
                 if task in tasks and role == task_role and local_hours:
                     hrs = frappe.utils.flt(local_hours)
                     total["total"] = total.get("total", 0.0) + hrs
                     total[timesheet_status] = total.get(timesheet_status, 0.0) + hrs
+                    if local_user:
+                        user_hours[local_user] = user_hours.get(local_user, 0.0) + hrs
 
+        total["user_hours"] = user_hours
         total["users"] = users
         cache["total_hours"][ck] = total
         return total

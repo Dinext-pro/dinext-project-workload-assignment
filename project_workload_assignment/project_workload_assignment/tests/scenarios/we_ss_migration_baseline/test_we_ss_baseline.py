@@ -93,7 +93,7 @@ def _normalize_limits_hours_data(hours_data: dict | None) -> dict:
 	hours_data = hours_data or {}
 	out = {"total": _round_num(hours_data.get("total"))}
 	for key, value in sorted(hours_data.items()):
-		if key in ("total", "users"):
+		if key in ("total", "users", "user_hours"):
 			continue
 		out[key] = _round_num(value)
 	users = hours_data.get("users")

@@ -185,10 +185,11 @@ class PlanData(TypedDict, total=False):
 
 
 class HoursData(TypedDict, total=False):
-	"""Агрегированные часы UTP: total, users и доли по status."""
+	"""Агрегированные часы UTP: total, users, user_hours и доли по status."""
 
 	total: float
 	users: set[str]
+	user_hours: dict[str, float]
 
 
 LimitStatus = Literal["no-plan", "block", "warning", "message", "normal"]
