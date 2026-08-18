@@ -189,7 +189,7 @@ class HoursData(TypedDict, total=False):
 
 	total: float
 	users: set[str]
-	user_hours: dict[str, float]
+	user_hours: dict[str, dict[str, float]]
 
 
 LimitStatus = Literal["no-plan", "block", "warning", "message", "normal"]

@@ -150,11 +150,34 @@ def _as_json_list(value):
     return list(value)
 
 
+def _timesheet_owner_full_name(timesheet_name: str | None) -> str | None:
+    if not timesheet_name:
+        return None
+    email = frappe.db.get_value("User Timesheet", timesheet_name, "timesheet_from")
+    if not email:
+        return None
+    return frappe.db.get_value("User", email, "full_name") or None
+
+
+def _add_user_status_hours(
+    user_hours: dict[str, dict[str, float]],
+    user: str | None,
+    status: str | None,
+    hrs: float,
+) -> None:
+    if not user or not hrs:
+        return
+    bucket = user_hours.setdefault(user, {})
+    key = status or ""
+    bucket[key] = bucket.get(key, 0.0) + hrs
+
+
 def run_calculate_timesheet_limits(
     form_dict: TimesheetLimitsFormInput,
 ) -> TimesheetLimitsResponse:
     positions: list[TimesheetPositionInput] = _as_json_list(form_dict.get("positions"))
     timesheet_name = form_dict.get("timesheet_name")
+    timesheet_owner_name = _timesheet_owner_full_name(timesheet_name)
 
     session_limits_override: dict[str, float | None] | None = None
     if form_dict.get("project_limits"):
@@ -364,7 +387,7 @@ def run_calculate_timesheet_limits(
         if year is not None and month is not None:
             total: HoursData = {"total": 0}
             users: set[str] = set()
-            user_hours: dict[str, float] = {}
+            user_hours: dict[str, dict[str, float]] = {}
             for pos in local_positions:
                 pos_task = pos.get("document_name")
                 pos_role = pos.get("project_role", "")
@@ -377,12 +400,12 @@ def run_calculate_timesheet_limits(
                     and pos_month == month
                 ):
                     hrs = frappe.utils.flt(pos.get("all_hours", 0))
+                    pos_status = pos.get("status", "")
                     total["total"] = total.get("total", 0) + hrs
-                    total[pos.get("status", "")] = total.get(pos.get("status", ""), 0) + hrs
-                    local_user = pos.get("custom_username") or ""
+                    total[pos_status] = total.get(pos_status, 0) + hrs
+                    local_user = pos.get("custom_username") or timesheet_owner_name or ""
                     users.add(local_user)
-                    if local_user:
-                        user_hours[local_user] = user_hours.get(local_user, 0.0) + hrs
+                    _add_user_status_hours(user_hours, local_user, pos_status, hrs)
             total["users"] = users
             total["user_hours"] = user_hours
             cache["total_hours"][ck] = total
@@ -400,28 +423,26 @@ def run_calculate_timesheet_limits(
 
         total: HoursData = {}
         users: set[str] = set()
-        user_hours: dict[str, float] = {}
+        user_hours: dict[str, dict[str, float]] = {}
         for r in db_rows:
             hrs = frappe.utils.flt(r.all_hours or 0.0)
             total["total"] = total.get("total", 0.0) + hrs
             total[r.status] = total.get(r.status, 0.0) + hrs
             users.add(r.custom_username)
-            if r.custom_username:
-                user_hours[r.custom_username] = user_hours.get(r.custom_username, 0.0) + hrs
+            _add_user_status_hours(user_hours, r.custom_username, r.status, hrs)
 
         if timesheet_name and timesheet_status:
             for pos in local_positions:
                 task = pos.get("document_name")
                 task_role = pos.get("project_role", "")
                 local_hours = pos.get("all_hours")
-                local_user = pos.get("custom_username")
+                local_user = timesheet_owner_name or pos.get("custom_username")
                 users.add(local_user)
                 if task in tasks and role == task_role and local_hours:
                     hrs = frappe.utils.flt(local_hours)
                     total["total"] = total.get("total", 0.0) + hrs
                     total[timesheet_status] = total.get(timesheet_status, 0.0) + hrs
-                    if local_user:
-                        user_hours[local_user] = user_hours.get(local_user, 0.0) + hrs
+                    _add_user_status_hours(user_hours, local_user, timesheet_status, hrs)
 
         total["user_hours"] = user_hours
         total["users"] = users
