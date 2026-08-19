@@ -378,11 +378,34 @@ def _project_meta(msg: dict) -> dict:
 	return meta
 
 
+def _stamp_project_tree_holidays(rows: list[dict], metadata: Any) -> None:
+	"""Copy metadata holidays onto rows. Frontend isHoliday() reads row fields."""
+	if not isinstance(metadata, dict):
+		metadata = {}
+	project_holidays = metadata.get("project_holidays") or []
+	user_holidays_map = metadata.get("user_holidays") or {}
+	if not isinstance(user_holidays_map, dict):
+		user_holidays_map = {}
+
+	def walk(items: list) -> None:
+		for row in items or []:
+			if not row:
+				continue
+			email = row.get("email") or ""
+			user_holidays = user_holidays_map.get(email) or []
+			row["projectHolidays"] = project_holidays
+			row["userHolidays"] = user_holidays or project_holidays
+			walk(row.get("children") or [])
+
+	walk(rows)
+
+
 def reshape_project_tree(message: Any) -> dict:
 	msg = message if isinstance(message, dict) else {}
 	periods = adapt_periods(msg.get("periods"))
 	tree = msg.get("tree_data") if isinstance(msg.get("tree_data"), list) else []
 	rows = nest_by_indent(tree, periods)
+	_stamp_project_tree_holidays(rows, msg.get("metadata") or {})
 	return {"periods": periods, "rows": rows, "meta": _project_meta(msg)}
 
 
