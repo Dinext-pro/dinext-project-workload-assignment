@@ -13,6 +13,7 @@ from __future__ import annotations
 # Re-export same whitelisted callables (same function objects → already whitelisted).
 from project_workload_assignment.api import (  # noqa: F401
 	calculate_timesheet_limits,
+	calculate_user_timesheet_limits,
 	check_workload_overload,
 	get_work_efforts_consolidated_data,
 	get_work_efforts_grid,
