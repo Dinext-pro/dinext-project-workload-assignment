@@ -28,18 +28,6 @@ required_apps = [
 
 fixtures = [
     {
-        "doctype": "Server Script",
-        "filters": [
-            ["module", "in", ["Project Workload Assignment"]]
-        ]
-    },
-    {
-        "doctype": "Client Script",
-        "filters": [
-            ["module", "in", ["Project Workload Assignment"]]
-        ]
-    },
-    {
         "doctype": "Custom Field",
         "filters": [
             ["module", "in", ["Project Workload Assignment"]]
