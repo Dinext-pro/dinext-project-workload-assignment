@@ -26,27 +26,50 @@ function pwr_pl_register_forecast_from_we_menu(frm) {
 	if (!frm || frm.is_new()) {
 		return;
 	}
+	// Share one array with PL/risk: project_budget_* and project_pl_*.
+	// Risk try3 reassigns from project_pl_forecast_menu — if PWA only filled
+	// project_budget_forecast_menu, cost/revenue items get wiped.
+	frappe.provide("dinext_projects.project_pl_forecast_menu");
 	frappe.provide("dinext_projects.project_budget_forecast_menu");
-	if (!Array.isArray(dinext_projects.project_budget_forecast_menu)) {
-		dinext_projects.project_budget_forecast_menu = [];
+	if (!Array.isArray(dinext_projects.project_pl_forecast_menu)) {
+		dinext_projects.project_pl_forecast_menu = [];
 	}
-	dinext_projects.project_budget_forecast_menu = dinext_projects.project_budget_forecast_menu.filter(
-		(item) => !item[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]
-	);
+	if (
+		!Array.isArray(dinext_projects.project_budget_forecast_menu) ||
+		dinext_projects.project_budget_forecast_menu !== dinext_projects.project_pl_forecast_menu
+	) {
+		if (
+			Array.isArray(dinext_projects.project_budget_forecast_menu) &&
+			dinext_projects.project_budget_forecast_menu.length &&
+			!dinext_projects.project_pl_forecast_menu.length
+		) {
+			dinext_projects.project_pl_forecast_menu = dinext_projects.project_budget_forecast_menu;
+		}
+		dinext_projects.project_budget_forecast_menu = dinext_projects.project_pl_forecast_menu;
+	}
+	dinext_projects.project_budget_forecast_menu = dinext_projects.project_pl_forecast_menu =
+		dinext_projects.project_pl_forecast_menu.filter(
+			(item) => !item[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]
+		);
 	dinext_projects.project_budget_forecast_menu.push({
 		label: PWR_PL_FORECAST_COST_LABEL,
 		action: (frm) => add_forecast_from_work_efforts_handler(frm, "cost"),
 		[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]: true,
+		__pwr_pl_forecast_kind: "cost",
 	});
 	if (pwr_pl_is_tm_project(frm)) {
 		dinext_projects.project_budget_forecast_menu.push({
 			label: PWR_PL_FORECAST_REVENUE_LABEL,
 			action: (frm) => add_forecast_from_work_efforts_handler(frm, "revenue"),
 			[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]: true,
+			__pwr_pl_forecast_kind: "revenue",
 		});
 	}
-	if (typeof dinext_projects.refresh_project_budget_forecast_dropdown === "function") {
-		dinext_projects.refresh_project_budget_forecast_dropdown(frm);
+	const refresh =
+		dinext_projects.refresh_project_budget_forecast_dropdown ||
+		dinext_projects.refresh_pl_forecast_dropdown;
+	if (typeof refresh === "function") {
+		refresh(frm);
 	}
 }
 
