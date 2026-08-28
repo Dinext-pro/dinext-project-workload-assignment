@@ -10,6 +10,7 @@ import {
 	mountProjectsFiltersFromForm,
 	getFormFiltersSection,
 	parkFormLinkFields,
+	unveilFormLinkFields,
 } from "./filters/index.js";
 import { loadTable, destroyTable, createProjectsExpandHandler, PAGE_SIZE } from "./table/index.js";
 import { consumeOpenWorkloadTab } from "./table/navigation.js";
@@ -22,6 +23,7 @@ import {
 	mountChartVisibilityToggle,
 	flushChartsWhenVisible,
 } from "./charts/index.js";
+import { wrDebug, wrFieldSnapshot } from "./debug.js";
 
 /**
  * @param {HTMLElement} host
@@ -64,6 +66,7 @@ project_workload_assignment.workloadReports.common = {
 	mountProjectsFiltersFromForm,
 	getFormFiltersSection,
 	parkFormLinkFields,
+	unveilFormLinkFields,
 	getProjectsData,
 	getUserProjects,
 	getProjectData,
@@ -81,4 +84,6 @@ project_workload_assignment.workloadReports.common = {
 	mountChartVisibilityToggle,
 	flushChartsWhenVisible,
 	consumeOpenWorkloadTab,
+	wrDebug,
+	wrFieldSnapshot,
 };

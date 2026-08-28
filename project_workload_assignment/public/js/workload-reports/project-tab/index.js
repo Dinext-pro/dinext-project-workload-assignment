@@ -1,5 +1,18 @@
 const FIELD = "custom_workload";
+const TAB_ANCHOR = "custom_workload_tab_anchor";
 const TAB_FIELD = "custom_загрузка";
+
+function _lazyTabField(frm) {
+	if (frm?.get_field?.(TAB_ANCHOR)) {
+		return TAB_ANCHOR;
+	}
+	return FIELD;
+}
+
+const _dbg = (event, data) =>
+	project_workload_assignment.workloadReports?.common?.wrDebug?.("project", event, data);
+const _fieldSnap = (frm) =>
+	project_workload_assignment.workloadReports?.common?.wrFieldSnapshot?.(frm, FIELD);
 
 const _reload = (frm, el) => {
 	const { common } = project_workload_assignment.workloadReports;
@@ -10,6 +23,7 @@ const _reload = (frm, el) => {
 	});
 	const chartsDone = common.scheduleChartsReload(el._wr.charts);
 	return Promise.all([tableDone, chartsDone]).then(() => {
+		common.flushChartsWhenVisible?.(el._wr.charts);
 		common.realignCharts?.(el._wr.charts);
 	});
 };
@@ -39,14 +53,27 @@ const _bindChartsTab = () => {
 function mount(frm) {
 	const { common } = project_workload_assignment.workloadReports;
 
+	_dbg("mount-start", {
+		project: frm?.doc?.name,
+		isCurFrm: frm === window.cur_frm,
+		field: _fieldSnap(frm),
+	});
+
 	const field = frm.get_field(FIELD);
 	if (!field?.$wrapper?.length) {
+		_dbg("mount-abort-no-field", _fieldSnap(frm));
 		return;
 	}
 
 	const el = field.$wrapper.get(0);
 	const isNew = !el._wr;
 	if (isNew) {
+		_dbg("mount-layout-new", { hidden: field.df?.hidden });
+		field.$wrapper
+			.removeClass("hide-control")
+			.closest(".frappe-control")
+			.removeClass("hide-control")
+			.show();
 		field.$wrapper
 			.empty()
 			.addClass("workload-reports-project-tab")
@@ -54,6 +81,8 @@ function mount(frm) {
 		el._wr = common.mountLayout(el);
 		el._getArgs = common.mountProjectFilters(el._wr.filters, () => {
 			_reload(frm, el);
+		}, {
+			getProject: () => frm.doc.name,
 		});
 		common.mountCharts(el._wr.charts, {
 			surface: "project",
@@ -62,19 +91,35 @@ function mount(frm) {
 		});
 		common.mountChartVisibilityToggle(el._wr.filters, el._wr.charts);
 		_bindChartsTab();
+	} else {
+		_dbg("mount-reuse-existing", { hasWr: !!el._wr });
 	}
 
-	return _reload(frm, el);
+	const reload = _reload(frm, el);
+	_dbg("mount-done", { isNew, hasWrRoot: !!el.querySelector?.(".workload-reports-root") });
+	return reload;
 }
 
 /** Shell deferred; table/API only when tab «Загрузка» is visible. */
 function scheduleMount(frm) {
+	const lazyField = _lazyTabField(frm);
+	_dbg("schedule-mount", {
+		project: frm?.doc?.name,
+		lazyField,
+		hasBindLazyTabMount: typeof project_workload_assignment.bindLazyTabMount === "function",
+		field: _fieldSnap(frm),
+		anchor: project_workload_assignment.workloadReports?.common?.wrFieldSnapshot?.(
+			frm,
+			TAB_ANCHOR
+		),
+		tabVisible: project_workload_assignment.isFieldTabVisible?.(frm, lazyField),
+	});
 	const bind = project_workload_assignment.bindLazyTabMount;
 	if (typeof bind !== "function") {
 		console.error("[WorkloadReports] bindLazyTabMount missing — refuse eager mount");
 		return;
 	}
-	bind(frm, FIELD, () => mount(frm));
+	bind(frm, lazyField, () => mount(frm));
 	// Deep-link from PWR: open Загрузка once (mount via shown.bs.tab / already-active)
 	project_workload_assignment.workloadReports.common?.consumeOpenWorkloadTab?.(frm, FIELD);
 }
@@ -83,11 +128,14 @@ let bound = false;
 
 const _bindForm = () => {
 	if (bound) {
+		_dbg("bindForm-skip-already-bound");
 		return;
 	}
 	bound = true;
+	_dbg("bindForm-ok");
 	frappe.ui.form.on("Project", {
 		refresh(frm) {
+			_dbg("form-refresh", { project: frm?.doc?.name });
 			scheduleMount(frm);
 		},
 	});
