@@ -177,6 +177,16 @@ def run_calculate_user_timesheet_limits(
 		if (plan_task + role) in cache["total_hours"]:
 			return cache["total_hours"][plan_task + role]
 
+		timesheet_owner_name = None
+		if timesheet_name:
+			timesheet_owner_email = frappe.db.get_value(
+				"User Timesheet", timesheet_name, "timesheet_from"
+			)
+			if timesheet_owner_email:
+				timesheet_owner_name = frappe.db.get_value(
+					"User", timesheet_owner_email, "full_name"
+				)
+
 		db_rows = frappe.db.get_all(
 			"User Timesheet Position",
 			filters={
@@ -189,24 +199,34 @@ def run_calculate_user_timesheet_limits(
 
 		total = {}
 		users = set()
+		user_hours = {}
 		for r in db_rows:
 			hrs = frappe.utils.flt(r.all_hours or 0.0)
 			total["total"] = total.get("total", 0.0) + hrs
 			total[r.status] = total.get(r.status, 0.0) + hrs
-			users.add(r.custom_username)
+			if r.custom_username:
+				users.add(r.custom_username)
+				bucket = user_hours.setdefault(r.custom_username, {})
+				bucket[r.status] = bucket.get(r.status, 0.0) + hrs
 
 		if timesheet_name and timesheet_status:
 			for pos in local_positions:
 				task = pos.get("document_name")
 				task_role = pos.get("project_role", "")
 				local_hours = pos.get("all_hours")
-				users.add(pos.get("custom_username"))
+				local_user = timesheet_owner_name
+				if local_user:
+					users.add(local_user)
 
 				if task in tasks and role == task_role and local_hours:
 					hrs = frappe.utils.flt(local_hours)
 					total["total"] = total.get("total", 0.0) + hrs
 					total[timesheet_status] = total.get(timesheet_status, 0.0) + hrs
+					if local_user:
+						bucket = user_hours.setdefault(local_user, {})
+						bucket[timesheet_status] = bucket.get(timesheet_status, 0.0) + hrs
 
+		total["user_hours"] = user_hours
 		total["users"] = users
 		cache["total_hours"][plan_task + role] = total
 		return total

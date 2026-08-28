@@ -502,6 +502,7 @@ class ChartSeries(TypedDict, total=False):
 	capacity_hours: list[float]
 	utilization_plan_hours: list[float]
 	utilization_forecast_hours: list[float]
+	utilization_actual_hours: list[float]
 	workload_forecast_hours_by_wtype: dict[str, list[float]]
 	project_plan_hours: list[float]
 	team_capacity_hours: list[float]
