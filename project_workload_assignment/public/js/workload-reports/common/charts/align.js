@@ -3,6 +3,7 @@ import {
 	CHART_PLOT_HEIGHT_PX,
 	DEFAULT_LABEL_GUTTER_PX,
 	LEGEND_BAND_PX,
+	UTILIZATION_ACTUAL_COLOR,
 	UTILIZATION_FORECAST_COLOR,
 	Y_AXIS_GUTTER_PX,
 } from "./theme.js";
@@ -192,20 +193,24 @@ function isUtilizationForecastSeries(series) {
 	return !!(series && (series.type === "scatter" || series.utilizationForecast));
 }
 
+function isUtilizationActualSeries(series) {
+	return !!(series && series.utilizationActual);
+}
+
 function resolveLegendSwatchColor(series) {
-	if (isUtilizationForecastSeries(series)) {
-		return UTILIZATION_FORECAST_COLOR;
-	}
+	if (isUtilizationActualSeries(series))   return UTILIZATION_ACTUAL_COLOR;
+	if (isUtilizationForecastSeries(series)) return UTILIZATION_FORECAST_COLOR;
 	return getSeriesLegendColor(series) || "#888";
 }
 
 function swatchModifierClass(series) {
+	if (isUtilizationActualSeries(series)) return "wr-chart-legend-swatch--dot";
 	if (isUtilizationForecastSeries(series)) return "wr-chart-legend-swatch--dot";
 	if (series?.type === "line") return "wr-chart-legend-swatch--line";
 	return "";
 }
 
-export function updateFixedChartLegend(panel, option) {
+export function updateFixedChartLegend(panel, option, chart) {
 	if (!panel?.$viewport?.length || !option) return;
 	let $bar = panel.$legendBar;
 	if (!$bar?.length) {
@@ -213,17 +218,33 @@ export function updateFixedChartLegend(panel, option) {
 		panel.$viewport.prepend($bar);
 		panel.$legendBar = $bar;
 	}
+
 	const items = (option.series || []).filter((series) => series && series.name);
 	$bar.empty();
 	items.forEach((series) => {
 		const mod = swatchModifierClass(series);
 		const $item = $(
-			'<span class="wr-chart-legend-item"><span class="wr-chart-legend-swatch"></span><span class="wr-chart-legend-label"></span></span>'
+			'<button type="button" class="wr-chart-legend-item">' +
+				'<span class="wr-chart-legend-swatch"></span>' +
+				'<span class="wr-chart-legend-label"></span>' +
+			"</button>"
 		);
 		const $swatch = $item.find(".wr-chart-legend-swatch");
 		if (mod) $swatch.addClass(mod);
 		$swatch.css("backgroundColor", resolveLegendSwatchColor(series));
 		$item.find(".wr-chart-legend-label").text(series.name);
+
+		if (chart) {
+			const name = series.name;
+			$item
+				.on("mouseenter", () => chart.dispatchAction({ type: "highlight", seriesName: name }))
+				.on("mouseleave", () => chart.dispatchAction({ type: "downplay" }))
+				.on("click", () => {
+					chart.dispatchAction({ type: "legendToggleSelect", name });
+					$item.toggleClass("is-hidden");
+				});
+		}
+
 		$bar.append($item);
 	});
 }

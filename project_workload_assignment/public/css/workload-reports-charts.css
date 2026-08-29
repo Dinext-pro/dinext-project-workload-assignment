@@ -152,6 +152,7 @@
 	max-height: var(--wr-chart-plot-height, 200px);
 	padding: 0;
 	border-right: 1px solid var(--border-color, #d1d8dd);
+	background: var(--card-bg, var(--bg-color));
 	overflow: hidden;
 }
 
@@ -217,7 +218,8 @@
 	padding: 0 8px;
 	box-sizing: border-box;
 	overflow: hidden;
-	background: var(--ag-background-color, var(--bg-color));
+	background: var(--card-bg, var(--bg-color));
+	border-bottom: 1px solid var(--border-color, #d1d8dd);
 	z-index: 3;
 }
 
@@ -227,7 +229,32 @@
 	flex: 0 0 auto;
 	gap: 6px;
 	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--text-color);
 	white-space: nowrap;
+	cursor: pointer;
+	font: inherit;
+}
+
+.wr-charts-root .wr-chart-legend-item:hover {
+	opacity: 0.92;
+}
+
+.wr-charts-root .wr-chart-legend-item:focus-visible {
+	border-radius: var(--border-radius-sm, 4px);
+	outline: 2px solid var(--primary, #2490ef);
+	outline-offset: 2px;
+}
+
+.wr-charts-root .wr-chart-legend-item.is-hidden {
+	color: var(--text-muted, #8d99a6);
+	opacity: 0.55;
+}
+
+.wr-charts-root .wr-chart-legend-item.is-hidden .wr-chart-legend-swatch {
+	opacity: 0.35;
 }
 
 .wr-charts-root .wr-chart-legend-swatch {
@@ -272,6 +299,7 @@
 	margin: 0;
 	padding: 0;
 	overflow: hidden;
+	background: var(--card-bg, var(--bg-color));
 	will-change: transform;
 }
 

@@ -6,12 +6,17 @@ export const FORECAST_COLORS = {
 };
 
 export const FACT_COLORS = {
-	Employee: "#531dab",
-	Supplier: "#003eb3",
+	Employee: "#7a6894",
+	Supplier: "#2f7d91",
 };
 
 export const FORECAST_BAR_WIDTH = "36%";
 export const ACTUAL_BAR_WIDTH = "18%";
+/** Overlay fact on forecast: -75% centers 18% bar inside 36% (barGap vs previous width). */
+export const ACTUAL_OVER_FORECAST_BAR_GAP = "-75%";
+export const ACTUAL_BAR_TOP_RADIUS = 5;
+/** Vertical «today» marker through current period bar (ECharts markLine). */
+export const CURRENT_DATE_LINE_WIDTH = 1;
 
 export const LINE_COLORS = {
 	capacity: "#243660",
@@ -27,6 +32,8 @@ export const CAPACITY_AREA_OPACITY = 0.28;
 
 export const UTILIZATION_FORECAST_COLOR = "#c9a66b";
 export const UTILIZATION_FORECAST_BORDER = "#a67c52";
+export const UTILIZATION_ACTUAL_COLOR = "#8d6e63";
+export const UTILIZATION_ACTUAL_BORDER = "#6d4c41";
 
 export const Z_CAPACITY = 1;
 export const Z_PROJECT_PLAN = 2;
@@ -34,6 +41,7 @@ export const Z_FORECAST_BAR = 3;
 export const Z_ACTUAL_BAR = 6;
 export const Z_UTILIZATION_PLAN = 7;
 export const Z_UTILIZATION_FORECAST = 8;
+export const Z_UTILIZATION_ACTUAL = 9;
 
 export const Y_AXIS_GUTTER_PX = 50;
 export const DEFAULT_LABEL_GUTTER_PX = 220;

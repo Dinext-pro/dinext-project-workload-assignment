@@ -4,19 +4,25 @@
  */
 
 import {
+	ACTUAL_BAR_TOP_RADIUS,
 	ACTUAL_BAR_WIDTH,
+	ACTUAL_OVER_FORECAST_BAR_GAP,
 	CAPACITY_AREA_OPACITY,
 	CAPACITY_LINE_OPACITY,
+	CURRENT_DATE_LINE_WIDTH,
 	FACT_COLORS,
 	FORECAST_BAR_WIDTH,
 	FORECAST_COLORS,
 	LINE_COLORS,
 	UTILIZATION_FORECAST_BORDER,
 	UTILIZATION_FORECAST_COLOR,
+	UTILIZATION_ACTUAL_BORDER,
+	UTILIZATION_ACTUAL_COLOR,
 	Z_ACTUAL_BAR,
 	Z_CAPACITY,
 	Z_FORECAST_BAR,
 	Z_PROJECT_PLAN,
+	Z_UTILIZATION_ACTUAL,
 	Z_UTILIZATION_FORECAST,
 	Z_UTILIZATION_PLAN,
 	getChartThemeColors,
@@ -74,6 +80,7 @@ const _lineSeries = ({ name, lineColor, areaColor, lineOpacity, areaOpacity, z, 
 		color: areaColor || lineColor,
 		opacity: areaOpacity ?? 0.12,
 	},
+	emphasis: { focus: "series" },
 	data: hideZeros(data),
 });
 
@@ -88,14 +95,47 @@ const _forecastBar = (name, stackId, data, wtype) => ({
 	data: data || [],
 });
 
-const _actualBar = (name, stackId, data, wtype) => ({
+const ACTUAL_TOP_RADIUS = [ACTUAL_BAR_TOP_RADIUS, ACTUAL_BAR_TOP_RADIUS, 0, 0];
+
+const _asBarValue = (value) => {
+	if (value == null || typeof value !== "object") return value;
+	if (Array.isArray(value)) return value[value.length - 1];
+	if ("value" in value) return value.value;
+	return value;
+};
+
+/** Round only the topmost non-null stack segment in each period. */
+export const withTopStackRadius = (stackSeries, radius = ACTUAL_TOP_RADIUS) => {
+	const series = (stackSeries || []).map((data) => data || []);
+	return series.map((data, seriesIdx) =>
+		data.map((value, periodIdx) => {
+			if (value == null) return null;
+			const hasUpper = series
+				.slice(seriesIdx + 1)
+				.some((upper) => upper[periodIdx] != null);
+			if (hasUpper) return value;
+			if (value && typeof value === "object" && !Array.isArray(value)) {
+				return {
+					...value,
+					itemStyle: { ...(value.itemStyle || {}), borderRadius: radius },
+				};
+			}
+			return { value, itemStyle: { borderRadius: radius } };
+		})
+	);
+};
+
+const _actualBar = (name, stackId, data, wtype, { barGap } = {}) => ({
 	name,
 	type: "bar",
 	stack: stackId,
 	z: Z_ACTUAL_BAR,
 	barWidth: ACTUAL_BAR_WIDTH,
-	barGap: "-100%",
-	itemStyle: { color: FACT_COLORS[wtype], opacity: 1 },
+	...(barGap != null ? { barGap } : {}),
+	itemStyle: {
+		color: FACT_COLORS[wtype],
+		opacity: 1,
+	},
 	emphasis: { focus: "series" },
 	data: data || [],
 });
@@ -117,7 +157,46 @@ const _utilizationForecast = (hours) => ({
 	},
 	data: hideZeros(hours),
 	utilizationForecast: true,
+	emphasis: { focus: "series", scale: true },
 });
+
+const _utilizationActual = (hours) => ({
+	name: __("Utilization fact"),
+	type: "line",
+	z: Z_UTILIZATION_ACTUAL,
+	showSymbol: true,
+	showAllSymbol: true,
+	symbol: "diamond",
+	symbolSize: 8,
+	lineStyle: { width: 0, opacity: 0 },
+	itemStyle: {
+		color: UTILIZATION_ACTUAL_COLOR,
+		opacity: 0.95,
+		borderColor: UTILIZATION_ACTUAL_BORDER,
+		borderWidth: 1,
+	},
+	data: hideZeros(hours),
+	utilizationActual: true,
+	emphasis: { focus: "series", scale: true },
+});
+
+const _appendUtilizationSeries = (chartSeries, series, showFact) => {
+	chartSeries.push(
+		_lineSeries({
+			name: __("Utilization plan"),
+			lineColor: LINE_COLORS.utilizationPlan,
+			areaColor: LINE_COLORS.utilizationPlan,
+			lineOpacity: 0.85,
+			areaOpacity: 0.12,
+			z: Z_UTILIZATION_PLAN,
+			data: series.utilization_plan_hours,
+		}),
+		_utilizationForecast(series.utilization_forecast_hours)
+	);
+	if (showFact) {
+		chartSeries.push(_utilizationActual(series.utilization_actual_hours));
+	}
+};
 
 /** Append Employee/Supplier forecast (+ optional fact) bars by filter. */
 export const appendWtypeBars = (chartSeries, opts) => {
@@ -129,9 +208,9 @@ export const appendWtypeBars = (chartSeries, opts) => {
 		showFact,
 	} = opts;
 
-	for (const wtype of WTYPES) {
-		if (!_wtypeIncluded(wtype, workerWtypeFilter)) continue;
+	const included = WTYPES.filter((wtype) => _wtypeIncluded(wtype, workerWtypeFilter));
 
+	for (const wtype of included) {
 		chartSeries.push(
 			_forecastBar(
 				wtype === "Employee" ? __("Employee forecast") : __("Supplier forecast"),
@@ -140,18 +219,28 @@ export const appendWtypeBars = (chartSeries, opts) => {
 				wtype
 			)
 		);
-
-		if (showFact) {
-			chartSeries.push(
-				_actualBar(
-					wtype === "Employee" ? __("Employee fact") : __("Supplier fact"),
-					"actual",
-					filterWtypeSeries(actualByWtype?.[wtype], wtype, workerWtypeFilter),
-					wtype
-				)
-			);
-		}
 	}
+
+	if (!showFact) return;
+
+	const actualRows = included.map((wtype) =>
+		filterWtypeSeries(actualByWtype?.[wtype], wtype, workerWtypeFilter)
+	);
+	const actualWithRadius = withTopStackRadius(actualRows);
+
+	included.forEach((wtype, index) => {
+		chartSeries.push(
+			_actualBar(
+				wtype === "Employee" ? __("Employee fact") : __("Supplier fact"),
+				"actual",
+				actualWithRadius[index],
+				wtype,
+				{
+					barGap: index === 0 ? ACTUAL_OVER_FORECAST_BAR_GAP : undefined,
+				}
+			)
+		);
+	});
 };
 
 export const buildAxisTooltip = (themeColors) => {
@@ -169,9 +258,7 @@ export const buildAxisTooltip = (themeColors) => {
 			const header = items[0].axisValueLabel || items[0].name || "";
 			const lines = [header];
 			for (const item of items) {
-				const raw = Array.isArray(item.value)
-					? item.value[item.value.length - 1]
-					: item.value;
+				const raw = _asBarValue(item.value);
 				if (raw == null || raw === "") continue;
 				const num = Number(raw);
 				if (!Number.isFinite(num)) continue;
@@ -219,6 +306,111 @@ export const buildSyncedXAxis = (labels) => ({
 	axisTick: { show: false },
 });
 
+/**
+ * Index of period bucket that contains today (−1 if outside chart range).
+ * Mirrors budget_report / project_pl_echarts get_pl_chart_current_period_index,
+ * extended for daily + start/end weekly periods.
+ */
+export const getCurrentPeriodIndex = (periods) => {
+	if (!periods?.length) {
+		return -1;
+	}
+	const todayStr =
+		frappe?.datetime?.get_today?.() ||
+		(() => {
+			const d = new Date();
+			return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+				d.getDate()
+			).padStart(2, "0")}`;
+		})();
+
+	const today = frappe?.datetime?.str_to_obj
+		? frappe.datetime.str_to_obj(todayStr)
+		: new Date(`${todayStr}T00:00:00`);
+	if (!today || typeof today.getFullYear !== "function") {
+		return -1;
+	}
+	const year = today.getFullYear();
+	const month = today.getMonth() + 1;
+
+	return periods.findIndex((period) => {
+		if (!period) {
+			return false;
+		}
+		if (period.date) {
+			return String(period.date) === todayStr;
+		}
+		if (period.start_date && period.end_date) {
+			return todayStr >= String(period.start_date) && todayStr <= String(period.end_date);
+		}
+		if (period.year != null && period.month != null) {
+			return Number(period.year) === year && Number(period.month) === month;
+		}
+		if (period.year != null) {
+			return Number(period.year) === year;
+		}
+		return false;
+	});
+};
+
+/** Same shape as build_pl_chart_current_date_mark_line_entry (budget report). */
+const _buildCurrentDateMarkLineEntry = (
+	categoryIndex,
+	themeColors,
+	categoryLabel,
+	{ showLabel = false } = {}
+) => ({
+	xAxis: categoryIndex,
+	lineStyle: {
+		color: themeColors.text,
+		width: CURRENT_DATE_LINE_WIDTH,
+		type: "solid",
+	},
+	label: {
+		show: showLabel,
+		formatter: categoryLabel,
+		color: themeColors.text,
+		fontSize: 11,
+		position: "end",
+	},
+});
+
+/**
+ * Attach vertical «today» markLine to capacity (area) series — budget_report pattern
+ * (hide_current_date_mark_line_label: true).
+ */
+const _applyCurrentDateMarkLine = (chartSeries, periods, labels, themeColors) => {
+	const idx = getCurrentPeriodIndex(periods);
+	if (idx < 0 || !chartSeries?.length) {
+		return;
+	}
+
+	const target =
+		chartSeries.find((s) => s?.areaStyle) ||
+		chartSeries.find((s) => s?.type === "bar") ||
+		chartSeries[chartSeries.length - 1];
+	if (!target) {
+		return;
+	}
+
+	target.markLine = {
+		silent: true,
+		symbol: ["none", "none"],
+		precision: 2,
+		lineStyle: {
+			color: themeColors.muted,
+			type: "dashed",
+			width: 1,
+		},
+		label: { show: false },
+		data: [
+			_buildCurrentDateMarkLineEntry(idx, themeColors, labels?.[idx], {
+				showLabel: false,
+			}),
+		],
+	};
+};
+
 const _baseOption = (labels, chartSeries, themeColors) => ({
 	backgroundColor: "transparent",
 	aria: { enabled: true },
@@ -233,7 +425,7 @@ const _baseOption = (labels, chartSeries, themeColors) => ({
 /**
  * Team / report chart option.
  * series: capacity_hours, workload_forecast_hours_by_wtype.{Employee,Supplier}
- * optional: actual_hours_by_wtype, utilization_plan_hours, utilization_forecast_hours
+ * optional: actual_hours_by_wtype, utilization_plan_hours, utilization_forecast_hours, utilization_actual_hours
  */
 export const buildReportChartOption = (payload, viewType) => {
 	const periods = payload?.periods || [];
@@ -258,18 +450,7 @@ export const buildReportChartOption = (payload, viewType) => {
 	];
 
 	if (showUtilization) {
-		chartSeries.push(
-			_lineSeries({
-				name: __("Utilization plan"),
-				lineColor: LINE_COLORS.utilizationPlan,
-				areaColor: LINE_COLORS.utilizationPlan,
-				lineOpacity: 0.85,
-				areaOpacity: 0.12,
-				z: Z_UTILIZATION_PLAN,
-				data: series.utilization_plan_hours,
-			}),
-			_utilizationForecast(series.utilization_forecast_hours)
-		);
+		_appendUtilizationSeries(chartSeries, series, showFact);
 	}
 
 	appendWtypeBars(chartSeries, {
@@ -280,13 +461,14 @@ export const buildReportChartOption = (payload, viewType) => {
 		showFact,
 	});
 
+	_applyCurrentDateMarkLine(chartSeries, periods, labels, themeColors);
 	return _baseOption(labels, chartSeries, themeColors);
 };
 
 /**
  * Project tab chart option.
  * series: team_capacity_hours, project_plan_hours, workload_forecast_hours_by_wtype
- * optional: actual_hours_by_wtype, utilization_plan_hours, utilization_forecast_hours
+ * optional: actual_hours_by_wtype, utilization_plan_hours, utilization_forecast_hours, utilization_actual_hours
  */
 export const buildProjectChartOption = (payload, viewType) => {
 	const periods = payload?.periods || [];
@@ -320,18 +502,7 @@ export const buildProjectChartOption = (payload, viewType) => {
 	];
 
 	if (showUtilization) {
-		chartSeries.push(
-			_lineSeries({
-				name: __("Utilization plan"),
-				lineColor: LINE_COLORS.utilizationPlan,
-				areaColor: LINE_COLORS.utilizationPlan,
-				lineOpacity: 0.85,
-				areaOpacity: 0.12,
-				z: Z_UTILIZATION_PLAN,
-				data: series.utilization_plan_hours,
-			}),
-			_utilizationForecast(series.utilization_forecast_hours)
-		);
+		_appendUtilizationSeries(chartSeries, series, showFact);
 	}
 
 	appendWtypeBars(chartSeries, {
@@ -342,5 +513,6 @@ export const buildProjectChartOption = (payload, viewType) => {
 		showFact,
 	});
 
+	_applyCurrentDateMarkLine(chartSeries, periods, labels, themeColors);
 	return _baseOption(labels, chartSeries, themeColors);
 };
