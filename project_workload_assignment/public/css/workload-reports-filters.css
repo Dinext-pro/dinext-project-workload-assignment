@@ -17,10 +17,16 @@
 	flex: 1 1 auto;
 }
 
+/* DocType Link filters start as hidden:1; beat Frappe .hide-control once in WR row */
+.workload-reports-root .wr-filter-form-link > .frappe-control.hide-control,
+.workload-reports-root .wr-filter-form-link .hide-control {
+	display: block !important;
+}
+
 .wr-filters-actions {
 	display: flex;
 	flex-shrink: 0;
-	align-items: flex-start;
+	align-items: center;
 	gap: 4px;
 }
 
@@ -72,6 +78,57 @@
 	max-width: 130px;
 }
 
+.wr-filter-multiselect {
+	width: 180px;
+	min-width: 180px;
+	max-width: 220px;
+}
+
+.wr-filter-multiselect .frappe-control,
+.wr-filter-multiselect .form-group,
+.wr-filter-multiselect .control-input-wrapper,
+.wr-filter-multiselect .control-input {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+/* Match Select/input-xs row height (28px); undo Frappe multiselect absolute placeholder. */
+.wr-filter-multiselect .multiselect-list.dropdown {
+	width: 100%;
+	min-width: 0;
+	height: auto;
+	margin: 0;
+}
+
+.wr-filter-multiselect .multiselect-list > .form-control.input-xs {
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	height: 28px;
+	min-height: 28px;
+	max-height: 28px;
+	padding: 0 var(--padding-sm);
+	margin: 0;
+	line-height: 1.2;
+}
+
+.wr-filter-multiselect .multiselect-list .status-text {
+	position: static;
+	top: auto;
+	left: auto;
+	flex: 1 1 auto;
+	min-width: 0;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 /* Daily / Weekly / Monthly — wrap was capped at 130px; Russian labels need more. */
 .wr-filter-select[data-fieldname="view_type"] {
 	min-width: 138px;
@@ -112,4 +169,17 @@
 	align-items: center;
 	gap: 4px;
 	flex-shrink: 0;
+}
+
+.wr-filters-actions .wr-filter-period-nav .btn {
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	min-width: 28px;
+	height: 28px;
+	padding: 0;
+	margin: 0;
+	line-height: 1;
 }

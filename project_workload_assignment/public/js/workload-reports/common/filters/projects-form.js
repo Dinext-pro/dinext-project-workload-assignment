@@ -18,7 +18,9 @@ import {
 	addCheckbox,
 	addPeriodNav,
 	addButton,
+	addMultiSelectList,
 } from "./controls.js";
+import { fetchProjectRoleOptions } from "./role-options.js";
 
 const FORM_LINK_FIELDS = ["user", "project", "project_portfolio", "user_group"];
 
@@ -32,6 +34,24 @@ function _compactControl($wrapper) {
 	});
 }
 
+/**
+ * DocType keeps Link fields hidden:1 (no native flicker before WR mount).
+ * After move into WR filter row — show as real controls.
+ */
+function _unveilFormLink(frm, field, fieldname) {
+	if (!field?.$wrapper?.length) return;
+	if (frm?.set_df_property && fieldname) {
+		frm.set_df_property(fieldname, "hidden", 0);
+	} else if (field.df) {
+		field.df.hidden = 0;
+	}
+	const $control = field.$wrapper.hasClass("frappe-control")
+		? field.$wrapper
+		: field.$wrapper.closest(".frappe-control");
+	$control.removeClass("hide-control").css("display", "");
+	field.$wrapper.removeClass("hide-control").css("display", "");
+}
+
 function _relocateFormField(frm, fieldname, parent) {
 	const field = frm.fields_dict?.[fieldname];
 	if (!field?.$wrapper?.length) return null;
@@ -43,6 +63,7 @@ function _relocateFormField(frm, fieldname, parent) {
 
 	const $host = $(wrap);
 	field.$wrapper.appendTo($host);
+	_unveilFormLink(frm, field, fieldname);
 	_compactControl(field.$wrapper);
 
 	const $input = field.$wrapper.find("input").first();
@@ -51,6 +72,17 @@ function _relocateFormField(frm, fieldname, parent) {
 		$input.attr("placeholder", __(label));
 	}
 	return field;
+}
+
+/** Re-show Link filters already sitting in WR root (after form refresh). */
+export function unveilFormLinkFields(frm) {
+	if (!frm?.wrapper) return;
+	for (const fieldname of FORM_LINK_FIELDS) {
+		const field = frm.fields_dict?.[fieldname];
+		if (!field?.$wrapper?.length) continue;
+		if (!field.$wrapper.closest(".workload-reports-root").length) continue;
+		_unveilFormLink(frm, field, fieldname);
+	}
 }
 
 const REPORT_FIELD = "projects_workload_report";
@@ -111,6 +143,11 @@ export function parkFormLinkFields(frm) {
 		if (!field?.$wrapper?.length) continue;
 		if (!field.$wrapper.closest(".workload-reports-root").length) continue;
 		field.$wrapper.appendTo($park);
+		// Back to DocType intent (hidden) while parked outside WR root.
+		if (field.df) {
+			field.df.hidden = 1;
+		}
+		field.$wrapper.addClass("hide-control");
 	}
 }
 
@@ -143,22 +180,35 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 		},
 	});
 
+	const roleSelect = addMultiSelectList(flow, {
+		fieldname: "project_role_filters",
+		placeholder: __("Project Roles"),
+		value: args.project_role_filters,
+		getData: (txt) =>
+			fetchProjectRoleOptions(
+				{
+					user: frm.doc?.user || args.user || "",
+					project: frm.doc?.project || args.project || "",
+					project_portfolio: frm.doc?.project_portfolio || args.project_portfolio || "",
+					user_group: frm.doc?.user_group || args.user_group || "",
+					view_type: args.view_type,
+					period_range: args.period_range,
+					period_anchor_date: args.period_anchor_date,
+					worker_wtype: args.worker_wtype,
+				},
+				txt
+			),
+		onChange: (values) => {
+			args.project_role_filters = values || [];
+			_reload();
+		},
+	});
+
 	addCheckbox(flow, {
 		label: __("Show fact"),
 		checked: !!args.load_actual,
 		onChange: (v) => {
 			args.load_actual = v ? 1 : 0;
-			_reload();
-		},
-	});
-
-	addPeriodNav(flow, {
-		onPrev: () => {
-			args.period_anchor_date = shiftMonth(args.period_anchor_date, -1);
-			_reload();
-		},
-		onNext: () => {
-			args.period_anchor_date = shiftMonth(args.period_anchor_date, 1);
 			_reload();
 		},
 	});
@@ -191,6 +241,17 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 		onClick: _reload,
 	});
 
+	addPeriodNav(buttons, {
+		onPrev: () => {
+			args.period_anchor_date = shiftMonth(args.period_anchor_date, -1);
+			_reload();
+		},
+		onNext: () => {
+			args.period_anchor_date = shiftMonth(args.period_anchor_date, 1);
+			_reload();
+		},
+	});
+
 	addButton(buttons, {
 		title: __("Clear All Filters"),
 		text: "✕",
@@ -198,6 +259,11 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 		onClick: () => {
 			args.worker_wtype = "";
 			workerSelect.set_value("");
+			args.project_role_filters = [];
+			roleSelect.set_value([]);
+			roleSelect.values = [];
+			roleSelect._selected_values = [];
+			roleSelect.update_status?.();
 			for (const key of FORM_LINK_FIELDS) {
 				frm.set_value(key, "");
 				args[key] = "";

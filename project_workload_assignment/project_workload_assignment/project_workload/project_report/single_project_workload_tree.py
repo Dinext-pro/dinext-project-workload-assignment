@@ -143,11 +143,15 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 			filter_users_by_wtype,
 			normalize_worker_wtype_filter,
 		)
+		from project_workload_assignment.project_workload_assignment.project_workload.core.project_role_helpers import (
+			normalize_project_role_filters,
+		)
 		from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
 			load_worker_wtypes,
 		)
 
 		worker_wtype_filter = normalize_worker_wtype_filter(fd.get('worker_wtype'))
+		project_role_filters = normalize_project_role_filters(fd.get('project_role_filters'))
 		
 		logger(f"Project: {project}, View Type: {view_type}, Period: {date_from} to {date_to}")
 		
@@ -225,11 +229,15 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		
 		# ========== 3. НАЗНАЧЕНИЯ: общая выборка project_workload_assignment (ISS-2026-00865 этап II) ==========
 		
-		assignments_data = fetch_project_assignments_with_worker_context(project, str(date_from), str(date_to))
+		assignments_data = fetch_project_assignments_with_worker_context(
+			project,
+			str(date_from),
+			str(date_to),
+			project_role_filters=project_role_filters or None,
+		)
 		if assignments_data is None:
 			assignments_data = []
-		assignments_data = [frappe._dict(a) for a in assignments_data]
-		
+		assignments_data = [frappe._dict(a) for a in assignments_data]		
 		if not assignments_data:
 			return {
 				'tree_data': [], 

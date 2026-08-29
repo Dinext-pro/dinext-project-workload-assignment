@@ -43,6 +43,7 @@ fixtures = [
 app_include_css = [
 	"/assets/project_workload_assignment/css/assignment_styles.css",
 	"/assets/project_workload_assignment/css/tab-loading.css",
+	"/assets/project_workload_assignment/css/workload-reports-shell.css",
 ]
 # Projects Workload Report is custom DocType → FormMeta.add_code() skipped
 # (no doctype_js). Form UI boots via report-form/entry.js (app_include, route-gated).
@@ -51,6 +52,7 @@ app_include_js = [
 	"/assets/project_workload_assignment/js/core/form-tab.js",
 	"/assets/project_workload_assignment/js/workload-reports/report-form/entry.js",
 	"/assets/project_workload_assignment/js/assignment/dialog.js",
+	"/assets/project_workload_assignment/js/assignment/dialog-multi.js",
 ]
 
 # include js, css files in header of web template
@@ -110,6 +112,7 @@ doctype_list_js = {
 doctype_tree_js = {
 	"Task": [
 		"public/js/assignment/dialog.js",
+		"public/js/assignment/dialog-multi.js",
 	],
 }
 # doctype_calendar_js = {"Task" : "public/js/assignment/dialog.js"}

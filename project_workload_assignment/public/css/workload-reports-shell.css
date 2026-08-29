@@ -1,0 +1,39 @@
+/**
+ * Native DocType placeholders for workload reports (team summary PWR form).
+ * Project tab: custom_workload hidden via Custom Field; tab kept by custom_workload_tab_anchor.
+ */
+
+/* —— Projects Workload Report (team summary) —— */
+
+body[data-route*="Projects Workload Report"] .std-form-layout .form-layout .form-section,
+body[data-route*="projects-workload-report"] .std-form-layout .form-layout .form-section {
+	display: none !important;
+}
+
+body[data-route*="Projects Workload Report"]
+	.std-form-layout
+	.form-layout
+	.form-section:has(.workload-reports-root),
+body[data-route*="Projects Workload Report"]
+	.std-form-layout
+	.form-layout
+	.form-section:has(.workload-reports-form-host),
+body[data-route*="Projects Workload Report"] .form-section.workload-reports-form-section,
+body[data-route*="projects-workload-report"]
+	.std-form-layout
+	.form-layout
+	.form-section:has(.workload-reports-root),
+body[data-route*="projects-workload-report"]
+	.std-form-layout
+	.form-layout
+	.form-section:has(.workload-reports-form-host),
+body[data-route*="projects-workload-report"] .form-section.workload-reports-form-section {
+	display: block !important;
+}
+
+/* Frappe marks hidden-only sections empty-section — override after WR mount */
+body[data-route*="Projects Workload Report"] .form-section.workload-reports-form-section.empty-section,
+body[data-route*="projects-workload-report"] .form-section.workload-reports-form-section.empty-section {
+	display: block !important;
+}
+

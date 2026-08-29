@@ -233,8 +233,7 @@ export async function loadTable(container, fetchFn, opts = {}) {
 			if (typeof state.table.refresh === "function") {
 				state.table.refresh(rows);
 			}
-			// showFact / fill: same colIds → mounted cells keep old cellClass/cellStyle
-			// until force refresh (period change / scroll recreate cells — почему «потом» ок).
+			state.table.api?.redrawRows?.();
 			state.table.api?.refreshCells?.({ force: true });
 			_bindPaging(container, state);
 		} else {

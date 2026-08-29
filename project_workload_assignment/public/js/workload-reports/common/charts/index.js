@@ -166,7 +166,7 @@ function _mountOption(hostEl, panel, option) {
 	state.chart = chart;
 
 	try {
-		updateFixedChartLegend(panel, option);
+		updateFixedChartLegend(panel, option, chart);
 	} catch (err) {
 		console.error("[workload-reports.charts] legend", err);
 	}

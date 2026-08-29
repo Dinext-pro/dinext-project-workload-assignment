@@ -31,13 +31,17 @@
 	--wr-table-min-height: 420px;
 	--wr-cell: 48px;
 	--wr-avatar-size: 26px;
-	--wr-fill-normal: linear-gradient(to top, #7bc67b, #66b266);
-	--wr-fill-warning: linear-gradient(to top, #fcd34d, #fbbf24);
-	--wr-fill-overload: linear-gradient(to top, #e68a8a, #d67979);
+	--wr-fill-normal: linear-gradient(to top, #b6e3b6 0%, #6fbf72 48%, #3d8f48 100%);
+	--wr-fill-warning: linear-gradient(to top, #ffe9a3 0%, #f5b942 48%, #d97706 100%);
+	--wr-fill-overload: linear-gradient(to top, #f5b6b6 0%, #e07a7a 48%, #b33a3a 100%);
 	--wr-marker-normal: #66b266;
 	--wr-marker-warning: #fbbf24;
 	--wr-marker-overload: #d67979;
-	--wr-fill-actual: rgba(33, 150, 243, 0.5);
+	--wr-fill-actual: #1565c0;
+	--wr-fill-actual-strong: #0d47a1;
+	--wr-marker-shadow-normal: rgba(56, 142, 60, 0.92);
+	--wr-marker-shadow-warning: rgba(217, 119, 6, 0.92);
+	--wr-marker-shadow-overload: rgba(185, 28, 28, 0.92);
 	--wr-weekend-bg: #60bcff20;
 	--wr-absence-bg: linear-gradient(135deg, #e8f5e8, #c8e6c9);
 	--wr-absence-fg: #2e7d32;
@@ -57,7 +61,11 @@
 	--wr-absence-bg: linear-gradient(135deg, rgba(46, 125, 50, 0.35), rgba(46, 125, 50, 0.2));
 	--wr-absence-fg: #a5d6a7;
 	--wr-current-header-bg: rgba(33, 150, 243, 0.22);
-	--wr-fill-actual: rgba(33, 150, 243, 0.4);
+	--wr-fill-actual: #1565c0;
+	--wr-fill-actual-strong: #0d47a1;
+	--wr-marker-shadow-normal: rgba(76, 175, 80, 0.88);
+	--wr-marker-shadow-warning: rgba(255, 193, 7, 0.88);
+	--wr-marker-shadow-overload: rgba(229, 115, 115, 0.88);
 }
 
 .workload-reports-table > .dinext-table {
@@ -189,10 +197,28 @@
 }
 
 .workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above {
-	background-image: linear-gradient(var(--wr-fill-actual), var(--wr-fill-actual));
+	background-image: linear-gradient(var(--wr-fill-actual-strong), var(--wr-fill-actual-strong));
 	background-size: 100% var(--wr-fact-h, 0%);
 	background-position: left bottom;
 	background-repeat: no-repeat;
+}
+
+/* Gradient shadow under plan line (fact > plan). */
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: calc(var(--wr-fill-h, 0%) - 14px);
+	height: 12px;
+	z-index: 1;
+	pointer-events: none;
+	background: linear-gradient(
+		to bottom,
+		var(--wr-marker-shadow-normal) 0%,
+		color-mix(in srgb, var(--wr-marker-shadow-normal) 55%, transparent) 55%,
+		transparent 100%
+	);
 }
 
 .workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above::after {
@@ -200,19 +226,40 @@
 	position: absolute;
 	left: 0;
 	right: 0;
-	bottom: var(--wr-fill-h, 0%);
+	bottom: calc(var(--wr-fill-h, 0%) - 2px);
 	height: 2px;
 	z-index: 2;
 	pointer-events: none;
 	background: var(--wr-marker-normal);
+	box-shadow: 0 3px 8px var(--wr-marker-shadow-normal);
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above.wr-load--warning::before {
+	background: linear-gradient(
+		to bottom,
+		var(--wr-marker-shadow-warning) 0%,
+		color-mix(in srgb, var(--wr-marker-shadow-warning) 55%, transparent) 55%,
+		transparent 100%
+	);
 }
 
 .workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above.wr-load--warning::after {
 	background: var(--wr-marker-warning);
+	box-shadow: 0 3px 8px var(--wr-marker-shadow-warning);
+}
+
+.workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above.wr-load--overload::before {
+	background: linear-gradient(
+		to bottom,
+		var(--wr-marker-shadow-overload) 0%,
+		color-mix(in srgb, var(--wr-marker-shadow-overload) 55%, transparent) 55%,
+		transparent 100%
+	);
 }
 
 .workload-reports-table .ag-cell.wr-period-cell.wr-load--fact-above.wr-load--overload::after {
 	background: var(--wr-marker-overload);
+	box-shadow: 0 3px 8px var(--wr-marker-shadow-overload);
 }
 
 .workload-reports-table .wr-cell-content {
