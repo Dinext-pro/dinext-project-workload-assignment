@@ -52,6 +52,7 @@ app_include_js = [
 	"/assets/project_workload_assignment/js/core/form-tab.js",
 	"/assets/project_workload_assignment/js/workload-reports/report-form/entry.js",
 	"/assets/project_workload_assignment/js/assignment/dialog.js",
+	"/assets/project_workload_assignment/js/assignment/dialog-multi.js",
 ]
 
 # include js, css files in header of web template
@@ -111,6 +112,7 @@ doctype_list_js = {
 doctype_tree_js = {
 	"Task": [
 		"public/js/assignment/dialog.js",
+		"public/js/assignment/dialog-multi.js",
 	],
 }
 # doctype_calendar_js = {"Task" : "public/js/assignment/dialog.js"}
