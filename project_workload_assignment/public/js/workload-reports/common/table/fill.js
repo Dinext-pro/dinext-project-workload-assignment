@@ -66,7 +66,6 @@ export const resolvePeriodVisual = ({
 	const actualPct =
 		availableHours > 0 ? Math.round((actualHours / availableHours) * 100) : 0;
 
-	const displayHours = showFact && actualHours > 0 ? actualHours : planHours;
 	const tip = showFact
 		? buildFactTooltip(tooltip, planHours, actualHours, percentage, actualPct)
 		: tooltip;
@@ -80,9 +79,9 @@ export const resolvePeriodVisual = ({
 		actualBelowPlan: actualHours > 0 && actualHours < planHours,
 		hasActual: actualHours > 0,
 		tooltip: tip,
-		labelHours: formatHours(displayHours),
+		labelHours: formatHours(planHours),
 		labelPct: `${percentage}%`,
-		zero: displayHours === 0,
+		zero: planHours === 0,
 	};
 };
 

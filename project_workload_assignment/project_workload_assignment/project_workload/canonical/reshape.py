@@ -194,6 +194,7 @@ def _adapt_project_row(legacy_row: dict, periods: list[dict], parent_user_email:
 		**copy_period_scalars(legacy_row, period_keys),
 	}
 	row["email"] = email
+	row.pop("userHolidays", None)
 	return row
 
 

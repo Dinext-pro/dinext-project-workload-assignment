@@ -10,6 +10,20 @@ export const FACT_COLORS = {
 	Supplier: "#2f7d91",
 };
 
+/** [forecast, fact] pairs for stacked bars by project role. Cycles if more roles. */
+export const ROLE_PALETTE = [
+	["#d8b4fe", "#7a6894"],
+	["#a8d8ff", "#2f7d91"],
+	["#b8d4b8", "#4a7c59"],
+	["#f5d0a8", "#b07a3a"],
+	["#f2b8b8", "#9a5555"],
+	["#c5c8e8", "#5a5f8a"],
+	["#b8dce8", "#3d7a88"],
+	["#e8d5b8", "#8a7040"],
+	["#d4c4b0", "#6e5a48"],
+	["#c8d4c0", "#5a6e58"],
+];
+
 export const FORECAST_BAR_WIDTH = "36%";
 export const ACTUAL_BAR_WIDTH = "18%";
 /** Overlay fact on forecast: -75% centers 18% bar inside 36% (barGap vs previous width). */
