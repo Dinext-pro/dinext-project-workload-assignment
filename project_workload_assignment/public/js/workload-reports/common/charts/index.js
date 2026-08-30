@@ -38,6 +38,9 @@ function _ensureState(hostEl, ctx = {}) {
 			getArgs: ctx.getArgs || (() => ({})),
 			getTableApi: ctx.getTableApi || (() => null),
 			utilization: 0,
+			stackBy: "wtype",
+			lastPayload: null,
+			lastViewType: null,
 			loadToken: 0,
 			pending: false,
 			io: null,
@@ -192,6 +195,27 @@ function _mountOption(hostEl, panel, option) {
 	return chart;
 }
 
+function _buildChartOption(state) {
+	const payload = state.lastPayload || {};
+	const viewType = state.lastViewType || "weekly";
+	const opts = { stackBy: state.stackBy === "role" ? "role" : "wtype" };
+	return state.surface === "project"
+		? buildProjectChartOption(payload, viewType, opts)
+		: buildReportChartOption(payload, viewType, opts);
+}
+
+/** Rebuild series from cached payload (stack mode toggle — no refetch). */
+function remountChartsFromCache(hostEl) {
+	const state = _getState(hostEl);
+	if (!state?.panel || !state.lastPayload) return null;
+	try {
+		return _mountOption(hostEl, state.panel, _buildChartOption(state));
+	} catch (err) {
+		_failCharts(hostEl, err);
+		return null;
+	}
+}
+
 /**
  * Bind ctx + placeholder. Does NOT load echarts.
  * @param {HTMLElement} hostEl
@@ -277,8 +301,9 @@ export async function reloadCharts(hostEl) {
 		// Dispose before loading message so $chartEl.html does not orphan echarts.
 		disposeChartInstance(state);
 
-		ensureChartControls(hostEl, () => {
-			scheduleChartsReload(hostEl);
+		ensureChartControls(hostEl, {
+			onUtilizationChange: () => scheduleChartsReload(hostEl),
+			onStackByChange: () => remountChartsFromCache(hostEl),
 		});
 
 		showChartMessage(panel, __("Loading chart..."), "loading");
@@ -304,11 +329,9 @@ export async function reloadCharts(hostEl) {
 			return null;
 		}
 
-		const option = isProject
-			? buildProjectChartOption(data || {}, viewType)
-			: buildReportChartOption(data || {}, viewType);
-
-		return _mountOption(hostEl, panel, option);
+		state.lastPayload = data || {};
+		state.lastViewType = viewType;
+		return _mountOption(hostEl, panel, _buildChartOption(state));
 	} catch (err) {
 		if (token !== state.loadToken) return null;
 		_failCharts(hostEl, err);
