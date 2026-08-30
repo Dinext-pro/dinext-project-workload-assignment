@@ -635,10 +635,11 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            '_project': project_name,
 		            '_workingHours': user_daily_hours.get(user_email, {}),
 		            '_absences': user_absences.get(user_email, []),
-		            # ISS-2026-00865 #7: оба календаря в project-row; клиент объединяет для weekly/monthly %.
-		            '_userHolidays': holiday_lists_cache.get(user_info.get('wholiday_list', ''), []),
+		            # ISS-2026-02657 #3: строка проекта — HL проекта, иначе Company. Не Worker.
 		            '_projectHolidays': holiday_lists_cache.get(
-		                resolve_project_holiday_list(project_info) or '',
+		                project_info.get("effective_holiday_list")
+		                or resolve_project_holiday_list(project_info)
+		                or "",
 		                [],
 		            ),
 		        }

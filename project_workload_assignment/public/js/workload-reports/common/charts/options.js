@@ -13,6 +13,7 @@ import {
 	FACT_COLORS,
 	FORECAST_BAR_WIDTH,
 	FORECAST_COLORS,
+	ROLE_PALETTE,
 	LINE_COLORS,
 	UTILIZATION_FORECAST_BORDER,
 	UTILIZATION_FORECAST_COLOR,
@@ -84,13 +85,13 @@ const _lineSeries = ({ name, lineColor, areaColor, lineOpacity, areaOpacity, z, 
 	data: hideZeros(data),
 });
 
-const _forecastBar = (name, stackId, data, wtype) => ({
+const _forecastBar = (name, stackId, data, color) => ({
 	name,
 	type: "bar",
 	stack: stackId,
 	z: Z_FORECAST_BAR,
 	barWidth: FORECAST_BAR_WIDTH,
-	itemStyle: { color: FORECAST_COLORS[wtype], opacity: 0.9 },
+	itemStyle: { color, opacity: 0.9 },
 	emphasis: { focus: "series" },
 	data: data || [],
 });
@@ -125,7 +126,7 @@ export const withTopStackRadius = (stackSeries, radius = ACTUAL_TOP_RADIUS) => {
 	);
 };
 
-const _actualBar = (name, stackId, data, wtype, { barGap } = {}) => ({
+const _actualBar = (name, stackId, data, color, { barGap } = {}) => ({
 	name,
 	type: "bar",
 	stack: stackId,
@@ -133,7 +134,7 @@ const _actualBar = (name, stackId, data, wtype, { barGap } = {}) => ({
 	barWidth: ACTUAL_BAR_WIDTH,
 	...(barGap != null ? { barGap } : {}),
 	itemStyle: {
-		color: FACT_COLORS[wtype],
+		color,
 		opacity: 1,
 	},
 	emphasis: { focus: "series" },
@@ -216,7 +217,7 @@ export const appendWtypeBars = (chartSeries, opts) => {
 				wtype === "Employee" ? __("Employee forecast") : __("Supplier forecast"),
 				forecastStackId,
 				filterWtypeSeries(forecastByWtype?.[wtype], wtype, workerWtypeFilter),
-				wtype
+				FORECAST_COLORS[wtype]
 			)
 		);
 	}
@@ -234,12 +235,101 @@ export const appendWtypeBars = (chartSeries, opts) => {
 				wtype === "Employee" ? __("Employee fact") : __("Supplier fact"),
 				"actual",
 				actualWithRadius[index],
-				wtype,
+				FACT_COLORS[wtype],
 				{
 					barGap: index === 0 ? ACTUAL_OVER_FORECAST_BAR_GAP : undefined,
 				}
 			)
 		);
+	});
+};
+
+const _sortRoleKeys = (keys) =>
+	[...keys].sort((a, b) => {
+		if (a === "" && b !== "") return 1;
+		if (b === "" && a !== "") return -1;
+		return String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
+	});
+
+const _roleHasHours = (forecastByRole, actualByRole, key) => {
+	const forecast = forecastByRole?.[key] || [];
+	const actual = actualByRole?.[key] || [];
+	return (
+		forecast.some((value) => Number(value) > 0) ||
+		actual.some((value) => Number(value) > 0)
+	);
+};
+
+const _roleLabel = (key) => key || __("No role");
+
+/** Append forecast (+ optional fact) bars stacked by project role. */
+export const appendRoleBars = (chartSeries, opts) => {
+	const { forecastByRole, actualByRole, forecastStackId, showFact } = opts;
+	const keySet = new Set([
+		...Object.keys(forecastByRole || {}),
+		...Object.keys(actualByRole || {}),
+	]);
+	const keys = _sortRoleKeys([...keySet]).filter((key) =>
+		_roleHasHours(forecastByRole, actualByRole, key)
+	);
+	if (!keys.length) return;
+
+	keys.forEach((key, index) => {
+		const pair = ROLE_PALETTE[index % ROLE_PALETTE.length];
+		chartSeries.push(
+			_forecastBar(
+				`${_roleLabel(key)} ${__("Forecast")}`,
+				forecastStackId,
+				hideZeros(forecastByRole?.[key]),
+				pair[0]
+			)
+		);
+	});
+
+	if (!showFact) return;
+
+	const factKeys = keys.filter((key) =>
+		(actualByRole?.[key] || []).some((value) => Number(value) > 0)
+	);
+	if (!factKeys.length) return;
+
+	const actualRows = factKeys.map((key) => hideZeros(actualByRole?.[key]));
+	const actualWithRadius = withTopStackRadius(actualRows);
+	const colorIndex = (key) => keys.indexOf(key);
+
+	factKeys.forEach((key, index) => {
+		const pair = ROLE_PALETTE[colorIndex(key) % ROLE_PALETTE.length];
+		chartSeries.push(
+			_actualBar(
+				`${_roleLabel(key)} ${__("Fact")}`,
+				"actual",
+				actualWithRadius[index],
+				pair[1],
+				{
+					barGap: index === 0 ? ACTUAL_OVER_FORECAST_BAR_GAP : undefined,
+				}
+			)
+		);
+	});
+};
+
+const _appendWorkloadBars = (chartSeries, series, opts) => {
+	const { forecastStackId, workerWtypeFilter, showFact, stackBy } = opts;
+	if (stackBy === "role") {
+		appendRoleBars(chartSeries, {
+			forecastByRole: series.workload_forecast_hours_by_role,
+			actualByRole: series.actual_hours_by_role,
+			forecastStackId,
+			showFact,
+		});
+		return;
+	}
+	appendWtypeBars(chartSeries, {
+		forecastByWtype: series.workload_forecast_hours_by_wtype,
+		actualByWtype: series.actual_hours_by_wtype,
+		forecastStackId,
+		workerWtypeFilter,
+		showFact,
 	});
 };
 
@@ -427,11 +517,12 @@ const _baseOption = (labels, chartSeries, themeColors) => ({
  * series: capacity_hours, workload_forecast_hours_by_wtype.{Employee,Supplier}
  * optional: actual_hours_by_wtype, utilization_plan_hours, utilization_forecast_hours, utilization_actual_hours
  */
-export const buildReportChartOption = (payload, viewType) => {
+export const buildReportChartOption = (payload, viewType, opts = {}) => {
 	const periods = payload?.periods || [];
 	const series = payload?.series || {};
 	const meta = payload?.meta || {};
 	const workerWtypeFilter = meta.worker_wtype_filter || "all";
+	const stackBy = opts.stackBy === "role" ? "role" : "wtype";
 	const labels = periodLabels(periods, viewType);
 	const themeColors = getChartThemeColors();
 	const showFact = !!meta.actual_loaded;
@@ -453,12 +544,11 @@ export const buildReportChartOption = (payload, viewType) => {
 		_appendUtilizationSeries(chartSeries, series, showFact);
 	}
 
-	appendWtypeBars(chartSeries, {
-		forecastByWtype: series.workload_forecast_hours_by_wtype,
-		actualByWtype: series.actual_hours_by_wtype,
+	_appendWorkloadBars(chartSeries, series, {
 		forecastStackId: "workload",
 		workerWtypeFilter,
 		showFact,
+		stackBy,
 	});
 
 	_applyCurrentDateMarkLine(chartSeries, periods, labels, themeColors);
@@ -470,11 +560,12 @@ export const buildReportChartOption = (payload, viewType) => {
  * series: team_capacity_hours, project_plan_hours, workload_forecast_hours_by_wtype
  * optional: actual_hours_by_wtype, utilization_plan_hours, utilization_forecast_hours, utilization_actual_hours
  */
-export const buildProjectChartOption = (payload, viewType) => {
+export const buildProjectChartOption = (payload, viewType, opts = {}) => {
 	const periods = payload?.periods || [];
 	const series = payload?.series || {};
 	const meta = payload?.meta || {};
 	const workerWtypeFilter = meta.worker_wtype_filter || "all";
+	const stackBy = opts.stackBy === "role" ? "role" : "wtype";
 	const labels = periodLabels(periods, viewType);
 	const themeColors = getChartThemeColors();
 	const showFact = !!meta.actual_loaded;
@@ -505,12 +596,11 @@ export const buildProjectChartOption = (payload, viewType) => {
 		_appendUtilizationSeries(chartSeries, series, showFact);
 	}
 
-	appendWtypeBars(chartSeries, {
-		forecastByWtype: series.workload_forecast_hours_by_wtype,
-		actualByWtype: series.actual_hours_by_wtype,
+	_appendWorkloadBars(chartSeries, series, {
 		forecastStackId: "forecast",
 		workerWtypeFilter,
 		showFact,
+		stackBy,
 	});
 
 	_applyCurrentDateMarkLine(chartSeries, periods, labels, themeColors);

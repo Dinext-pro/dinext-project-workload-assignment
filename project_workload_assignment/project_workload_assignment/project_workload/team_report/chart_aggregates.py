@@ -266,6 +266,31 @@ def _compute_workload_by_wtype(
 	return series
 
 
+def _normalize_assignment_role(value) -> str:
+	return (value or "").strip()
+
+
+def _compute_workload_by_role(
+	assignments: list[dict],
+	wl_ctx: WorkloadContext,
+	periods: list[PWRPeriod],
+	date_to_period_key: dict[str, str],
+	period_index: dict[str, int],
+) -> dict[str, list[float]]:
+	"""Forecast hours stacked by PWA.role. Empty role → '' bucket."""
+	series: dict[str, list[float]] = {}
+	period_count = len(periods)
+	for assignment in assignments:
+		if not assignment.get("user"):
+			continue
+		role = _normalize_assignment_role(assignment.get("role"))
+		if role not in series:
+			series[role] = _zero_series(period_count)
+		daily_loads = wl_ctx.compute_assignment_daily_hours(assignment)
+		_add_daily_hours_to_periods(daily_loads, date_to_period_key, period_index, series[role])
+	return series
+
+
 def _resolve_plan_year_month(
 	year_value,
 	month_value,
@@ -401,6 +426,7 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 					utilization_plan_hours=_zero_series(len(periods)),
 					utilization_forecast_hours=_zero_series(len(periods)),
 					workload_forecast_hours_by_wtype=_zero_wtype_series(len(periods)),
+					workload_forecast_hours_by_role={},
 				),
 				meta=ChartMeta(
 					worker_wtype_filter=worker_wtype_filter or "all",
@@ -446,6 +472,13 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 			wtypes_map,
 			periods,
 			view_type,
+			date_to_period_key,
+			period_index,
+		)
+		workload_by_role = _compute_workload_by_role(
+			assignments,
+			wl_ctx,
+			periods,
 			date_to_period_key,
 			period_index,
 		)
@@ -521,8 +554,10 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 				)
 
 		actual_by_wtype = _zero_wtype_series(len(periods))
+		actual_by_role: dict[str, list[float]] = {}
 		if load_actual:
 			from project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual import (
+				load_team_utp_hours_by_role,
 				load_team_utp_hours_by_wtype,
 			)
 
@@ -534,15 +569,22 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 				users_data,
 				worker_wtype_filter,
 			)
+			actual_by_role = load_team_utp_hours_by_role(
+				actual_assignments,
+				periods,
+				view_type,
+			)
 
 		series = ChartSeries(
 			capacity_hours=capacity,
 			utilization_plan_hours=util_plan,
 			utilization_forecast_hours=util_forecast,
 			workload_forecast_hours_by_wtype=workload_by_wtype,
+			workload_forecast_hours_by_role=workload_by_role,
 		)
 		if load_actual:
 			series["actual_hours_by_wtype"] = actual_by_wtype
+			series["actual_hours_by_role"] = actual_by_role
 		if load_utilization and load_actual:
 			series["utilization_actual_hours"] = util_actual
 
@@ -663,9 +705,18 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 			date_to_period_key,
 			period_index,
 		)
+		workload_by_role = _compute_workload_by_role(
+			assignments,
+			wl_ctx,
+			periods,
+			date_to_period_key,
+			period_index,
+		)
 		actual_by_wtype = _zero_wtype_series(len(periods))
+		actual_by_role: dict[str, list[float]] = {}
 		if load_actual:
 			from project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual import (
+				load_utp_hours_by_role,
 				load_utp_hours_by_wtype,
 			)
 
@@ -680,6 +731,16 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 				period_index,
 				worker_wtype_filter,
 				users=users_in_scope,
+			)
+			actual_by_role = load_utp_hours_by_role(
+				project,
+				str(date_from),
+				str(date_to),
+				len(periods),
+				date_to_period_key,
+				period_index,
+				users=users_in_scope,
+				assignments=assignments,
 			)
 
 		util_plan = _zero_series(len(periods))
@@ -740,9 +801,11 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 			project_plan_hours=project_plan,
 			team_capacity_hours=team_capacity,
 			workload_forecast_hours_by_wtype=workload_by_wtype,
+			workload_forecast_hours_by_role=workload_by_role,
 		)
 		if load_actual:
 			series["actual_hours_by_wtype"] = actual_by_wtype
+			series["actual_hours_by_role"] = actual_by_role
 		if load_utilization:
 			series["utilization_plan_hours"] = util_plan
 			series["utilization_forecast_hours"] = util_forecast

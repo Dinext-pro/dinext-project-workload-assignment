@@ -20,9 +20,7 @@ export const getHolidaysForRow = (row) => {
 		return userHolidays;
 	}
 	if (row.kind === "project") {
-		if (!userHolidays.length) return projectHolidays;
-		if (!projectHolidays.length) return userHolidays;
-		return projectHolidays.concat(userHolidays);
+		return projectHolidays;
 	}
 	if (userHolidays.length || projectHolidays.length) {
 		return projectHolidays.concat(userHolidays);
