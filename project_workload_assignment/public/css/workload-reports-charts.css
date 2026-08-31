@@ -117,6 +117,12 @@
 	overflow: visible;
 }
 
+/* Form / Project tab: left chart panel inset (plot stays table-aligned). */
+.workload-reports-form-host .wr-charts-root .dinext-chart-panel__gutter-chrome,
+.workload-reports-project-tab .wr-charts-root .dinext-chart-panel__gutter-chrome {
+	padding: 8px 8px 8px var(--wr-form-inset-x, var(--padding-md, 15px));
+}
+
 /* Title/collapse live in filter actions (visibility toggle). Hide gutter head. */
 .wr-charts-root .dinext-chart-panel__gutter-head {
 	display: none;

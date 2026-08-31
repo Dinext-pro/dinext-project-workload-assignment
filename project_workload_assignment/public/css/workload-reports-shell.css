@@ -37,3 +37,47 @@ body[data-route*="projects-workload-report"] .form-section.workload-reports-form
 	display: block !important;
 }
 
+/* Form card chrome off — table full-bleed. Inset lives on filters / chart gutter. */
+body[data-route*="Projects Workload Report"] .form-section.workload-reports-form-section,
+body[data-route*="Projects Workload Report"] .form-section.workload-reports-form-section.card-section,
+body[data-route*="projects-workload-report"] .form-section.workload-reports-form-section,
+body[data-route*="projects-workload-report"] .form-section.workload-reports-form-section.card-section {
+	padding: 0 !important;
+	margin: 0;
+}
+
+body[data-route*="Projects Workload Report"] .form-section.workload-reports-form-section .section-body,
+body[data-route*="Projects Workload Report"] .form-section.workload-reports-form-section .form-column,
+body[data-route*="projects-workload-report"] .form-section.workload-reports-form-section .section-body,
+body[data-route*="projects-workload-report"] .form-section.workload-reports-form-section .form-column {
+	padding: 0 !important;
+	margin: 0 !important;
+	width: 100%;
+	max-width: 100%;
+}
+
+/* —— Project tab «Загрузка» —— */
+
+.form-section.workload-reports-project-section.empty-section,
+.form-section:has(.workload-reports-project-tab).empty-section {
+	display: block !important;
+}
+
+.form-section.workload-reports-project-section,
+.form-section.workload-reports-project-section.card-section,
+.form-section:has(.workload-reports-project-tab),
+.form-section:has(.workload-reports-project-tab).card-section {
+	padding: 0 !important;
+	margin: 0;
+}
+
+.form-section.workload-reports-project-section .section-body,
+.form-section.workload-reports-project-section .form-column,
+.form-section:has(.workload-reports-project-tab) .section-body,
+.form-section:has(.workload-reports-project-tab) .form-column {
+	padding: 0 !important;
+	margin: 0 !important;
+	width: 100%;
+	max-width: 100%;
+}
+
