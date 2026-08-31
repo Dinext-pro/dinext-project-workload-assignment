@@ -74,9 +74,13 @@
 }
 
 .workload-reports-project-tab.workload-reports-root {
+	--wr-form-inset-x: var(--padding-md, 15px);
+	--wr-form-inset-y: 12px;
+
 	min-height: 480px;
 	width: 100%;
 	max-width: none !important;
+	padding: 0 !important;
 	box-sizing: border-box;
 }
 
@@ -85,7 +89,7 @@
 .frappe-control.workload-reports-project-tab {
 	max-width: none !important;
 	width: 100% !important;
-	padding-right: 0 !important;
+	padding: 0 !important;
 }
 
 .workload-reports-project-tab .workload-reports-table {
@@ -394,19 +398,38 @@
 .frappe-control.workload-reports-form-host.input-max-width,
 .frappe-control.workload-reports-form-host,
 .workload-reports-form-host.workload-reports-root {
+	--wr-form-inset-x: var(--padding-md, 15px);
+	--wr-form-inset-y: 12px;
+
 	max-width: none !important;
 	width: 100% !important;
-	padding-right: 0 !important;
+	padding: 0 !important;
 	box-sizing: border-box;
 }
 
-/* Form: filters inside WR root (same FS shell as page/project) */
-.workload-reports-form-host.workload-reports-root > .workload-reports-filters {
+/* Form / Project tab: filters inset; table full-bleed against form card. */
+.workload-reports-form-host.workload-reports-root > .workload-reports-filters,
+.workload-reports-project-tab.workload-reports-root > .workload-reports-filters {
 	width: 100%;
 	box-sizing: border-box;
+	padding: var(--wr-form-inset-y) var(--wr-form-inset-x) 4px;
 }
 
-.workload-reports-form-host.workload-reports-root > .workload-reports-filters .wr-filters-row {
-	padding-top: 4px;
-	padding-bottom: 4px;
+.workload-reports-form-host.workload-reports-root > .workload-reports-filters .wr-filters-row,
+.workload-reports-project-tab.workload-reports-root > .workload-reports-filters .wr-filters-row {
+	padding-top: 0;
+	padding-bottom: 0;
+}
+
+.workload-reports-form-host.workload-reports-root > .workload-reports-charts,
+.workload-reports-project-tab.workload-reports-root > .workload-reports-charts {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 4px 0 0;
+}
+
+.workload-reports-form-host.workload-reports-root > .workload-reports-table,
+.workload-reports-project-tab.workload-reports-root > .workload-reports-table {
+	padding: 0;
+	margin: 0;
 }

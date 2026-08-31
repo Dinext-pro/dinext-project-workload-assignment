@@ -14,6 +14,25 @@ const _dbg = (event, data) =>
 const _fieldSnap = (frm) =>
 	project_workload_assignment.workloadReports?.common?.wrFieldSnapshot?.(frm, FIELD);
 
+function _applyProjectTabLayout(field) {
+	if (!field?.$wrapper?.length) return;
+	field.$wrapper.css({ maxWidth: "none", width: "100%", padding: 0 });
+	const $section = field.$wrapper.closest(".form-section");
+	if (!$section.length) return;
+	$section
+		.removeClass("empty-section hide-control")
+		.addClass("visible-section workload-reports-project-section")
+		.css({ padding: 0, margin: 0, display: "" });
+	$section.find(".section-head").hide();
+	$section.find(".section-body, .form-column").css({
+		padding: 0,
+		margin: 0,
+		width: "100%",
+		maxWidth: "100%",
+		boxSizing: "border-box",
+	});
+}
+
 const _reload = (frm, el) => {
 	const { common } = project_workload_assignment.workloadReports;
 	const args = { project: frm.doc.name, ...el._getArgs() };
@@ -77,7 +96,8 @@ function mount(frm) {
 		field.$wrapper
 			.empty()
 			.addClass("workload-reports-project-tab")
-			.removeClass("input-max-width");
+			.removeClass("input-max-width")
+			.css({ maxWidth: "none", width: "100%", padding: 0 });
 		el._wr = common.mountLayout(el);
 		el._getArgs = common.mountProjectFilters(el._wr.filters, () => {
 			_reload(frm, el);
@@ -95,6 +115,7 @@ function mount(frm) {
 		_dbg("mount-reuse-existing", { hasWr: !!el._wr });
 	}
 
+	_applyProjectTabLayout(field);
 	const reload = _reload(frm, el);
 	_dbg("mount-done", { isNew, hasWrRoot: !!el.querySelector?.(".workload-reports-root") });
 	return reload;
