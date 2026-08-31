@@ -90,6 +90,10 @@ function _applyFormLayout(frm) {
 	if ($tableSection.length) {
 		$tableSection.find(".section-head").hide();
 		$tableSection
+			.closest(".form-section")
+			.css({ padding: 0, margin: 0 })
+			.show();
+		$tableSection
 			.find(
 				'.section-body, .form-column, [data-fieldname="projects_workload_report"]'
 			)
@@ -100,7 +104,6 @@ function _applyFormLayout(frm) {
 				maxWidth: "100%",
 				boxSizing: "border-box",
 			});
-		$tableSection.closest(".form-section").show();
 	}
 
 	const field = frm.get_field(FIELD);
@@ -109,7 +112,7 @@ function _applyFormLayout(frm) {
 		field.$wrapper
 			.addClass("workload-reports-form-host")
 			.removeClass("input-max-width")
-			.css({ maxWidth: "none", width: "100%", paddingRight: 0 });
+			.css({ maxWidth: "none", width: "100%", padding: 0 });
 		_revealReportSection(field);
 	}
 

@@ -21,7 +21,108 @@
 }
 
 .work_efforts_container {
-	max-width: 100% !important;
+	--we-form-inset-x: var(--padding-md, 15px);
+	--we-form-inset-y: 12px;
+
+	max-width: none !important;
+	width: 100% !important;
+	padding: 0 !important;
+	box-sizing: border-box;
+}
+
+/*
+ * First tab section (chart + table): form chrome off so grid full-bleed.
+ * Later sections (обязательность, лимиты) keep Frappe padding.
+ * Inset lives on chart and legend. Toolbar stays glued to the grid.
+ */
+.form-section:has(.work_efforts_container),
+.form-section:has(.we-chart-wrapper),
+.form-section:has([data-fieldname="custom_work_efforts_chart"]) {
+	--we-form-inset-x: var(--padding-md, 15px);
+	--we-form-inset-y: 12px;
+	padding: 0 !important;
+	margin: 0;
+	border-bottom: none;
+}
+
+.form-section:has(.work_efforts_container) .section-body,
+.form-section:has(.work_efforts_container) .form-column,
+.form-section:has(.we-chart-wrapper) .section-body,
+.form-section:has(.we-chart-wrapper) .form-column,
+.form-section:has([data-fieldname="custom_work_efforts_chart"]) .section-body,
+.form-section:has([data-fieldname="custom_work_efforts_chart"]) .form-column {
+	padding: 0 !important;
+	margin: 0 !important;
+	width: 100%;
+	max-width: 100%;
+}
+
+.form-section:has(.work_efforts_container) [data-fieldname="custom_work_efforts_chart"],
+.we-chart-wrapper {
+	position: relative;
+	width: 100%;
+	max-width: none !important;
+	box-sizing: border-box;
+	padding: var(--we-form-inset-y) var(--we-form-inset-x) 8px !important;
+}
+
+/* Unlabeled section «Обязательность»: drop card chrome; sep below via ::after. */
+.form-section[data-fieldname="custom_section_break_drhoe"] {
+	padding: 0 !important;
+	margin: 0;
+	border: none;
+	box-shadow: none;
+}
+
+.form-section[data-fieldname="custom_section_break_drhoe"] .section-body,
+.form-section[data-fieldname="custom_section_break_drhoe"] .section-body:first-child {
+	margin: 0 !important;
+	padding: 0;
+}
+
+.form-section[data-fieldname="custom_section_break_drhoe"] .form-column {
+	padding-top: 8px;
+	padding-bottom: 8px;
+}
+
+.form-section[data-fieldname="custom_section_break_drhoe"]::after {
+	content: "";
+	flex: 0 0 auto;
+	width: calc(100% - 2 * var(--we-form-inset-x, var(--padding-md, 15px)));
+	height: 1px;
+	background: var(--border-color);
+	margin-left: var(--we-form-inset-x, var(--padding-md, 15px));
+	margin-right: var(--we-form-inset-x, var(--padding-md, 15px));
+}
+
+/* «Контроль Лимитов»: animate collapse (beat Bootstrap .hide { display:none }). */
+.form-section[data-fieldname="custom_limit_control"] {
+	margin-bottom: 8px;
+}
+.form-section[data-fieldname="custom_limit_control"] > .section-head {
+	transition: margin-bottom 0.28s ease;
+}
+
+.form-section[data-fieldname="custom_limit_control"] > .section-body {
+	display: grid !important;
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-rows: 1fr;
+	overflow: hidden;
+	transition: grid-template-rows 0.28s ease, opacity 0.22s ease;
+	opacity: 1;
+}
+
+.form-section[data-fieldname="custom_limit_control"] > .section-body.hide {
+	grid-template-rows: 0fr;
+	opacity: 0;
+	margin: 0 !important;
+	pointer-events: none;
+}
+
+.form-section[data-fieldname="custom_limit_control"] > .section-body > .form-column {
+	min-height: 0;
+	overflow: hidden;
+	max-width: 100%;
 }
 
 /*
@@ -109,14 +210,22 @@
 	white-space: nowrap;
 }
 
-/* Legend under table (original sticky placement). */
+/* Legend under table. Inset. Sep moved between the 3 blocks, not inside panel. */
 .work_efforts_container .work-efforts-legend {
-	margin-top: 12px;
+	margin: 12px var(--we-form-inset-x, var(--padding-md, 15px)) 8px;
 	font-family: var(--font-stack);
 	font-size: 14px;
 	font-weight: 600;
 	letter-spacing: 0.02em;
 	color: var(--text-color);
+}
+
+.work_efforts_container .work-efforts-legend::after {
+	content: "";
+	display: block;
+	height: 1px;
+	background: var(--border-color);
+	margin-top: 8px;
 }
 
 .work_efforts_container .work-efforts-legend .we-legend-panel--inline {
@@ -125,10 +234,10 @@
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 16px 24px;
-	padding: 8px 12px;
-	background: var(--fg-color);
-	border: 1px solid var(--border-color);
-	border-radius: 4px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	border-radius: 0;
 	box-sizing: border-box;
 }
 
@@ -183,10 +292,7 @@
 }
 
 .work_efforts_container .work-efforts-legend .we-legend-sep {
-	flex: 1 0 100%;
-	height: 1px;
-	background: var(--border-color);
-	margin: 4px 0;
+	display: none;
 }
 
 .work_efforts_container .work-efforts-legend .we-legend-limits {
