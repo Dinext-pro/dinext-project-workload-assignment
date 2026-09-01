@@ -1,5 +1,7 @@
 /** Shared lazy-tab helpers for DinextTable grids (ES module → bundles). */
 
+import { ensureSpinnerStyle } from "../workload-reports/common/spinner.js";
+
 export function getFieldTab(frm, fieldname) {
 	const field = frm?.get_field?.(fieldname);
 	if (!field) {
@@ -66,11 +68,12 @@ function showTabOverlay(frm, fieldname) {
 	}
 
 	$pane.addClass("pwa-tab-loading-host");
+	ensureSpinnerStyle();
 	let $el = $pane.children(".pwa-tab-loading");
 	if (!$el.length) {
 		const label = frappe.utils.escape_html(__("Loading…"));
 		$el = $(
-			`<div class="pwa-tab-loading" aria-live="polite"><p class="text-muted">${label}</p></div>`
+			`<div class="pwa-tab-loading" aria-live="polite"><div class="wr-spinner" role="status" aria-label="${label}"></div></div>`
 		);
 		$pane.prepend($el);
 	}

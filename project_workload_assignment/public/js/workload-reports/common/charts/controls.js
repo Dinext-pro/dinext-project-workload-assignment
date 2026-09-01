@@ -15,7 +15,7 @@ function addStackModeSelect(parent, { value, onChange }) {
 
 	[
 		{ value: "wtype", label: __("Worker type") },
-		{ value: "role", label: __("Project roles") },
+		{ value: "role", label: __("Project Roles") },
 	].forEach((opt) => {
 		const option = document.createElement("option");
 		option.value = opt.value;

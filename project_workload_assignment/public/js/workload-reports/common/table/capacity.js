@@ -58,6 +58,7 @@ const _sumAvailableInRange = (row, startDate, endDate) => {
  */
 export const resolvePeriodLoad = (row, period, planHours, viewType) => {
 	const hours = _num(planHours);
+	const unit = __("h");
 	let availableHours = 0;
 	let tooltip = "";
 
@@ -65,13 +66,13 @@ export const resolvePeriodLoad = (row, period, planHours, viewType) => {
 		const dateKey = period?.date || period?.start_date || "";
 		const baseHours = _baseHoursOnDate(row, dateKey);
 		availableHours = getAvailableHoursOnDate(row, dateKey, baseHours);
-		const parts = [`${__("Base working hours")}: ${baseHours.toFixed(1)}h`];
+		const parts = [`${__("Base working hours")}: ${baseHours.toFixed(1)}${unit}`];
 		if (availableHours !== baseHours) {
-			parts.push(`${__("Absence hours")}: ${(baseHours - availableHours).toFixed(1)}h`);
-			parts.push(`${__("Available hours")}: ${availableHours.toFixed(1)}h`);
+			parts.push(`${__("Absence hours")}: ${(baseHours - availableHours).toFixed(1)}${unit}`);
+			parts.push(`${__("Available hours")}: ${availableHours.toFixed(1)}${unit}`);
 		}
 		const pct = availableHours > 0 ? Math.round((hours / availableHours) * 100) : 0;
-		parts.push(`${__("Workload")}: ${hours.toFixed(1)}h (${pct}%)`);
+		parts.push(`${__("Workload")}: ${hours.toFixed(1)}${unit} (${pct}%)`);
 		tooltip = parts.join("\n");
 		return { availableHours, percentage: pct, tooltip };
 	}
@@ -81,7 +82,7 @@ export const resolvePeriodLoad = (row, period, planHours, viewType) => {
 		const calculated = _sumAvailableInRange(row, period?.start_date, period?.end_date);
 		if (calculated > 0) availableHours = calculated;
 		const pct = availableHours > 0 ? Math.round((hours / availableHours) * 100) : 0;
-		tooltip = `${__("Weekly available hours")}: ${availableHours.toFixed(1)}h\n${__("Workload")}: ${hours.toFixed(1)}h (${pct}%)`;
+		tooltip = `${__("Weekly available hours")}: ${availableHours.toFixed(1)}${unit}\n${__("Workload")}: ${hours.toFixed(1)}${unit} (${pct}%)`;
 		return { availableHours, percentage: pct, tooltip };
 	}
 
@@ -90,6 +91,6 @@ export const resolvePeriodLoad = (row, period, planHours, viewType) => {
 	const calculated = _sumAvailableInRange(row, period?.start_date, period?.end_date);
 	if (calculated > 0) availableHours = calculated;
 	const pct = availableHours > 0 ? Math.round((hours / availableHours) * 100) : 0;
-	tooltip = `${__("Monthly available hours")}: ${availableHours.toFixed(1)}h\n${__("Workload")}: ${hours.toFixed(1)}h (${pct}%)`;
+	tooltip = `${__("Monthly available hours")}: ${availableHours.toFixed(1)}${unit}\n${__("Workload")}: ${hours.toFixed(1)}${unit} (${pct}%)`;
 	return { availableHours, percentage: pct, tooltip };
 };

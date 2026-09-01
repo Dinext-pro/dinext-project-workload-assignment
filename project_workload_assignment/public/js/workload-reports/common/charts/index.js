@@ -306,7 +306,7 @@ export async function reloadCharts(hostEl) {
 			onStackByChange: () => remountChartsFromCache(hostEl),
 		});
 
-		showChartMessage(panel, __("Loading chart..."), "loading");
+		showChartMessage(panel, null, "loading");
 
 		const baseArgs =
 			typeof state.getArgs === "function" ? state.getArgs() || {} : {};
