@@ -15,15 +15,17 @@ const resolveLoadLevel = (percentage) => {
 
 const formatHours = (value) => {
 	const hours = parseFloat(value);
-	if (!Number.isFinite(hours) || hours <= 0) return "0.0h";
-	return `${hours.toFixed(1)}h`;
+	const unit = __("h");
+	if (!Number.isFinite(hours) || hours <= 0) return `0.0${unit}`;
+	return `${hours.toFixed(1)}${unit}`;
 };
 
 const buildFactTooltip = (baseTooltip, planHours, actualHours, percentage, actualPct) => {
 	const lines = [];
+	const unit = __("h");
 	if (baseTooltip) lines.push(baseTooltip);
-	else lines.push(`${__("Plan")}: ${planHours.toFixed(1)}h (${percentage}%)`);
-	lines.push(`${__("Fact")}: ${actualHours.toFixed(1)}h (${actualPct}%)`);
+	else lines.push(`${__("Plan")}: ${planHours.toFixed(1)}${unit} (${percentage}%)`);
+	lines.push(`${__("Fact")}: ${actualHours.toFixed(1)}${unit} (${actualPct}%)`);
 	return lines.join("\n");
 };
 

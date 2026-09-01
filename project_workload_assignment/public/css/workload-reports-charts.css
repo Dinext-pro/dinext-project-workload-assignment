@@ -69,6 +69,10 @@
 	width: 100%;
 }
 
+.wr-charts-root .dinext-chart-panel__chart .wr-chart-status--loading {
+	min-height: var(--wr-chart-plot-height, 200px);
+}
+
 /* —— root / panel shell —— */
 
 .wr-charts-root {

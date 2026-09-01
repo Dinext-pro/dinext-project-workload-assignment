@@ -1,6 +1,6 @@
 /**
  * Multi-task workload dialog (N>1). Does not replace start_pwa_dialog.
- * Open: unique union of PWA + Open ToDo across selected tasks.
+ * Open: intersection of PWA + Open ToDo across selected tasks (users on every task).
  * Add → all selected. Remove → unassign on every selected task that has them.
  * Keep → update role/% where PWA exists; do not copy onto tasks that lack them.
  * No Work Efforts, no date columns — dates seed silently per task.
@@ -188,6 +188,24 @@
 		return new Set((list || []).map(String).filter(Boolean));
 	}
 
+	/** Users present on every selected task. Empty if any task has none in common. */
+	function intersectAssigneeSets(assigneesByTask) {
+		const buckets = [...(assigneesByTask?.values?.() || [])];
+		if (!buckets.length) {
+			return new Set();
+		}
+		const common = new Set(buckets[0]);
+		for (let i = 1; i < buckets.length; i++) {
+			const next = buckets[i];
+			for (const user of [...common]) {
+				if (!next.has(user)) {
+					common.delete(user);
+				}
+			}
+		}
+		return common;
+	}
+
 	async function loadAssignmentState(tasks, project) {
 		const taskIds = tasks.map((t) => t.name);
 		const assigneesByTask = new Map(taskIds.map((id) => [id, new Set()]));
@@ -236,8 +254,9 @@
 		}
 
 		const byUser = new Map();
+		const commonUsers = intersectAssigneeSets(assigneesByTask);
 		for (const pwa of existing) {
-			if (!pwa.user || byUser.has(pwa.user)) {
+			if (!pwa.user || !commonUsers.has(pwa.user) || byUser.has(pwa.user)) {
 				continue;
 			}
 			byUser.set(pwa.user, {
@@ -252,21 +271,13 @@
 			});
 		}
 
-		const missing = [];
-		for (const users of assigneesByTask.values()) {
-			for (const user of users) {
-				if (!byUser.has(user)) {
-					missing.push(user);
-				}
-			}
-		}
-		const uniqueMissing = [...new Set(missing)];
-		if (uniqueMissing.length) {
+		const missing = [...commonUsers].filter((user) => !byUser.has(user));
+		if (missing.length) {
 			const users =
 				(await frappe.db.get_list("User", {
 					fields: ["name", "full_name"],
-					filters: [["name", "in", uniqueMissing]],
-					limit: uniqueMissing.length,
+					filters: [["name", "in", missing]],
+					limit: missing.length,
 				})) || [];
 			for (const user of users) {
 				const roles = getProjectUserRolesSync(project, user.name);

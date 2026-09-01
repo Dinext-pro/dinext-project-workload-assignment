@@ -5,6 +5,7 @@ import {
 	Y_AXIS_GUTTER_PX,
 	DEFAULT_LABEL_GUTTER_PX,
 } from "./theme.js";
+import { createSpinner } from "../spinner.js";
 
 const PLACEHOLDER_CLASS = "wr-charts-placeholder";
 const STATUS_CLASS = "wr-chart-status";
@@ -32,16 +33,16 @@ export function applyChartHeights(hostEl, panel) {
 	applyVars(rootEl);
 }
 
-/** Muted placeholder in host until panel exists. */
-export function ensurePlaceholder(hostEl, message) {
+/** Spinner placeholder in host until panel exists. */
+export function ensurePlaceholder(hostEl) {
 	if (!hostEl) return;
 	applyChartHeights(hostEl, null);
 	if (hostEl.querySelector(`.${PLACEHOLDER_CLASS}`)) return;
 	if (hostEl.querySelector(".wr-charts-root")) return;
 
 	const el = document.createElement("div");
-	el.className = `${PLACEHOLDER_CLASS} text-muted`;
-	el.textContent = message || __("Loading chart...");
+	el.className = PLACEHOLDER_CLASS;
+	el.appendChild(createSpinner());
 	hostEl.appendChild(el);
 }
 
@@ -51,13 +52,17 @@ export function clearPlaceholder(hostEl) {
 }
 
 /**
- * Status / loading / error text.
+ * Status / loading / error.
  * Never wipe host.innerHTML — only chartEl or placeholder node.
  */
 export function showChartMessage(target, message, kind = "muted") {
+	if (kind === "loading") {
+		_showChartSpinner(target);
+		return;
+	}
+
 	const text = message || __("Chart unavailable");
-	const tone =
-		kind === "error" ? "text-danger" : "text-muted";
+	const tone = kind === "error" ? "text-danger" : "text-muted";
 
 	if (target?.$chartEl?.length) {
 		target.$chartEl.html(
@@ -78,7 +83,33 @@ export function showChartMessage(target, message, kind = "muted") {
 		host.appendChild(node);
 	}
 	node.className = `${PLACEHOLDER_CLASS} ${STATUS_CLASS} ${tone}`;
+	node.replaceChildren();
 	node.textContent = text;
+}
+
+function _showChartSpinner(target) {
+	const wrap = document.createElement("div");
+	wrap.className = `${STATUS_CLASS} wr-chart-status--loading`;
+	wrap.appendChild(createSpinner());
+
+	if (target?.$chartEl?.length) {
+		target.$chartEl.empty().append(wrap);
+		return;
+	}
+
+	if (!(target instanceof HTMLElement)) return;
+
+	let node =
+		target.querySelector(`.${PLACEHOLDER_CLASS}`) ||
+		target.querySelector(`.${STATUS_CLASS}`);
+	if (!node) {
+		node = document.createElement("div");
+		node.className = PLACEHOLDER_CLASS;
+		target.appendChild(node);
+	}
+	node.className = `${PLACEHOLDER_CLASS} ${STATUS_CLASS} wr-chart-status--loading`;
+	node.replaceChildren();
+	node.appendChild(createSpinner());
 }
 
 /**

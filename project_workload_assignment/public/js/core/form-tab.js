@@ -83,11 +83,18 @@
 		}
 
 		$pane.addClass("pwa-tab-loading-host");
+		if (!document.getElementById("wr-spinner-style")) {
+			const style = document.createElement("style");
+			style.id = "wr-spinner-style";
+			style.textContent =
+				".wr-spinner{display:block;box-sizing:border-box;width:28px;height:28px;flex:0 0 auto;border:2px solid color-mix(in srgb,currentColor 28%,transparent);border-top-color:var(--blue-500,#2490ef);border-radius:50%;animation:wr-spin .7s linear infinite}@keyframes wr-spin{to{transform:rotate(360deg)}}";
+			document.head.appendChild(style);
+		}
 		let $el = $pane.children(".pwa-tab-loading");
 		if (!$el.length) {
 			const label = frappe.utils.escape_html(__("Loading…"));
 			$el = $(
-				`<div class="pwa-tab-loading" aria-live="polite"><p class="text-muted">${label}</p></div>`
+				`<div class="pwa-tab-loading" aria-live="polite"><div class="wr-spinner" role="status" aria-label="${label}"></div></div>`
 			);
 			$pane.prepend($el);
 		}
