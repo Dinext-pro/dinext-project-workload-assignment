@@ -30,6 +30,11 @@ import {
 } from "./theme.js";
 
 const WTYPES = ["Employee", "Supplier"];
+/** ~85% of category band (not 80% of 36% bar slot) so ~3 dashes fit. */
+const PROJECT_PLAN_DASH_CATEGORY_FILL = 0.85;
+const PROJECT_PLAN_DASH_LINE_WIDTH = 2;
+/** 3 dashes + 2 gaps: dash = gap = width / 5. */
+const PROJECT_PLAN_DASH_PATTERN_UNITS = 5;
 
 /** Map period → X-axis label by view_type. */
 export const periodLabels = (periods, viewType) =>
@@ -84,6 +89,70 @@ const _lineSeries = ({ name, lineColor, areaColor, lineOpacity, areaOpacity, z, 
 	emphasis: { focus: "series" },
 	data: hideZeros(data),
 });
+
+/** Centered dash over the category band; gap left so adjacent periods do not glue. */
+export const getProjectPlanDashGeometry = (categoryBandWidth) => {
+	const dashWidth = categoryBandWidth * PROJECT_PLAN_DASH_CATEGORY_FILL;
+	return {
+		offsetX: 0,
+		dashWidth,
+		slotWidth: categoryBandWidth,
+	};
+};
+
+/** Pixel lineDash for ≈3 dashes on the segment (3 dash + 2 gap). */
+export const getProjectPlanLineDash = (dashWidth) => {
+	if (!Number.isFinite(dashWidth) || dashWidth <= 0) {
+		return [4, 4];
+	}
+	const unit = dashWidth / PROJECT_PLAN_DASH_PATTERN_UNITS;
+	return [unit, unit];
+};
+
+export const buildProjectPlanDashSeries = (hours, color = LINE_COLORS.projectPlan) => {
+	const values = hideZeros(hours);
+	const data = values.map((value, index) => [index, value]);
+	return {
+		name: __("Project plan"),
+		type: "custom",
+		z: Z_PROJECT_PLAN,
+		color,
+		itemStyle: { color },
+		renderItem(params, api) {
+			const planValue = api.value(1);
+			if (planValue == null || Number.isNaN(planValue) || planValue <= 0) {
+				return;
+			}
+			const categoryIndex = api.value(0);
+			const point = api.coord([categoryIndex, planValue]);
+			const bandWidth = api.size([1, 0])[0];
+			if (!Number.isFinite(bandWidth) || bandWidth <= 0) {
+				return;
+			}
+			const geo = getProjectPlanDashGeometry(bandWidth);
+			const xCenter = point[0] + geo.offsetX;
+			const halfWidth = geo.dashWidth / 2;
+			const y = point[1];
+			return {
+				type: "line",
+				shape: {
+					x1: xCenter - halfWidth,
+					y1: y,
+					x2: xCenter + halfWidth,
+					y2: y,
+				},
+				style: {
+					stroke: color,
+					lineWidth: PROJECT_PLAN_DASH_LINE_WIDTH,
+					lineDash: getProjectPlanLineDash(geo.dashWidth),
+				},
+			};
+		},
+		encode: { x: 0, y: 1 },
+		data,
+		tooltip: { show: true },
+	};
+};
 
 const _forecastBar = (name, stackId, data, color) => ({
 	name,
@@ -380,21 +449,30 @@ export const buildSyncedYAxis = (themeColors) => {
 		splitLine: {
 			show: true,
 			lineStyle: {
-				color: colors.border,
-				opacity: 0.4,
-				width: 0.5,
+				color: colors.gridLine,
+				width: 1,
 			},
 		},
 	};
 };
 
-export const buildSyncedXAxis = (labels) => ({
-	type: "category",
-	data: labels,
-	boundaryGap: true,
-	axisLabel: { show: false },
-	axisTick: { show: false },
-});
+export const buildSyncedXAxis = (labels, themeColors) => {
+	const colors = themeColors || getChartThemeColors();
+	return {
+		type: "category",
+		data: labels,
+		boundaryGap: true,
+		axisLabel: { show: false },
+		axisTick: { show: false },
+		splitLine: {
+			show: true,
+			lineStyle: {
+				color: colors.gridLine,
+				width: 1,
+			},
+		},
+	};
+};
 
 /**
  * Index of period bucket that contains today (−1 if outside chart range).
@@ -507,7 +585,7 @@ const _baseOption = (labels, chartSeries, themeColors) => ({
 	tooltip: buildAxisTooltip(themeColors),
 	legend: buildChartLegend(),
 	grid: buildSyncedGrid(),
-	xAxis: buildSyncedXAxis(labels),
+	xAxis: buildSyncedXAxis(labels, themeColors),
 	yAxis: buildSyncedYAxis(themeColors),
 	series: chartSeries,
 });
@@ -581,15 +659,7 @@ export const buildProjectChartOption = (payload, viewType, opts = {}) => {
 			z: Z_CAPACITY,
 			data: series.team_capacity_hours,
 		}),
-		_lineSeries({
-			name: __("Project plan"),
-			lineColor: LINE_COLORS.projectPlan,
-			areaColor: LINE_COLORS.projectPlan,
-			lineOpacity: 0.85,
-			areaOpacity: 0.15,
-			z: Z_PROJECT_PLAN,
-			data: series.project_plan_hours,
-		}),
+		buildProjectPlanDashSeries(series.project_plan_hours),
 	];
 
 	if (showUtilization) {
