@@ -8,6 +8,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from project_workload_assignment.project_workload_assignment.project_workload.canonical.reshape import (
 	_adapt_project_row,
+	reshape_project_tree,
 	run_team_workload_grid_canonical,
 )
 from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
@@ -63,6 +64,60 @@ class TestProjectHolidayList(FrappeTestCase):
 		self.assertEqual(row["kind"], "project")
 		self.assertEqual(row["projectHolidays"], [{"date": "2026-08-30", "description": "Project"}])
 		self.assertNotIn("userHolidays", row)
+
+	def test_reshape_project_tree_stamps_holidays_on_rows(self):
+		msg = {
+			"periods": [{"key": "workload_2026-08-29", "date": "2026-08-29"}],
+			"tree_data": [
+				{
+					"email": "a@x",
+					"isUser": True,
+					"indent": 0,
+					"user_data": {"full_name": "Administrator", "email": "a@x"},
+				},
+				{"email": "a@x", "isRole": True, "role": "Dev", "indent": 1},
+				{
+					"email": "a@x",
+					"isTask": True,
+					"role": "Dev",
+					"task_id": "T1",
+					"task_subject": "Leaf",
+					"indent": 2,
+				},
+			],
+			"metadata": {
+				"user_holidays": {"a@x": [{"date": "2026-08-29", "weekly_off": 1}]},
+				"project_holidays": [{"date": "2026-08-30", "weekly_off": 1}],
+			},
+		}
+		out = reshape_project_tree(msg)
+		user = out["rows"][0]
+		role = user["children"][0]
+		task = role["children"][0]
+		self.assertEqual(user["kind"], "user")
+		self.assertEqual(user["userHolidays"][0]["date"], "2026-08-29")
+		self.assertEqual(role["userHolidays"][0]["date"], "2026-08-29")
+		self.assertEqual(role["projectHolidays"][0]["date"], "2026-08-30")
+		self.assertEqual(task["projectHolidays"][0]["date"], "2026-08-30")
+
+	def test_reshape_project_tree_user_falls_back_to_project_holidays(self):
+		msg = {
+			"periods": [{"key": "workload_2026-08-30", "date": "2026-08-30"}],
+			"tree_data": [
+				{
+					"email": "b@x",
+					"isUser": True,
+					"indent": 0,
+					"user_data": {"full_name": "Administrator", "email": "b@x"},
+				},
+			],
+			"metadata": {
+				"user_holidays": {"b@x": []},
+				"project_holidays": [{"date": "2026-08-30", "weekly_off": 1}],
+			},
+		}
+		user = reshape_project_tree(msg)["rows"][0]
+		self.assertEqual(user["userHolidays"][0]["date"], "2026-08-30")
 
 	def _live_assignment_with_company_hl(self):
 		rows = frappe.db.sql(
