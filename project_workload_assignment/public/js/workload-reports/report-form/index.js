@@ -176,10 +176,18 @@ function _destroyWrForm(frm) {
 	frm._wrForm = null;
 }
 
+function _isDisconnected(el) {
+	if (!el) return true;
+	if (typeof el.isConnected === "boolean") return !el.isConnected;
+	return typeof document !== "undefined" && !document.contains(el);
+}
+
 function _needsRemount(frm, hostEl) {
 	if (!frm._wrForm) return true;
 	if (frm._wrForm.version !== MOUNT_VERSION) return true;
 	if (!frm._wrForm.zones?.filters) return true;
+	if (_isDisconnected(hostEl)) return true;
+	if (_isDisconnected(frm._wrForm.zones?.table)) return true;
 	if (!hostEl?.querySelector?.(":scope > .workload-reports-filters")) return true;
 	return false;
 }
@@ -319,7 +327,7 @@ function bindForm() {
 	// Missed refresh (handlers bound after Form lifecycle): mount once, after onload/refresh.
 	setTimeout(() => {
 		const frm = window.cur_frm;
-		if (frm?.doctype === DOCTYPE && !frm._wrForm) {
+		if (frm?.doctype === DOCTYPE) {
 			_dbg("mount-fallback-timeout");
 			mount(frm);
 		}

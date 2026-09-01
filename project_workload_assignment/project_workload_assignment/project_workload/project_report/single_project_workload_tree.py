@@ -41,6 +41,10 @@ from project_workload_assignment.project_workload_assignment.project_workload.mo
 	UserData,
 	TaskDict,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.project_report.task_hour_rollup import (
+	period_map_has_hours,
+	rollup_task_period_hours,
+)
 
 
 
@@ -608,83 +612,47 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 							workload_calculations += 1
 							role_result[period_key] = role_result.get(period_key, 0.0) + daily_load
 							task_result[period_key] = task_result.get(period_key, 0.0) + daily_load
-		# ШАГ 2: Аккумуляция нагрузки в иерархии задач
+		# ШАГ 2: Аккумуляция нагрузки в иерархии задач (полный parent_task chain)
 		logger("Starting task hierarchy accumulation...")
-		
-		# Копируем прямые результаты в иерархические
-		hierarchical_task_results = task_results.copy()
-		
-		# Функция для рекурсивного сбора нагрузки от дочерних задач
-		def accumulate_child_load(task_id, role, user_email, period_keys):
-			"""Собирает нагрузку от всех дочерних задач для указанной роли и пользователя"""
-			if task_id not in tasks_dict:
-				return {key: 0.0 for key in period_keys}
-		
-			task_info = tasks_dict[task_id]
-			accumulated = {key: 0.0 for key in period_keys}
-		
-			# Если у задачи есть прямая загрузка, не аккумулируем от детей
-			if task_info['has_direct_load']:
-				return accumulated
-		
-			# Рекурсивно собираем нагрузку от всех детей
-			for child_id in task_info['children']:
-				child_key = f"{user_email}_{role}_{child_id}"
-		
-				# Добавляем прямую нагрузку ребенка (если есть)
-				if child_key in task_results:
-					child_load = task_results[child_key]
-					for key in period_keys:
-						accumulated[key] = accumulated.get(key, 0.0) + child_load.get(key, 0.0)
-		
-				# Рекурсивно добавляем нагрузку от внуков
-				child_accumulated = accumulate_child_load(child_id, role, user_email, period_keys)
-				for key in period_keys:
-					accumulated[key] = accumulated.get(key, 0.0) + child_accumulated.get(key, 0.0)
-		
-			return accumulated
-		
-		# Применяем аккумуляцию для ВСЕХ релевантных задач (включая родителей)
-		period_keys = [p['key'] for p in periods]
-		
+		period_keys = [p["key"] for p in periods]
+		hierarchical_task_results = {}
+
 		for user_email, roles in assignments_by_user_role_task.items():
 			for role, tasks in roles.items():
-				# Собираем ВСЕ task_id для этой роли, включая родителей
 				all_task_ids = set(tasks.keys())
-		
-				# Добавляем всех родителей для каждой задачи
 				additional_parents = set()
 				for task_id in tasks.keys():
 					current_id = task_id
-					while current_id in tasks_dict and tasks_dict[current_id]['parent_task_id']:
-						parent_id = tasks_dict[current_id]['parent_task_id']
+					while current_id in tasks_dict and tasks_dict[current_id]["parent_task_id"]:
+						parent_id = tasks_dict[current_id]["parent_task_id"]
 						additional_parents.add(parent_id)
 						current_id = parent_id
-		
 				all_task_ids.update(additional_parents)
-				logger(f"Роль {role}: задач с прямыми назначениями: {len(tasks.keys())}, всего задач в иерархии: {len(all_task_ids)}")
-		
-				# Аккумулируем для каждой задачи в иерархии
+				logger(
+					f"Роль {role}: задач с прямыми назначениями: {len(tasks.keys())}, "
+					f"всего задач в иерархии: {len(all_task_ids)}"
+				)
+
+				memo = {}
 				for task_id in all_task_ids:
-					task_key = f"{user_email}_{role}_{task_id}"
-					task_info = tasks_dict.get(task_id, {})
-		
-					# Если у задачи нет прямой загрузки, аккумулируем от детей
-					if not task_info.get('has_direct_load', False):
-						child_load = accumulate_child_load(task_id, role, user_email, period_keys)
-		
-						# Обновляем результаты для этой задачи
-						if task_key not in hierarchical_task_results:
-							hierarchical_task_results[task_key] = {key: 0.0 for key in period_keys}
-		
-						for key in period_keys:
-							hierarchical_task_results[task_key][key] = child_load.get(key, 0.0)
-		
-						# Логируем для отладки
-						if any(child_load.values()):
-							total = sum(child_load.values())
-							logger(f"Аккумулировано {total:.1f} ч для задачи {task_info.get('task_subject', task_id)} (роль {role})")
-		
+					rollup_task_period_hours(
+						task_id,
+						tasks_dict=tasks_dict,
+						task_results=task_results,
+						user_email=user_email,
+						role=role,
+						period_keys=period_keys,
+						memo=memo,
+					)
+				for task_id, hours in memo.items():
+					hierarchical_task_results[f"{user_email}_{role}_{task_id}"] = hours
+					if period_map_has_hours(hours):
+						task_info = tasks_dict.get(task_id, {})
+						logger(
+							f"Аккумулировано {sum(hours.values()):.1f} ч для задачи "
+							f"{task_info.get('task_subject', task_id)} (роль {role})"
+						)
+
 		logger(f"Task hierarchy accumulation completed. Total task results: {len(hierarchical_task_results)}")
 		
 		end_time = frappe.utils.now_datetime()
@@ -722,56 +690,27 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 		
 			task_info = tasks_dict[task_id]
 			task_key = f"{user_email}_{role}_{task_id}"
-		
-			# Получаем нагрузку для этой задачи (с учетом аккумуляции)
-			# Если у задачи есть прямая загрузка, используем её
-			# Если нет, используем аккумулированную от детей
-			if task_info['has_direct_load']:
-				# Если есть прямая загрузка, берем из task_results
-				task_periods = task_results.get(task_key, {})
-				logger(f"Задача {task_info['task_subject']}: используем прямую загрузку")
+
+			task_periods = hierarchical_task_results.get(task_key) or task_results.get(task_key) or {}
+			if period_map_has_hours(task_periods):
+				total = sum(float(v or 0) for v in task_periods.values())
+				logger(
+					f"Задача {task_info['task_subject']}: иерархическая загрузка ({total:.1f} ч)"
+				)
 			else:
-				# Если нет прямой загрузки, берем из hierarchical_task_results (аккумулированная)
-				task_periods = hierarchical_task_results.get(task_key, {})
-				if any(task_periods.values()):
-					total = sum(task_periods.values())
-					logger(f"Задача {task_info['task_subject']}: используем аккумулированную загрузку ({total:.1f} ч)")
-				else:
-					logger(f"Задача {task_info['task_subject']}: нет загрузки")
-		
+				logger(f"Задача {task_info['task_subject']}: нет загрузки")
+
 			if not task_periods:
-				task_periods = {p['key']: 0.0 for p in periods}
-		
-			# ФИЛЬТРАЦИЯ: Собираем только те дочерние задачи, у которых есть нагрузка для этой роли
+				task_periods = {p["key"]: 0.0 for p in periods}
+
 			children_with_load = []
-			if task_info['children']:
-				for child_id in task_info['children']:
+			if task_info["children"]:
+				for child_id in task_info["children"]:
 					child_key = f"{user_email}_{role}_{child_id}"
-		
-					# Проверяем, есть ли у ребенка нагрузка (прямая или аккумулированная)
-					child_has_load = False
-		
-					# Проверяем прямую нагрузку
-					if child_key in task_results and any(task_results[child_key].values()):
-						child_has_load = True
-					# Проверяем аккумулированную нагрузку
-					elif child_key in hierarchical_task_results and any(hierarchical_task_results[child_key].values()):
-						child_has_load = True
-					# Проверяем, есть ли у ребенка дети с нагрузкой (рекурсивно)
-					else:
-						child_info = tasks_dict.get(child_id, {})
-						if child_info.get('children'):
-							# Быстрая проверка: есть ли хоть один потомок с нагрузкой
-							for grandchild_id in child_info['children']:
-								grandchild_key = f"{user_email}_{role}_{grandchild_id}"
-								if grandchild_key in task_results and any(task_results[grandchild_key].values()):
-									child_has_load = True
-									break
-								elif grandchild_key in hierarchical_task_results and any(hierarchical_task_results[grandchild_key].values()):
-									child_has_load = True
-									break
-		
-					if child_has_load:
+					child_periods = hierarchical_task_results.get(child_key) or task_results.get(
+						child_key
+					)
+					if period_map_has_hours(child_periods):
 						children_with_load.append(child_id)
 		
 			# Если у задачи нет своей нагрузки и нет детей с нагрузкой - не показываем
