@@ -73,6 +73,12 @@
 	width: 100%;
 }
 
+.workload-reports-table.wr-table--loading {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
 .workload-reports-project-tab.workload-reports-root {
 	--wr-form-inset-x: var(--padding-md, 15px);
 	--wr-form-inset-y: 12px;
@@ -98,8 +104,8 @@
 	width: 100%;
 }
 
-/* Headers */
-.workload-reports-table .ag-header-cell,
+/* Period headers stay tight (48px cells). Label column keeps Quartz cell padding. */
+.workload-reports-table .ag-header-cell:not([col-id="label"]),
 .workload-reports-table .ag-header-group-cell {
 	padding: 0 2px !important;
 }
@@ -120,6 +126,10 @@
 .workload-reports-table .ag-header-group-cell-label {
 	justify-content: center;
 	width: 100%;
+}
+
+.workload-reports-table .ag-header-cell[col-id="label"] .ag-header-cell-label {
+	justify-content: flex-start;
 }
 
 .workload-reports-table .ag-header-cell.wr-header--current,
