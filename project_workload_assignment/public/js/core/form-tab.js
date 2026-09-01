@@ -50,15 +50,49 @@
 			: !!tab.wrapper?.hasClass?.("active");
 	}
 
+	function emptyLazyBucket() {
+		return {
+			mountFns: {},
+			done: {},
+			inflight: {},
+			overlayCount: {},
+			bound: {},
+			retryTimers: {},
+			bindGen: {},
+			docname: null,
+		};
+	}
+
+	function clearRetryTimers(state, fieldname) {
+		const timers = state.retryTimers[fieldname];
+		if (!timers?.length) {
+			return;
+		}
+		timers.forEach((id) => clearTimeout(id));
+		state.retryTimers[fieldname] = [];
+	}
+
 	function ensureLazyState(frm) {
+		const name = frm?.docname || frm?.doc?.name || null;
 		if (!frm._pwaLazy) {
-			frm._pwaLazy = {
-				mountFns: {},
-				done: {},
-				inflight: {},
-				overlayCount: {},
-				bound: {},
-			};
+			frm._pwaLazy = emptyLazyBucket();
+			frm._pwaLazy.docname = name;
+			return frm._pwaLazy;
+		}
+		if (frm._pwaLazy.docname !== name) {
+			Object.keys(frm._pwaLazy.retryTimers || {}).forEach((key) => {
+				clearRetryTimers(frm._pwaLazy, key);
+			});
+			const mountFns = frm._pwaLazy.mountFns;
+			frm._pwaLazy = emptyLazyBucket();
+			frm._pwaLazy.mountFns = mountFns;
+			frm._pwaLazy.docname = name;
+		}
+		if (!frm._pwaLazy.retryTimers) {
+			frm._pwaLazy.retryTimers = {};
+		}
+		if (!frm._pwaLazy.bindGen) {
+			frm._pwaLazy.bindGen = {};
 		}
 		return frm._pwaLazy;
 	}
@@ -118,13 +152,32 @@
 		$pane.children(".pwa-tab-loading").addClass("is-hidden");
 	}
 
+	function paneHasMountedContent(frm, fieldname) {
+		const tab = getFieldTab(frm, fieldname);
+		const $pane = tab && tab.wrapper;
+		if (!$pane?.length) {
+			return false;
+		}
+		return !!$pane.find(
+			".workload-reports-root, .work-efforts-table, .dinext-table"
+		).length;
+	}
+
 	function runLazyMount(frm, fieldname) {
 		const state = ensureLazyState(frm);
-		if (state.done[fieldname] || state.inflight[fieldname]) {
+		if (state.inflight[fieldname]) {
 			console.log("[WR-DEBUG:lazy-tab] runLazyMount-skip", {
 				fieldname,
 				done: !!state.done[fieldname],
-				inflight: !!state.inflight[fieldname],
+				inflight: true,
+			});
+			return;
+		}
+		if (state.done[fieldname] && paneHasMountedContent(frm, fieldname)) {
+			console.log("[WR-DEBUG:lazy-tab] runLazyMount-skip", {
+				fieldname,
+				done: true,
+				inflight: false,
 			});
 			return;
 		}
@@ -136,6 +189,7 @@
 		}
 
 		console.log("[WR-DEBUG:lazy-tab] runLazyMount-start", { fieldname, project: frm?.doc?.name });
+		state.done[fieldname] = false;
 		state.inflight[fieldname] = true;
 		showTabOverlay(frm, fieldname);
 
@@ -154,8 +208,7 @@
 
 	/**
 	 * Bind mountFn to the field's tab `shown.bs.tab`.
-	 * Call from form refresh: resets once-flag for this field (shell may be new),
-	 * but repeat tab switches within the same cycle do not remount / re-show overlay.
+	 * One mount per frm/doc while pane content lives. Retry only if tab missing.
 	 */
 	function bindLazyTabMount(frm, fieldname, mountFn) {
 		if (!frm || !fieldname || typeof mountFn !== "function") {
@@ -169,11 +222,26 @@
 
 		const state = ensureLazyState(frm);
 		state.mountFns[fieldname] = mountFn;
-		if (!state.inflight[fieldname]) {
+		const hasContent = paneHasMountedContent(frm, fieldname);
+		if (!state.inflight[fieldname] && !hasContent) {
 			delete state.done[fieldname];
 		}
 
+		const bindGen = (state.bindGen[fieldname] = (state.bindGen[fieldname] || 0) + 1);
+		clearRetryTimers(state, fieldname);
+
+		if (state.bound[fieldname] && hasContent) {
+			console.log("[WR-DEBUG:lazy-tab] bind-skip-live", {
+				fieldname,
+				project: frm?.doc?.name,
+			});
+			return;
+		}
+
 		const attach = () => {
+			if (state.bindGen[fieldname] !== bindGen) {
+				return false;
+			}
 			const tab = getFieldTab(frm, fieldname);
 			if (!tab) {
 				console.log("[WR-DEBUG:lazy-tab] attach-no-tab", {
@@ -185,9 +253,9 @@
 			}
 
 			const $link = tab.tab_link?.find?.(".nav-link");
-			if ($link?.length && !state.bound[fieldname]) {
+			if ($link?.length) {
 				state.bound[fieldname] = true;
-				$link.on("shown.bs.tab", function () {
+				$link.off("shown.bs.tab.pwaLazy").on("shown.bs.tab.pwaLazy", function () {
 					console.log("[WR-DEBUG:lazy-tab] tab-shown", { fieldname });
 					runLazyMount(frm, fieldname);
 				});
@@ -208,11 +276,22 @@
 		if (attach()) {
 			return;
 		}
-
-		setTimeout(() => {
-			console.log("[WR-DEBUG:lazy-tab] attach-retry", { fieldname });
-			attach();
-		}, 0);
+		[50, 250].forEach((ms) => {
+			const id = setTimeout(() => {
+				if (state.bindGen[fieldname] !== bindGen) {
+					return;
+				}
+				if (state.inflight[fieldname]) {
+					return;
+				}
+				if (state.done[fieldname] && paneHasMountedContent(frm, fieldname)) {
+					return;
+				}
+				console.log("[WR-DEBUG:lazy-tab] attach-retry", { fieldname, ms });
+				attach();
+			}, ms);
+			(state.retryTimers[fieldname] || (state.retryTimers[fieldname] = [])).push(id);
+		});
 	}
 
 	project_workload_assignment.getFieldTab = getFieldTab;
@@ -221,6 +300,10 @@
 
 	// Workload project-tab: boot here (form-tab always loads; doctype entry.js may be cached/skipped).
 	(function wrProjectTabBoot() {
+		if (window.__PWA_WR_PROJECT_BOOT__) {
+			return;
+		}
+		window.__PWA_WR_PROJECT_BOOT__ = true;
 		const ASSETS = [
 			"/assets/project_workload_assignment/css/workload-reports-filters.css",
 			"/assets/project_workload_assignment/css/workload-reports-charts.css",
@@ -315,7 +398,7 @@
 
 		function mountIfNeeded(api) {
 			const frm = window.cur_frm;
-			if (frm?.doctype === DOCTYPE && !frm._wrForm) {
+			if (frm?.doctype === DOCTYPE) {
 				console.log("[WR-DEBUG:form-boot] mount-now");
 				api.mount?.(frm);
 			}
@@ -332,9 +415,7 @@
 					console.log("[WR-DEBUG:form-boot] form-refresh", { name: frm?.doc?.name });
 					ensureWorkloadForm()
 						.then((api) => {
-							if (!frm._wrForm) {
-								api.mount?.(frm);
-							}
+							api.mount?.(frm);
 						})
 						.catch((err) => {
 							console.error("[WR-DEBUG:form-boot] refresh-failed", err);

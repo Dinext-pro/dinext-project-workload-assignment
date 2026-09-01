@@ -42,7 +42,7 @@
 	--wr-marker-shadow-normal: rgba(56, 142, 60, 0.92);
 	--wr-marker-shadow-warning: rgba(217, 119, 6, 0.92);
 	--wr-marker-shadow-overload: rgba(185, 28, 28, 0.92);
-	--wr-weekend-bg: #60bcff20;
+	--wr-weekend-bg: #ebf7ff;
 	--wr-absence-bg: linear-gradient(135deg, #e8f5e8, #c8e6c9);
 	--wr-absence-fg: #2e7d32;
 	--wr-current-header-bg: rgba(33, 150, 243, 0.14);
@@ -57,7 +57,7 @@
 }
 
 [data-theme="dark"] .workload-reports-table {
-	--wr-weekend-bg: rgba(96, 188, 255, 0.18);
+	--wr-weekend-bg: #243541;
 	--wr-absence-bg: linear-gradient(135deg, rgba(46, 125, 50, 0.35), rgba(46, 125, 50, 0.2));
 	--wr-absence-fg: #a5d6a7;
 	--wr-current-header-bg: rgba(33, 150, 243, 0.22);
@@ -155,7 +155,9 @@
 }
 
 .workload-reports-table .ag-cell.wr-cell--weekend {
-	background: var(--wr-weekend-bg);
+	/* Beat AG/dinext-table `background-color` on `.ag-cell` (same as prod CS !important). */
+	background-color: var(--wr-weekend-bg) !important;
+	background-image: none !important;
 }
 
 .workload-reports-table .ag-cell.wr-cell--absence {

@@ -162,7 +162,7 @@
 	max-height: var(--wr-chart-plot-height, 200px);
 	padding: 0;
 	border-right: 1px solid var(--border-color, #d1d8dd);
-	background: var(--card-bg, var(--bg-color));
+	background: transparent;
 	overflow: hidden;
 }
 
@@ -228,7 +228,7 @@
 	padding: 0 8px;
 	box-sizing: border-box;
 	overflow: hidden;
-	background: var(--card-bg, var(--bg-color));
+	background: transparent;
 	border-bottom: 1px solid var(--border-color, #d1d8dd);
 	z-index: 3;
 }
@@ -309,7 +309,7 @@
 	margin: 0;
 	padding: 0;
 	overflow: hidden;
-	background: var(--card-bg, var(--bg-color));
+	background: transparent;
 	will-change: transform;
 }
 

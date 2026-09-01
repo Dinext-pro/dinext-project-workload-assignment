@@ -35,15 +35,49 @@ export function isFieldTabVisible(frm, fieldname) {
 		: !!tab.wrapper?.hasClass?.("active");
 }
 
+function emptyLazyBucket() {
+	return {
+		mountFns: {},
+		done: {},
+		inflight: {},
+		overlayCount: {},
+		bound: {},
+		retryTimers: {},
+		bindGen: {},
+		docname: null,
+	};
+}
+
+function clearRetryTimers(state, fieldname) {
+	const timers = state.retryTimers[fieldname];
+	if (!timers?.length) {
+		return;
+	}
+	timers.forEach((id) => clearTimeout(id));
+	state.retryTimers[fieldname] = [];
+}
+
 function ensureLazyState(frm) {
+	const name = frm?.docname || frm?.doc?.name || null;
 	if (!frm._pwaLazy) {
-		frm._pwaLazy = {
-			mountFns: {},
-			done: {},
-			inflight: {},
-			overlayCount: {},
-			bound: {},
-		};
+		frm._pwaLazy = emptyLazyBucket();
+		frm._pwaLazy.docname = name;
+		return frm._pwaLazy;
+	}
+	if (frm._pwaLazy.docname !== name) {
+		Object.keys(frm._pwaLazy.retryTimers || {}).forEach((key) => {
+			clearRetryTimers(frm._pwaLazy, key);
+		});
+		const mountFns = frm._pwaLazy.mountFns;
+		frm._pwaLazy = emptyLazyBucket();
+		frm._pwaLazy.mountFns = mountFns;
+		frm._pwaLazy.docname = name;
+	}
+	if (!frm._pwaLazy.retryTimers) {
+		frm._pwaLazy.retryTimers = {};
+	}
+	if (!frm._pwaLazy.bindGen) {
+		frm._pwaLazy.bindGen = {};
 	}
 	return frm._pwaLazy;
 }
@@ -97,9 +131,23 @@ function hideTabOverlay(frm, fieldname) {
 	$pane.children(".pwa-tab-loading").addClass("is-hidden");
 }
 
+function paneHasMountedContent(frm, fieldname) {
+	const tab = getFieldTab(frm, fieldname);
+	const $pane = tab && tab.wrapper;
+	if (!$pane?.length) {
+		return false;
+	}
+	return !!$pane.find(
+		".workload-reports-root, .work-efforts-table, .dinext-table"
+	).length;
+}
+
 function runLazyMount(frm, fieldname) {
 	const state = ensureLazyState(frm);
-	if (state.done[fieldname] || state.inflight[fieldname]) {
+	if (state.inflight[fieldname]) {
+		return;
+	}
+	if (state.done[fieldname] && paneHasMountedContent(frm, fieldname)) {
 		return;
 	}
 
@@ -108,6 +156,7 @@ function runLazyMount(frm, fieldname) {
 		return;
 	}
 
+	state.done[fieldname] = false;
 	state.inflight[fieldname] = true;
 	showTabOverlay(frm, fieldname);
 
@@ -125,7 +174,7 @@ function runLazyMount(frm, fieldname) {
 
 /**
  * Bind mountFn to field's tab shown.
- * Each bind() (form refresh) allows one mount; tab re-entry does not remount.
+ * One mount per frm/doc while pane content lives. Retry only if tab missing.
  */
 export function bindLazyTabMount(frm, fieldname, mountFn) {
 	if (!frm || !fieldname || typeof mountFn !== "function") {
@@ -134,20 +183,31 @@ export function bindLazyTabMount(frm, fieldname, mountFn) {
 
 	const state = ensureLazyState(frm);
 	state.mountFns[fieldname] = mountFn;
-	if (!state.inflight[fieldname]) {
+	const hasContent = paneHasMountedContent(frm, fieldname);
+	if (!state.inflight[fieldname] && !hasContent) {
 		delete state.done[fieldname];
 	}
 
+	const bindGen = (state.bindGen[fieldname] = (state.bindGen[fieldname] || 0) + 1);
+	clearRetryTimers(state, fieldname);
+
+	if (state.bound[fieldname] && hasContent) {
+		return;
+	}
+
 	const attach = () => {
+		if (state.bindGen[fieldname] !== bindGen) {
+			return false;
+		}
 		const tab = getFieldTab(frm, fieldname);
 		if (!tab) {
 			return false;
 		}
 
 		const $link = tab.tab_link?.find?.(".nav-link");
-		if ($link?.length && !state.bound[fieldname]) {
+		if ($link?.length) {
 			state.bound[fieldname] = true;
-			$link.on("shown.bs.tab", function () {
+			$link.off("shown.bs.tab.pwaLazy").on("shown.bs.tab.pwaLazy", function () {
 				runLazyMount(frm, fieldname);
 			});
 		}
@@ -161,10 +221,21 @@ export function bindLazyTabMount(frm, fieldname, mountFn) {
 	if (attach()) {
 		return;
 	}
-
-	setTimeout(() => {
-		attach();
-	}, 0);
+	[50, 250].forEach((ms) => {
+		const id = setTimeout(() => {
+			if (state.bindGen[fieldname] !== bindGen) {
+				return;
+			}
+			if (state.inflight[fieldname]) {
+				return;
+			}
+			if (state.done[fieldname] && paneHasMountedContent(frm, fieldname)) {
+				return;
+			}
+			attach();
+		}, ms);
+		(state.retryTimers[fieldname] || (state.retryTimers[fieldname] = [])).push(id);
+	});
 }
 
 /** Install onto project_workload_assignment (idempotent). */
