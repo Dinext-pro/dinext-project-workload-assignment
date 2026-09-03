@@ -176,19 +176,29 @@ class TimesheetLimitsFormInput(TypedDict, total=False):
 	project_limits: str | None
 
 
+class PlanSource(TypedDict, total=False):
+	"""Один источник плана (лист или узел, с которого взяты часы)."""
+
+	task_name: str
+	subject: str
+	planned_hours: float
+
+
 class PlanData(TypedDict, total=False):
 	"""Данные плана по задаче и роли."""
 
 	task_name: str
 	planned_hours: float
 	subject: str
+	plan_sources: list[PlanSource]
 
 
 class HoursData(TypedDict, total=False):
-	"""Агрегированные часы UTP: total, users и доли по status."""
+	"""Агрегированные часы UTP: total, users, user_hours и доли по status."""
 
 	total: float
 	users: set[str]
+	user_hours: dict[str, dict[str, float]]
 
 
 LimitStatus = Literal["no-plan", "block", "warning", "message", "normal"]
@@ -213,6 +223,7 @@ class TimesheetLimitResult(TypedDict, total=False):
 	task_subject: str
 	plan_required: bool
 	plan_task_subject: str
+	plan_sources: list[PlanSource]
 	has_linked_issue: bool | None
 	root_task_with_issue: str | None
 

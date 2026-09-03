@@ -21,7 +21,6 @@ from project_workload_assignment.project_workload_assignment.work_efforts.work_e
 from project_workload_assignment.project_workload_assignment.work_efforts.save_changes import run_save_forecast_changes
 from project_workload_assignment.project_workload_assignment.work_efforts.save_forecast_as_plan import run_save_forecast_as_plan
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits import run_calculate_timesheet_limits
-from project_workload_assignment.project_workload_assignment.work_efforts.user_timesheet_limits import run_calculate_user_timesheet_limits
 from project_workload_assignment.project_workload_assignment.project_workload.models import (
 	ChartResponse,
 	ErrorOverloadResponse,
@@ -215,16 +214,20 @@ def save_work_efforts_forecast_changes() -> dict:
 
 @frappe.whitelist()
 def calculate_timesheet_limits() -> TimesheetLimitsResponse:
-	"""Calculate plan/fact limits for timesheet positions."""
+	"""Unified plan/limit calculator (ISS-2026-02105).
+
+	Parameters on ``positions``: ``year``/``month`` → WE cell; omit → UT / all periods.
+	Temporary home in PWA; later move to dinext_timesheets.
+	"""
 	form_input: TimesheetLimitsFormInput = frappe.form_dict
 	return run_calculate_timesheet_limits(form_input)
 
 
 @frappe.whitelist()
 def calculate_user_timesheet_limits() -> TimesheetLimitsResponse:
-	"""SS V4 rules for User Timesheet dialog. Not for WE per-month cells."""
+	"""Alias of ``calculate_timesheet_limits`` for UT / gantt callers."""
 	form_input: TimesheetLimitsFormInput = frappe.form_dict
-	return run_calculate_user_timesheet_limits(form_input)
+	return run_calculate_timesheet_limits(form_input)
 
 
 @frappe.whitelist()
