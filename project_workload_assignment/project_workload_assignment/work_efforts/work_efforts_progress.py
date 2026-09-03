@@ -2,8 +2,8 @@
 """Lightweight work efforts progress for Project Details dashboard bar.
 
 Scalars only (plan/fact/percent) — no task/role/period tree.
-Semantics aligned with Client Script `_get_plant_fact_efforts`:
-PWE plan + UTP fact (Согласовано), project roles, display periods.
+Plan: TaskPlanResolver on root tasks (ISS-2026-02105, no parent+child double count).
+Fact: UTP «Согласовано» sum, project roles, display periods.
 """
 
 from __future__ import annotations
@@ -21,6 +21,13 @@ from project_workload_assignment.project_workload_assignment.work_efforts.period
 )
 from project_workload_assignment.project_workload_assignment.work_efforts.summary import (
 	get_project_roles,
+)
+from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.bulk_loader import (
+	TimesheetLimitsBulkData,
+	TimesheetLimitsBulkLoader,
+)
+from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.plan_resolver import (
+	TaskPlanResolver,
 )
 
 
@@ -42,25 +49,46 @@ def _calc_percent(plan: float, fact: float) -> float:
 	return round(pct, 2)
 
 
+def _root_task_names(bulk: TimesheetLimitsBulkData) -> list[str]:
+	names: list[str] = []
+	for name, meta in bulk.task_meta.items():
+		parent = meta.get("parent_task")
+		if not parent or parent not in bulk.task_meta:
+			names.append(name)
+	return names
+
+
+def sum_hierarchical_plan_hours(
+	project: str,
+	roles: list[str],
+	periods: list[dict],
+	bulk: TimesheetLimitsBulkData,
+) -> float:
+	"""Project-level plan: resolve each root × role × period, no double-count."""
+	if not roles or not periods:
+		return 0.0
+	cache: dict = {}
+	total = 0.0
+	for task in _root_task_names(bulk):
+		for role in roles:
+			for period in periods:
+				plan = TaskPlanResolver.resolve(
+					project,
+					task,
+					role,
+					period["year"],
+					period["month"],
+					bulk,
+					plan_cache=cache,
+				)
+				if plan:
+					total += flt(plan["planned_hours"])
+	return total
+
+
 def _sum_plan_hours(project: str, roles: list[str], periods: list[dict]) -> float:
-	PWE = frappe.qb.DocType("Project Work Efforts")
-	PWEA = frappe.qb.DocType("Project Work Efforts Amount")
-
-	period_criterion = Criterion.any(
-		[(PWEA.pwea_year == p["year"]) & (PWEA.pwea_month == p["month"]) for p in periods]
-	)
-
-	row = (
-		frappe.qb.from_(PWE)
-		.inner_join(PWEA)
-		.on(PWEA.parent == PWE.name)
-		.select(Coalesce(Sum(PWEA.pwea_plan), 0).as_("total"))
-		.where(PWE.pwe_project == project)
-		.where(PWE.pwe_project_role.isin(roles))
-		.where(period_criterion)
-		.run(as_dict=True)
-	)
-	return flt(row[0]["total"] if row else 0)
+	bulk = TimesheetLimitsBulkLoader.load([{"project": project}])
+	return sum_hierarchical_plan_hours(project, roles, periods, bulk)
 
 
 def _sum_fact_hours(project: str, roles: list[str], periods: list[dict]) -> float:
