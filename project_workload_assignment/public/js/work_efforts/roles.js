@@ -101,9 +101,9 @@ export async function deleteRole(frm, taskId, role) {
                 })
             )
         );
+        frappe.show_alert({ message: __("Role deleted"), indicator: "green" }, 3);
     }
 
-    frappe.show_alert({ message: __("Role deleted"), indicator: "green" }, 3);
     await postRoleMutationRefresh(frm);
 }
 
@@ -231,7 +231,7 @@ function buildAddRoleControl(frm, taskId) {
 }
 
 function buildDeleteRoleControl(frm, row) {
-    if (hasFactOnRow(row)) {
+    if (row.has_own_pwe === false || hasFactOnRow(row)) {
         return null;
     }
 
