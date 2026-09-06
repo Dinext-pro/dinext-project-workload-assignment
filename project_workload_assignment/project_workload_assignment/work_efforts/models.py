@@ -19,6 +19,7 @@ class WorkEffortRoleEntry(TypedDict, total=False):
 	"""Строка role_data; дополнительно plan_*, forecast_*, fact_*, fact_utps_* по периодам."""
 
 	role: str
+	has_own_pwe: bool
 
 
 class ConsolidatedTaskEntry(TypedDict, total=False):
@@ -90,6 +91,7 @@ class WeRow(TypedDict, total=False):
 	custom_planned_end_date: str | None
 	act_start_date: str | None
 	act_end_date: str | None
+	has_own_pwe: bool
 
 
 class WeGridResponse(TypedDict):
