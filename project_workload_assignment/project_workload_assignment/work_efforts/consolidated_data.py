@@ -37,7 +37,7 @@ def keep_role_entry(role_entry: WorkEffortRoleEntry) -> bool:
     if role and str(role).strip():
         return True
     for key, value in role_entry.items():
-        if key == "role" or str(key).startswith("fact_utps_"):
+        if key in ("role", "has_own_pwe") or str(key).startswith("fact_utps_"):
             continue
         if str(key).startswith(("plan_", "forecast_", "fact_")) and _to_float(value) != 0:
             return True
@@ -190,7 +190,7 @@ def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataRespons
 
     for (task_id, role), data in pwe_grouped.items():
         if task_id in aggregated_tasks:
-            role_entry: WorkEffortRoleEntry = {"role": role}
+            role_entry: WorkEffortRoleEntry = {"role": role, "has_own_pwe": True}
             for period_key, value in data["plan_data"].items():
                 role_entry[f"plan_{period_key}"] = value
             for period_key, value in data["forecast_data"].items():
@@ -205,7 +205,7 @@ def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataRespons
                     role_entry = entry
                     break
             if not role_entry:
-                role_entry = {"role": role}
+                role_entry = {"role": role, "has_own_pwe": False}
                 aggregated_tasks[task_id]["role_data"].append(role_entry)
             for period_key, hours in data["fact_data"].items():
                 role_entry[f"fact_{period_key}"] = hours
@@ -232,7 +232,7 @@ def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataRespons
                         parent_role_entry = pre
                         break
                 if not parent_role_entry:
-                    parent_role_entry = {"role": role}
+                    parent_role_entry = {"role": role, "has_own_pwe": False}
                     if "role_data" not in parent:
                         parent["role_data"] = []
                     parent["role_data"].append(parent_role_entry)

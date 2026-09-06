@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import (
@@ -259,3 +260,55 @@ class TestWeGridParity(FrappeTestCase):
 			"act_end_date",
 		):
 			self.assertIn(field, row)
+
+	def test_grid_has_own_pwe_matches_real_pwe(self):
+		"""Live: has_own_pwe совпадает с наличием Project Work Efforts на задаче."""
+		if not dependency_project_available():
+			self.skipTest(f"Dependency project {DEPENDENCY_PROJECT!r} не найден на сайте")
+
+		owned = {
+			(row.pwe_task, row.pwe_project_role or "")
+			for row in frappe.get_all(
+				"Project Work Efforts",
+				filters={"pwe_project": DEPENDENCY_PROJECT},
+				fields=["pwe_task", "pwe_project_role"],
+			)
+		}
+		self.assertTrue(owned, "На dependency project нет PWE — нечего сверять")
+
+		v2 = run_get_work_efforts_grid({"project": DEPENDENCY_PROJECT})
+		named = [row for row in v2["rows"] if row.get("role")]
+		self.assertTrue(named)
+
+		mismatches = []
+		rollup_only = []
+		for row in named:
+			key = (row["task_id"], row["role"] or "")
+			flag = bool(row.get("has_own_pwe"))
+			exists = key in owned
+			if flag != exists:
+				mismatches.append((key, flag, exists))
+			if exists is False:
+				rollup_only.append(key)
+
+		self.assertFalse(mismatches, f"has_own_pwe != PWE: {mismatches[:10]}")
+		self.assertTrue(rollup_only, "Ожидали хотя бы одну rollup-only роль без своего PWE")
+
+	def test_flatten_copies_has_own_pwe_flag(self):
+		"""Rollup-only parent: has_own_pwe=False. Leaf with PWE: True."""
+		tasks = [
+			{
+				"value": "T-PARENT",
+				"parent_task": None,
+				"role_data": [{"role": "Dev", "has_own_pwe": False}],
+			},
+			{
+				"value": "T-LEAF",
+				"parent_task": "T-PARENT",
+				"role_data": [{"role": "Dev", "has_own_pwe": True}],
+			},
+		]
+		rows = flatten_consolidated_tasks_to_v2_rows(tasks, [], "forecast_and_fact")
+		by_task = {row["task_id"]: row for row in rows}
+		self.assertFalse(by_task["T-PARENT"]["has_own_pwe"])
+		self.assertTrue(by_task["T-LEAF"]["has_own_pwe"])
