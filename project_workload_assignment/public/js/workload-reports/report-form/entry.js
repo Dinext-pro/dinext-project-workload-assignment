@@ -6,6 +6,7 @@
  */
 (function () {
 	frappe.provide("project_workload_assignment");
+	console.log("[WR-DEBUG:form-entry] script-loaded");
 
 	const DOCTYPE = "Projects Workload Report";
 	const ASSETS = [
@@ -52,18 +53,24 @@
 	}
 
 	function bindOnReportRoute() {
-		if (!isReportFormRoute(frappe.get_route?.() || [])) return;
+		const route = frappe.get_route?.() || [];
+		if (!isReportFormRoute(route)) return;
+		console.log("[WR-DEBUG:form-entry] route-match", { route });
 		ensureScripts()
 			.then(() => {
+				console.log("[WR-DEBUG:form-entry] scripts-ready");
 				project_workload_assignment.workloadReports.reportForm.bindForm();
 			})
-			.catch(() => {});
+			.catch((err) => {
+				console.error("[WR-DEBUG:form-entry] scripts-failed", err);
+			});
 	}
 
 	function onRoute() {
 		if (routeTimer) clearTimeout(routeTimer);
 		routeTimer = setTimeout(() => {
 			routeTimer = null;
+			console.log("[WR-DEBUG:form-entry] onRoute", { route: frappe.get_route?.() });
 			bindOnReportRoute();
 		}, 0);
 	}

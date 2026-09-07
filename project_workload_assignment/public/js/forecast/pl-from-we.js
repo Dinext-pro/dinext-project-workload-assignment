@@ -26,13 +26,29 @@ function pwr_pl_register_forecast_from_we_menu(frm) {
 	if (!frm || frm.is_new()) {
 		return;
 	}
+	// New PL: project_budget_*; develop PL: project_pl_* — share one menu array.
+	frappe.provide("dinext_projects.project_pl_forecast_menu");
 	frappe.provide("dinext_projects.project_budget_forecast_menu");
-	if (!Array.isArray(dinext_projects.project_budget_forecast_menu)) {
-		dinext_projects.project_budget_forecast_menu = [];
+	if (!Array.isArray(dinext_projects.project_pl_forecast_menu)) {
+		dinext_projects.project_pl_forecast_menu = [];
 	}
-	dinext_projects.project_budget_forecast_menu = dinext_projects.project_budget_forecast_menu.filter(
-		(item) => !item[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]
-	);
+	if (
+		!Array.isArray(dinext_projects.project_budget_forecast_menu) ||
+		dinext_projects.project_budget_forecast_menu !== dinext_projects.project_pl_forecast_menu
+	) {
+		if (
+			Array.isArray(dinext_projects.project_budget_forecast_menu) &&
+			dinext_projects.project_budget_forecast_menu.length &&
+			!dinext_projects.project_pl_forecast_menu.length
+		) {
+			dinext_projects.project_pl_forecast_menu = dinext_projects.project_budget_forecast_menu;
+		}
+		dinext_projects.project_budget_forecast_menu = dinext_projects.project_pl_forecast_menu;
+	}
+	dinext_projects.project_budget_forecast_menu = dinext_projects.project_pl_forecast_menu =
+		dinext_projects.project_pl_forecast_menu.filter(
+			(item) => !item[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]
+		);
 	dinext_projects.project_budget_forecast_menu.push({
 		label: PWR_PL_FORECAST_COST_LABEL,
 		action: (frm) => add_forecast_from_work_efforts_handler(frm, "cost"),
@@ -45,8 +61,11 @@ function pwr_pl_register_forecast_from_we_menu(frm) {
 			[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]: true,
 		});
 	}
-	if (typeof dinext_projects.refresh_project_budget_forecast_dropdown === "function") {
-		dinext_projects.refresh_project_budget_forecast_dropdown(frm);
+	const refresh =
+		dinext_projects.refresh_project_budget_forecast_dropdown ||
+		dinext_projects.refresh_pl_forecast_dropdown;
+	if (typeof refresh === "function") {
+		refresh(frm);
 	}
 }
 

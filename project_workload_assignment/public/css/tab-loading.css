@@ -21,3 +21,22 @@
 .pwa-tab-loading p {
 	margin: 0;
 }
+
+/* Do not use --primary here: Desk sets it to ink (#171717), ring vanishes on dark. */
+.wr-spinner {
+	display: block;
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	flex: 0 0 auto;
+	border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+	border-top-color: var(--blue-500, #2490ef);
+	border-radius: 50%;
+	animation: wr-spin 0.7s linear infinite;
+}
+
+@keyframes wr-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

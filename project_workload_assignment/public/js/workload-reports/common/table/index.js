@@ -4,6 +4,7 @@ import { syncTableHeight, bindTableResize, unbindTableResize } from "./viewport.
 import { bindLoadMore, unbindLoadMore } from "./paging.js";
 import { createOnCellDoubleClicked } from "./navigation.js";
 import { flushChartsWhenVisible } from "../charts/index.js";
+import { createSpinner } from "../spinner.js";
 
 export { createProjectsExpandHandler } from "./tree.js";
 export { PAGE_SIZE } from "./paging.js";
@@ -36,16 +37,26 @@ export const destroyTable = (container) => {
 	if (!state) return;
 	_destroyTable(state);
 	delete container._wrTable;
+	_clearTableChrome(container);
 	container.replaceChildren();
+};
+
+const TABLE_LOADING = "wr-table--loading";
+
+const _clearTableChrome = (container) => {
+	container.classList.remove("text-muted", TABLE_LOADING);
 };
 
 const _showLoading = (container, state) => {
 	if (state.table) return;
-	container.classList.add("text-muted");
-	container.textContent = __("Loading...");
+	_clearTableChrome(container);
+	container.classList.add(TABLE_LOADING);
+	container.replaceChildren();
+	container.appendChild(createSpinner());
 };
 
 const _showError = (container, err) => {
+	_clearTableChrome(container);
 	container.classList.add("text-muted");
 	container.textContent = err?.message || String(err);
 };
@@ -140,7 +151,6 @@ const _createOpts = (container, state, rows, columns, onExpandRow, onReady) => {
 			rowBorder: false,
 			headerRowBorder: false,
 			pinnedColumnBorder: false,
-			cellHorizontalPadding: 0,
 		},
 		gridOptions: {
 			rowHeight: getRowHeight(),
@@ -180,7 +190,6 @@ export async function loadTable(container, fetchFn, opts = {}) {
 	const showFact = !!opts.showFact;
 	const preserveExpand = opts.preserveExpand !== false;
 
-	container.classList.remove("text-muted");
 	_showLoading(container, state);
 	syncTableHeight(container);
 
@@ -233,11 +242,11 @@ export async function loadTable(container, fetchFn, opts = {}) {
 			if (typeof state.table.refresh === "function") {
 				state.table.refresh(rows);
 			}
-			// showFact / fill: same colIds → mounted cells keep old cellClass/cellStyle
-			// until force refresh (period change / scroll recreate cells — почему «потом» ок).
+			state.table.api?.redrawRows?.();
 			state.table.api?.refreshCells?.({ force: true });
 			_bindPaging(container, state);
 		} else {
+			_clearTableChrome(container);
 			container.replaceChildren();
 			syncTableHeight(container);
 			const createOpts = _createOpts(

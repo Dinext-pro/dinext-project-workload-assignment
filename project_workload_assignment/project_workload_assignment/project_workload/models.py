@@ -502,10 +502,13 @@ class ChartSeries(TypedDict, total=False):
 	capacity_hours: list[float]
 	utilization_plan_hours: list[float]
 	utilization_forecast_hours: list[float]
+	utilization_actual_hours: list[float]
 	workload_forecast_hours_by_wtype: dict[str, list[float]]
+	workload_forecast_hours_by_role: dict[str, list[float]]
 	project_plan_hours: list[float]
 	team_capacity_hours: list[float]
 	actual_hours_by_wtype: dict[str, list[float]]
+	actual_hours_by_role: dict[str, list[float]]
 class ChartMeta(TypedDict, total=False):
 	worker_wtype_filter: str
 	utilization_loaded: bool

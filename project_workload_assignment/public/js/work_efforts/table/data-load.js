@@ -36,7 +36,7 @@ function ensure_aggregated_tasks(frm) {
             method: "project_workload_assignment.api.get_work_efforts_consolidated_data",
             args: {
                 project: frm.doc.name,
-                view_options: frm.view_options || "Прогноз и факт",
+                view_options: frm.view_options || "Forecast and Fact",
             },
             freeze: true,
             freeze_message: __("Loading work efforts data..."),
@@ -56,7 +56,7 @@ function ensure_aggregated_tasks(frm) {
                 resolve(frm.aggregatedTasks);
             },
             error: function (err) {
-                console.error("Ошибка при загрузке данных:", err);
+                console.error("Error loading work efforts data: {0}", [err]);
                 frappe.msgprint(__("Error loading work efforts data"));
                 reject(err);
             },

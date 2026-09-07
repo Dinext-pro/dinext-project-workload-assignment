@@ -111,6 +111,7 @@ def _flatten_task_to_rows(
 			),
 			"act_start_date": str(task["act_start_date"]) if task.get("act_start_date") else None,
 			"act_end_date": str(task["act_end_date"]) if task.get("act_end_date") else None,
+			"has_own_pwe": bool(role_entry.get("has_own_pwe")),
 		}
 
 		for period in periods:

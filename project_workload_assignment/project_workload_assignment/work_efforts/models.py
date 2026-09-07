@@ -19,6 +19,7 @@ class WorkEffortRoleEntry(TypedDict, total=False):
 	"""Строка role_data; дополнительно plan_*, forecast_*, fact_*, fact_utps_* по периодам."""
 
 	role: str
+	has_own_pwe: bool
 
 
 class ConsolidatedTaskEntry(TypedDict, total=False):
@@ -90,6 +91,7 @@ class WeRow(TypedDict, total=False):
 	custom_planned_end_date: str | None
 	act_start_date: str | None
 	act_end_date: str | None
+	has_own_pwe: bool
 
 
 class WeGridResponse(TypedDict):
@@ -176,19 +178,29 @@ class TimesheetLimitsFormInput(TypedDict, total=False):
 	project_limits: str | None
 
 
+class PlanSource(TypedDict, total=False):
+	"""Один источник плана (лист или узел, с которого взяты часы)."""
+
+	task_name: str
+	subject: str
+	planned_hours: float
+
+
 class PlanData(TypedDict, total=False):
 	"""Данные плана по задаче и роли."""
 
 	task_name: str
 	planned_hours: float
 	subject: str
+	plan_sources: list[PlanSource]
 
 
 class HoursData(TypedDict, total=False):
-	"""Агрегированные часы UTP: total, users и доли по status."""
+	"""Агрегированные часы UTP: total, users, user_hours и доли по status."""
 
 	total: float
 	users: set[str]
+	user_hours: dict[str, dict[str, float]]
 
 
 LimitStatus = Literal["no-plan", "block", "warning", "message", "normal"]
@@ -213,8 +225,20 @@ class TimesheetLimitResult(TypedDict, total=False):
 	task_subject: str
 	plan_required: bool
 	plan_task_subject: str
+	plan_sources: list[PlanSource]
 	has_linked_issue: bool | None
 	root_task_with_issue: str | None
 
 
 TimesheetLimitsResponse = list[TimesheetLimitResult]
+
+
+# --- get_work_efforts_progress ---
+
+
+class WorkEffortsProgressResponse(TypedDict, total=False):
+	"""Scalars for Project Details «Трудозатраты» bar."""
+
+	plan_hours: float
+	fact_hours: float
+	percent: float

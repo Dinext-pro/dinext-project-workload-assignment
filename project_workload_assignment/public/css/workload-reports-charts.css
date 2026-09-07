@@ -69,6 +69,10 @@
 	width: 100%;
 }
 
+.wr-charts-root .dinext-chart-panel__chart .wr-chart-status--loading {
+	min-height: var(--wr-chart-plot-height, 200px);
+}
+
 /* —— root / panel shell —— */
 
 .wr-charts-root {
@@ -117,6 +121,12 @@
 	overflow: visible;
 }
 
+/* Form / Project tab: left chart panel inset (plot stays table-aligned). */
+.workload-reports-form-host .wr-charts-root .dinext-chart-panel__gutter-chrome,
+.workload-reports-project-tab .wr-charts-root .dinext-chart-panel__gutter-chrome {
+	padding: 8px 8px 8px var(--wr-form-inset-x, var(--padding-md, 15px));
+}
+
 /* Title/collapse live in filter actions (visibility toggle). Hide gutter head. */
 .wr-charts-root .dinext-chart-panel__gutter-head {
 	display: none;
@@ -152,6 +162,7 @@
 	max-height: var(--wr-chart-plot-height, 200px);
 	padding: 0;
 	border-right: 1px solid var(--border-color, #d1d8dd);
+	background: transparent;
 	overflow: hidden;
 }
 
@@ -217,7 +228,8 @@
 	padding: 0 8px;
 	box-sizing: border-box;
 	overflow: hidden;
-	background: var(--ag-background-color, var(--bg-color));
+	background: transparent;
+	border-bottom: 1px solid var(--border-color, #d1d8dd);
 	z-index: 3;
 }
 
@@ -227,7 +239,32 @@
 	flex: 0 0 auto;
 	gap: 6px;
 	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--text-color);
 	white-space: nowrap;
+	cursor: pointer;
+	font: inherit;
+}
+
+.wr-charts-root .wr-chart-legend-item:hover {
+	opacity: 0.92;
+}
+
+.wr-charts-root .wr-chart-legend-item:focus-visible {
+	border-radius: var(--border-radius-sm, 4px);
+	outline: 2px solid var(--primary, #2490ef);
+	outline-offset: 2px;
+}
+
+.wr-charts-root .wr-chart-legend-item.is-hidden {
+	color: var(--text-muted, #8d99a6);
+	opacity: 0.55;
+}
+
+.wr-charts-root .wr-chart-legend-item.is-hidden .wr-chart-legend-swatch {
+	opacity: 0.35;
 }
 
 .wr-charts-root .wr-chart-legend-swatch {
@@ -272,6 +309,7 @@
 	margin: 0;
 	padding: 0;
 	overflow: hidden;
+	background: transparent;
 	will-change: transform;
 }
 
@@ -287,9 +325,26 @@
 /* Markup = filters addCheckbox. Do not override width/height — Desk checkbox.scss needs --checkbox-size. */
 
 .wr-charts-root .wr-chart-filters {
-	display: block;
-	width: auto;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
+	width: 100%;
 	max-width: 100%;
 	margin: 0;
 	padding: 0;
+}
+
+.wr-charts-root .wr-chart-stack-mode {
+	width: 100%;
+	min-width: 0;
+}
+
+.wr-charts-root .wr-chart-stack-mode select {
+	width: 100%;
+	max-width: 100%;
+	height: 24px;
+	padding: 0 6px;
+	font-size: 12px;
+	line-height: 22px;
 }
