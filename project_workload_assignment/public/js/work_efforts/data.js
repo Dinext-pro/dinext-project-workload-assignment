@@ -1,4 +1,9 @@
-import { PERIOD_FIELD_RE, ROW_ID_SEP } from "./constants.js";
+import {
+    PERIOD_FIELD_RE,
+    ROW_ID_SEP,
+    VIEW_OPTION_FORECAST_AND_FACT,
+    normalizeViewMode,
+} from "./constants.js";
 import { initState } from "./state.js";
 import { buildSummaryRows } from "./summary.js";
 
@@ -8,7 +13,7 @@ function rowId(apiRow) {
 
 function copyPeriodFields(apiRow, gridRow) {
     for (const [key, value] of Object.entries(apiRow)) {
-        if (PERIOD_FIELD_RE.test(key)) {
+        if (PERIOD_FIELD_RE.test(key) || key.startsWith("fact_utps_")) {
             gridRow[key] = value;
         }
     }
@@ -33,6 +38,9 @@ function toGridRow(apiRow, index) {
         merge_group_id: apiRow.merge_group_id,
         merge_group_index: apiRow.merge_group_index,
         merge_group_size: apiRow.merge_group_size,
+        has_children: apiRow.has_children,
+        has_own_pwe: apiRow.has_own_pwe,
+        assignments: "",
     };
     copyTaskDates(apiRow, gridRow);
     copyPeriodFields(apiRow, gridRow);
@@ -82,35 +90,44 @@ export function buildTreeData(flatRows) {
     return childNodes(null);
 }
 
-function normalizeViewMode(viewOptions) {
-    if (viewOptions === __("Forecast Only")) {
-        return "forecast_only";
+/** Rebuild tree from last API flat rows (drops synthetic remaining rows). */
+export function rebuildRowsFromApi(frm) {
+    const state = initState(frm);
+    if (!state.flatApiRows) {
+        return state.rows;
     }
-    if (viewOptions === __("Actual Only")) {
-        return "fact_only";
-    }
-    return "forecast_and_fact";
+    state.rows = buildTreeData(state.flatApiRows);
+    return state.rows;
 }
 
-function applyGridResponse(frm, message) {
+async function applyGridResponse(frm, message) {
     const state = initState(frm);
     state.periods = message.periods || [];
-    state.rows = buildTreeData(message.rows || []);
+    state.flatApiRows = message.rows || [];
+    state.rows = buildTreeData(state.flatApiRows);
     state.summaryRows = buildSummaryRows(frm, state.periods, message.summary_rows);
     // Force limits recompute from fresh we facts.
     frm.periodLimitStatuses = null;
+
+    if (frm.show_assignments) {
+        // dynamic import — avoid circular deps with assignments.js
+        const asg = await import("./assignments.js");
+        await asg.ensureAssignmentsLoaded(frm);
+        asg.applyRemainingAssignmentRows(frm);
+    }
     return message;
 }
 
 export async function loadGridData(frm, periodType) {
     const period_type = periodType || frm._we_period_type || "month";
+    const viewLabel = frm.view_options || __(VIEW_OPTION_FORECAST_AND_FACT);
 
     try {
         const message = await frappe.xcall("project_workload_assignment.api.get_work_efforts_grid", {
             project: frm.doc.name,
             period_type,
-            view_options: frm.view_options || __("Forecast and Actual"),
-            view_mode: normalizeViewMode(frm.view_options || __("Forecast and Actual")),
+            view_options: viewLabel,
+            view_mode: normalizeViewMode(viewLabel),
             include_plan: frm.hide_plan ? 0 : 1,
         });
         if (!message) {

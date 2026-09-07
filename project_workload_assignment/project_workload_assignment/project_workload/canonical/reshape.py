@@ -194,6 +194,7 @@ def _adapt_project_row(legacy_row: dict, periods: list[dict], parent_user_email:
 		**copy_period_scalars(legacy_row, period_keys),
 	}
 	row["email"] = email
+	row.pop("userHolidays", None)
 	return row
 
 
@@ -363,6 +364,53 @@ def nest_by_indent(tree_data: list, periods: list[dict]) -> list[dict]:
 	return roots
 
 
+def _holiday_date_key(value: Any) -> str:
+	raw = value.get("date") if isinstance(value, dict) else value
+	if raw is None:
+		return ""
+	return str(raw)[:10]
+
+
+def _normalize_holiday_entries(entries: Any) -> list[dict]:
+	out: list[dict] = []
+	for entry in entries or []:
+		date_key = _holiday_date_key(entry)
+		if not date_key:
+			continue
+		item: dict[str, Any] = {"date": date_key}
+		if isinstance(entry, dict) and "weekly_off" in entry:
+			item["weekly_off"] = bool(entry.get("weekly_off"))
+		out.append(item)
+	return out
+
+
+def _stamp_project_tree_holidays(rows: list[dict], message: dict) -> None:
+	"""Attach message-level holiday lists onto nested project-tree rows."""
+	meta = message.get("metadata") if isinstance(message.get("metadata"), dict) else {}
+	user_map = meta.get("user_holidays") if isinstance(meta.get("user_holidays"), dict) else {}
+	project_hl = _normalize_holiday_entries(meta.get("project_holidays"))
+
+	def walk(row: dict) -> None:
+		email = row.get("email") or ""
+		user_hl = _normalize_holiday_entries(user_map.get(email) or [])
+		if row.get("kind") == "user":
+			# User row uses only userHolidays in the table; fall back to project calendar.
+			if user_hl:
+				row["userHolidays"] = user_hl
+			elif project_hl:
+				row["userHolidays"] = project_hl
+		else:
+			if user_hl:
+				row["userHolidays"] = user_hl
+			if project_hl:
+				row["projectHolidays"] = project_hl
+		for child in row.get("children") or []:
+			walk(child)
+
+	for row in rows:
+		walk(row)
+
+
 def _project_meta(msg: dict) -> dict:
 	meta: dict[str, Any] = {
 		"users_count": msg.get("users_count") or 0,
@@ -383,6 +431,7 @@ def reshape_project_tree(message: Any) -> dict:
 	periods = adapt_periods(msg.get("periods"))
 	tree = msg.get("tree_data") if isinstance(msg.get("tree_data"), list) else []
 	rows = nest_by_indent(tree, periods)
+	_stamp_project_tree_holidays(rows, msg)
 	return {"periods": periods, "rows": rows, "meta": _project_meta(msg)}
 
 

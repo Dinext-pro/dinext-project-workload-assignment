@@ -84,8 +84,12 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 			filter_users_by_wtype,
 			normalize_worker_wtype_filter,
 		)
+		from project_workload_assignment.project_workload_assignment.project_workload.core.project_role_helpers import (
+			normalize_project_role_filters,
+		)
 
 		worker_wtype_filter = normalize_worker_wtype_filter(fd.get('worker_wtype'))
+		project_role_filters = normalize_project_role_filters(fd.get('project_role_filters'))
 		mode = fd.get('mode', 'full')
 		detail_user = fd.get('detail_user')
 		
@@ -108,7 +112,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		    # Для детализации считаем только одного пользователя, сохраняя остальные фильтры.
 		    user = detail_user
 		
-		perf_log("PARAMS mode=" + str(mode) + ", limit=" + str(limit) + ", offset=" + str(offset) + ", detail_user=" + str(detail_user) + ", view_type=" + str(view_type) + ", period_range=" + str(period_range) + ", worker_wtype=" + str(worker_wtype_filter) + ", user=" + str(user) + ", project=" + str(project) + ", project_portfolio=" + str(project_portfolio) + ", user_group=" + str(user_group))
+		perf_log("PARAMS mode=" + str(mode) + ", limit=" + str(limit) + ", offset=" + str(offset) + ", detail_user=" + str(detail_user) + ", view_type=" + str(view_type) + ", period_range=" + str(period_range) + ", worker_wtype=" + str(worker_wtype_filter) + ", project_roles=" + str(project_role_filters) + ", user=" + str(user) + ", project=" + str(project) + ", project_portfolio=" + str(project_portfolio) + ", user_group=" + str(user_group))
 		
 		# ISS-2026-00865 V2: для user_totals сначала выбираем только страницу пользователей,
 		# а затем грузим назначения только по этой странице. Детализация проектов остается
@@ -160,6 +164,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        user_group_parent=user_group,
 		        use_sql_user_group_join=use_join,
 		        worker_wtype_filter=worker_wtype_filter,
+		        project_role_filters=project_role_filters or None,
 		    )
 		    total_users = int(bundle.get("total_users") or 0)
 		    page_users = bundle.get("page_users") or []
@@ -191,6 +196,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		        use_sql_user_group_join=bool(use_sql_ug),
 		        restrict_users=None,
 		        worker_wtype_filter=worker_wtype_filter,
+		        project_role_filters=project_role_filters or None,
 		    )
 		    if assignments is None:
 		        assignments = []
@@ -498,6 +504,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            use_sql_user_group_join=bool(use_sql_ug),
 		            restrict_users=restrict_users,
 		            worker_wtype_filter=worker_wtype_filter,
+		            project_role_filters=project_role_filters or None,
 		        )
 
 		    actual_results = compute_team_actual_hours(
@@ -628,10 +635,11 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		            '_project': project_name,
 		            '_workingHours': user_daily_hours.get(user_email, {}),
 		            '_absences': user_absences.get(user_email, []),
-		            # ISS-2026-00865 #7: оба календаря в project-row; клиент объединяет для weekly/monthly %.
-		            '_userHolidays': holiday_lists_cache.get(user_info.get('wholiday_list', ''), []),
+		            # ISS-2026-02657 #3: строка проекта — HL проекта, иначе Company. Не Worker.
 		            '_projectHolidays': holiday_lists_cache.get(
-		                resolve_project_holiday_list(project_info) or '',
+		                project_info.get("effective_holiday_list")
+		                or resolve_project_holiday_list(project_info)
+		                or "",
 		                [],
 		            ),
 		        }

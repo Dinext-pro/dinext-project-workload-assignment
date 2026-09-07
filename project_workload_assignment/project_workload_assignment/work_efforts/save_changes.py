@@ -124,39 +124,18 @@ def _validate_change(rows: list, change: WeSaveForecastChange) -> str | None:
     return None
 
 
-def _save_forecast_change(project: str, change: WeSaveForecastChange) -> None:
-    task_id = change.get("task_id") or ""
-    role = change.get("role") or None
-    if role and not str(role).strip():
-        role = None
-    period_key = change.get("period_key") or ""
-    value = _to_float(change.get("value"))
+def _normalize_role(role: object) -> str | None:
+    if role and str(role).strip():
+        return str(role)
+    return None
 
-    if not task_id or not period_key:
-        return
 
+def _apply_period_value(pwe_doc, period_key: str, value: float) -> bool:
     parts = period_key.split("_")
     if len(parts) != 2:
-        return
+        return False
     year = cint(parts[0])
     month = cint(parts[1])
-
-    filters: dict[str, object] = {"pwe_project": project, "pwe_task": task_id}
-    if role:
-        filters["pwe_project_role"] = role
-    else:
-        filters["pwe_project_role"] = ["is", "not set"]
-
-    pwe_name = frappe.db.get_value("Project Work Efforts", filters)
-    if pwe_name:
-        pwe_doc = frappe.get_doc("Project Work Efforts", pwe_name)
-    else:
-        pwe_doc = frappe.new_doc("Project Work Efforts")
-        pwe_doc.pwe_project = project
-        pwe_doc.pwe_task = task_id
-        if role:
-            pwe_doc.pwe_project_role = role
-        pwe_doc.insert()
 
     existing = None
     for row in pwe_doc.pwe_amount:
@@ -175,8 +154,59 @@ def _save_forecast_change(project: str, change: WeSaveForecastChange) -> None:
                 "pwea_expected": value,
             },
         )
+    return True
 
-    pwe_doc.save()
+
+def _save_forecast_group(
+    project: str,
+    task_id: str,
+    role: str | None,
+    group: list[WeSaveForecastChange],
+) -> None:
+    filters: dict[str, object] = {"pwe_project": project, "pwe_task": task_id}
+    if role:
+        filters["pwe_project_role"] = role
+    else:
+        filters["pwe_project_role"] = ["is", "not set"]
+
+    pwe_name = frappe.db.get_value("Project Work Efforts", filters)
+    if pwe_name:
+        pwe_doc = frappe.get_doc("Project Work Efforts", pwe_name)
+        is_new = False
+    else:
+        pwe_doc = frappe.new_doc("Project Work Efforts")
+        pwe_doc.pwe_project = project
+        pwe_doc.pwe_task = task_id
+        if role:
+            pwe_doc.pwe_project_role = role
+        is_new = True
+
+    applied = False
+    for change in group:
+        period_key = change.get("period_key") or ""
+        if not period_key:
+            continue
+        if _apply_period_value(pwe_doc, period_key, _to_float(change.get("value"))):
+            applied = True
+
+    if not applied:
+        return
+
+    if is_new:
+        pwe_doc.insert()
+    else:
+        pwe_doc.save()
+
+    if pwe_doc.name:
+        pwe_doc.reload()
+
+
+def _save_forecast_change(project: str, change: WeSaveForecastChange) -> None:
+    task_id = change.get("task_id") or ""
+    role = _normalize_role(change.get("role"))
+    if not task_id:
+        return
+    _save_forecast_group(project, task_id, role, [change])
 
 
 def run_save_forecast_changes(form_dict: WeSaveForecastFormInput) -> dict:
@@ -195,12 +225,19 @@ def run_save_forecast_changes(form_dict: WeSaveForecastFormInput) -> dict:
 
     rows = _load_grid_rows(project)
 
+    groups: dict[tuple[str, str | None], list[WeSaveForecastChange]] = {}
     for change in changes:
         error = _validate_change(rows, change)
         if error:
             frappe.throw(error)
 
-    for change in changes:
-        _save_forecast_change(project, change)
+        task_id = change.get("task_id") or ""
+        if not task_id:
+            continue
+        role = _normalize_role(change.get("role"))
+        groups.setdefault((task_id, role), []).append(change)
+
+    for (task_id, role), group in groups.items():
+        _save_forecast_group(project, task_id, role, group)
 
     return {"saved": len(changes)}

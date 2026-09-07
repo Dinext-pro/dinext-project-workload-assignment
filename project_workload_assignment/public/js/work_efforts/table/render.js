@@ -77,7 +77,7 @@ function ensureWeDefaults(frm) {
     }
     frm._we_period_type = frm._we_period_type || "month";
     frm._we_unit = frm._we_unit || "hours";
-    frm.view_options = frm.view_options || __("Forecast and Actual");
+    frm.view_options = frm.view_options || __("Forecast and Fact");
 }
 
 /**
@@ -101,10 +101,12 @@ function render_work_efforts_table(frm) {
     frm.we_periods = {};
 
     $('<div class="work-efforts-table"></div>').appendTo(wrapper);
+    const legend_container = $('<div class="work-efforts-legend"></div>').appendTo(wrapper);
 
     frm.last_loaded_project = frm.doc.name;
     frm.last_loaded_time = new Date();
 
+    project_workload_assignment.work_efforts.render_legend(legend_container);
     schedule_we_mount(frm);
 }
 
