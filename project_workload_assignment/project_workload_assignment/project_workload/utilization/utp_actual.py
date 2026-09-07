@@ -22,6 +22,7 @@ class UtpDailyRow(TypedDict, total=False):
 	user: str
 	project: str
 	task: str
+	project_role: str
 	date: str
 	hours: float
 
@@ -47,6 +48,7 @@ def query_utp_daily_rows(
 			utp.user,
 			utp.project,
 			IfNull(utp.document_name, "").as_("task"),
+			IfNull(utp.project_role, "").as_("project_role"),
 			detail.date,
 			Sum(IfNull(detail.hours, 0)).as_("hours"),
 		)
@@ -55,7 +57,7 @@ def query_utp_daily_rows(
 		.where(utp.status == UTP_STATUS_APPROVED)
 		.where(IfNull(utp.document_type, "") == "Task")
 		.where(detail.date.between(date_from, date_to))
-		.groupby(utp.user, utp.project, utp.document_name, detail.date)
+		.groupby(utp.user, utp.project, utp.document_name, utp.project_role, detail.date)
 	)
 	rows = q.run(as_dict=True)
 	return [
@@ -63,6 +65,7 @@ def query_utp_daily_rows(
 			user=row.get("user") or "",
 			project=row.get("project") or "",
 			task=row.get("task") or "",
+			project_role=(row.get("project_role") or "").strip(),
 			date=str(row.get("date")),
 			hours=flt(row.get("hours")),
 		)
@@ -265,6 +268,120 @@ def load_team_utp_hours_by_wtype(
 		if idx is None:
 			continue
 		series[wtype][idx] += flt(row["hours"])
+	return series
+
+
+def _assignment_role_lookups(assignments: list[dict]) -> tuple[dict, dict]:
+	"""(user, project, task) → role; (user, project) → role if unique."""
+	by_task: dict[tuple[str, str, str], str] = {}
+	roles_by_project: dict[tuple[str, str], set[str]] = {}
+	for assignment in assignments or []:
+		user = assignment.get("user")
+		project = assignment.get("project_name") or assignment.get("project")
+		if not user or not project:
+			continue
+		role = (assignment.get("role") or "").strip()
+		task = assignment.get("task") or assignment.get("task_id") or ""
+		if task:
+			by_task[(user, project, task)] = role
+		roles_by_project.setdefault((user, project), set()).add(role)
+	by_project = {
+		key: next(iter(roles))
+		for key, roles in roles_by_project.items()
+		if len(roles) == 1
+	}
+	return by_task, by_project
+
+
+def _resolve_utp_role(row: dict, by_task: dict, by_project: dict) -> str:
+	role = (row.get("project_role") or "").strip()
+	if role:
+		return role
+	user = row.get("user") or ""
+	project = row.get("project") or ""
+	task = row.get("task") or ""
+	if task:
+		mapped = by_task.get((user, project, task))
+		if mapped is not None:
+			return mapped
+	return by_project.get((user, project), "")
+
+
+def _add_hours_to_role_series(
+	series: dict[str, list[float]],
+	role: str,
+	idx: int,
+	hours: float,
+	period_count: int,
+) -> None:
+	if role not in series:
+		series[role] = [0.0] * period_count
+	series[role][idx] += hours
+
+
+def load_team_utp_hours_by_role(
+	assignments: list[dict],
+	periods: list[PWRPeriod],
+	view_type: str,
+) -> dict[str, list[float]]:
+	"""Серии факта по роли проекта для сводного графика PWR."""
+	period_count = len(periods)
+	series: dict[str, list[float]] = {}
+	if not assignments:
+		return series
+
+	assignment_pairs = {
+		(a.get("user"), a.get("project_name"))
+		for a in assignments
+		if a.get("user") and a.get("project_name")
+	}
+	if not assignment_pairs:
+		return series
+
+	projects = sorted({pair[1] for pair in assignment_pairs})
+	users = sorted({pair[0] for pair in assignment_pairs})
+	date_from, date_to = _period_window(periods, view_type)
+	date_to_period_key = build_date_to_period_key(periods, view_type)
+	period_index = {p["key"]: i for i, p in enumerate(periods)}
+	by_task, by_project = _assignment_role_lookups(assignments)
+
+	for row in query_utp_daily_rows(date_from, date_to, projects=projects, users=users):
+		if (row["user"], row["project"]) not in assignment_pairs:
+			continue
+		period_key = date_to_period_key.get(row["date"])
+		if period_key is None:
+			continue
+		idx = period_index.get(period_key)
+		if idx is None:
+			continue
+		role = _resolve_utp_role(row, by_task, by_project)
+		_add_hours_to_role_series(series, role, idx, flt(row["hours"]), period_count)
+	return series
+
+
+def load_utp_hours_by_role(
+	project: str,
+	date_from: str,
+	date_to: str,
+	period_count: int,
+	date_to_period_key: dict[str, str],
+	period_index: dict[str, int],
+	users: list[str] | None = None,
+	assignments: list[dict] | None = None,
+) -> dict[str, list[float]]:
+	"""Серии факта по роли проекта для графика вкладки проекта."""
+	series: dict[str, list[float]] = {}
+	user_list = users or _users_with_utp_on_project(project, date_from, date_to)
+	by_task, by_project = _assignment_role_lookups(assignments or [])
+	for row in query_utp_daily_rows(date_from, date_to, projects=[project], users=user_list):
+		period_key = date_to_period_key.get(row["date"])
+		if period_key is None:
+			continue
+		idx = period_index.get(period_key)
+		if idx is None:
+			continue
+		role = _resolve_utp_role(row, by_task, by_project)
+		_add_hours_to_role_series(series, role, idx, flt(row["hours"]), period_count)
 	return series
 
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from datetime import date
 
 import frappe
-from frappe.utils import getdate, nowdate
+from frappe.utils import getdate
 
 from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
 	AbsenceEntry,
@@ -261,11 +261,20 @@ def resolve_project_holiday_list(
 	project_info: ProjectWorkloadInfo | dict,
 	company_holiday_lists: dict[str, str] | None = None,
 ) -> str | None:
-	"""Project.holiday_list, иначе Company.default_holiday_list."""
-	holiday_list = project_info.get("holiday_list") if project_info else None
+	"""Project.holiday_list, иначе Company.default_holiday_list.
+
+	`effective_holiday_list` from `load_projects` is the same fallback already
+	resolved — use it when the company map is not passed (PWR project-row).
+	"""
+	if not project_info:
+		return None
+	holiday_list = project_info.get("holiday_list")
 	if holiday_list:
 		return holiday_list
-	company = project_info.get("company") if project_info else None
+	effective = project_info.get("effective_holiday_list")
+	if effective:
+		return effective
+	company = project_info.get("company")
 	if company and company_holiday_lists:
 		return company_holiday_lists.get(company)
 	return None
@@ -403,7 +412,8 @@ def load_user_absences(
 		return user_absences
 
 	if min_end_date is None:
-		min_end_date = nowdate()
+		# Call through frappe.utils so tests can monkeypatch nowdate.
+		min_end_date = frappe.utils.nowdate()
 
 	absences = frappe.qb.get_query(
 		"Application For Leave",

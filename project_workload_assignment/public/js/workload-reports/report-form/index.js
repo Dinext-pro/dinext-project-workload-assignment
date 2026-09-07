@@ -11,6 +11,11 @@ const MOUNT_RETRY_MS = 50;
 /** Bump only when Form layout contract changes (forces one remount). */
 const MOUNT_VERSION = "form-filters-in-root-2026-07-16e";
 
+const _dbg = (event, data) =>
+	project_workload_assignment.workloadReports?.common?.wrDebug?.("form", event, data);
+const _fieldSnap = (frm) =>
+	project_workload_assignment.workloadReports?.common?.wrFieldSnapshot?.(frm, FIELD);
+
 function _applySessionUserFilter(frm) {
 	const shouldFilter = sessionStorage.getItem("workload_report_should_filter");
 	if (shouldFilter !== "true") {
@@ -55,6 +60,17 @@ function _markFiltersSection(frm) {
 	return true;
 }
 
+function _revealReportSection(field) {
+	const $section = field?.$wrapper?.closest?.(".form-section");
+	if (!$section?.length) {
+		return;
+	}
+	$section
+		.removeClass("empty-section hide-control")
+		.addClass("visible-section workload-reports-form-section")
+		.css("display", "");
+}
+
 function _applyFormLayout(frm) {
 	if (!frm?.wrapper) return;
 	const $root = $(frm.wrapper);
@@ -74,6 +90,10 @@ function _applyFormLayout(frm) {
 	if ($tableSection.length) {
 		$tableSection.find(".section-head").hide();
 		$tableSection
+			.closest(".form-section")
+			.css({ padding: 0, margin: 0 })
+			.show();
+		$tableSection
 			.find(
 				'.section-body, .form-column, [data-fieldname="projects_workload_report"]'
 			)
@@ -84,7 +104,6 @@ function _applyFormLayout(frm) {
 				maxWidth: "100%",
 				boxSizing: "border-box",
 			});
-		$tableSection.closest(".form-section").show();
 	}
 
 	const field = frm.get_field(FIELD);
@@ -93,8 +112,12 @@ function _applyFormLayout(frm) {
 		field.$wrapper
 			.addClass("workload-reports-form-host")
 			.removeClass("input-max-width")
-			.css({ maxWidth: "none", width: "100%", paddingRight: 0 });
+			.css({ maxWidth: "none", width: "100%", padding: 0 });
+		_revealReportSection(field);
 	}
+
+	// Form refresh may re-apply hide-control on Link filters still in WR root.
+	project_workload_assignment.workloadReports.common?.unveilFormLinkFields?.(frm);
 }
 
 function _reloadNow(frm) {
@@ -127,6 +150,7 @@ function _reloadNow(frm) {
 	);
 	const chartsDone = common.scheduleChartsReload(state.zones.charts);
 	void Promise.all([tableDone, chartsDone]).then(() => {
+		common.flushChartsWhenVisible?.(state.zones.charts);
 		common.realignCharts?.(state.zones.charts);
 	});
 }
@@ -152,18 +176,42 @@ function _destroyWrForm(frm) {
 	frm._wrForm = null;
 }
 
+function _isDisconnected(el) {
+	if (!el) return true;
+	if (typeof el.isConnected === "boolean") return !el.isConnected;
+	return typeof document !== "undefined" && !document.contains(el);
+}
+
 function _needsRemount(frm, hostEl) {
 	if (!frm._wrForm) return true;
 	if (frm._wrForm.version !== MOUNT_VERSION) return true;
 	if (!frm._wrForm.zones?.filters) return true;
+	if (_isDisconnected(hostEl)) return true;
+	if (_isDisconnected(frm._wrForm.zones?.table)) return true;
 	if (!hostEl?.querySelector?.(":scope > .workload-reports-filters")) return true;
 	return false;
 }
 
 function mount(frm, attempt = 0) {
 	const { common } = project_workload_assignment.workloadReports;
-	if (!frm || frm.doctype !== DOCTYPE) return;
-	if (frm !== window.cur_frm) return;
+	if (!frm || frm.doctype !== DOCTYPE) {
+		_dbg("mount-skip-wrong-doctype", { doctype: frm?.doctype, attempt });
+		return;
+	}
+	if (frm !== window.cur_frm) {
+		_dbg("mount-skip-not-cur-frm", { attempt, cur: window.cur_frm?.doctype });
+		return;
+	}
+
+	if (attempt === 0) {
+		_dbg("mount-start", {
+			attempt,
+			field: _fieldSnap(frm),
+			filterFields: ["user", "project", "project_portfolio", "user_group"].map((f) =>
+				project_workload_assignment.workloadReports.common?.wrFieldSnapshot?.(frm, f)
+			),
+		});
+	}
 
 	frm.page?.clear_indicator?.();
 	frm.page?.set_primary_action?.(null);
@@ -174,27 +222,38 @@ function mount(frm, attempt = 0) {
 	const field = frm.get_field(FIELD);
 	if (!field?.$wrapper?.length) {
 		if (attempt < MOUNT_MAX_ATTEMPTS) {
+			if (attempt === 0 || attempt % 10 === 0) {
+				_dbg("mount-retry-field-missing", { attempt, field: _fieldSnap(frm) });
+			}
 			setTimeout(() => mount(frm, attempt + 1), MOUNT_RETRY_MS);
 		} else {
 			console.error("[workload-reports.form] field missing after retries", FIELD);
+			_dbg("mount-fail-field-missing", _fieldSnap(frm));
 		}
 		return;
 	}
 
 	if (!_markFiltersSection(frm)) {
-		if (attempt < MOUNT_MAX_ATTEMPTS) {
-			setTimeout(() => mount(frm, attempt + 1), MOUNT_RETRY_MS);
-		} else {
-			console.error("[workload-reports.form] filters section not ready");
+		// Soft: Link fields stay findable via fields_dict even when section is empty-section.
+		// Do not block mount — relocate still works from frm.fields_dict.
+		if (attempt === 0) {
+			_dbg("mount-filters-section-soft-miss", {
+				sectionLen: common.getFormFiltersSection(frm)?.length,
+			});
 		}
-		return;
 	}
 
 	const hostEl = field.$wrapper.get(0);
 
 	if (_needsRemount(frm, hostEl)) {
+		_dbg("mount-remount", { hidden: field.df?.hidden });
 		_destroyWrForm(frm);
 		common.parkFormLinkFields?.(frm);
+		field.$wrapper
+			.removeClass("hide-control")
+			.closest(".frappe-control")
+			.removeClass("hide-control")
+			.show();
 		field.$wrapper.empty();
 
 		const zones = common.mountLayout(hostEl);
@@ -217,15 +276,30 @@ function mount(frm, attempt = 0) {
 
 	_applyFormLayout(frm);
 	_reload(frm);
+	_dbg("mount-done", {
+		attempt,
+		hasWrForm: !!frm._wrForm,
+		hasWrRoot:
+			!!hostEl?.classList?.contains("workload-reports-root") ||
+			!!hostEl?.querySelector?.(".workload-reports-root"),
+		sectionEmpty: hostEl
+			?.closest?.(".form-section")
+			?.classList?.contains("empty-section"),
+	});
 }
 
 function bindForm() {
 	// Global: bundle may evaluate more than once; module `let` would not dedupe.
-	if (window.__PWR_FORM_BOUND__) return;
+	if (window.__PWR_FORM_BOUND__) {
+		_dbg("bindForm-skip-already-bound");
+		return;
+	}
 	window.__PWR_FORM_BOUND__ = true;
+	_dbg("bindForm-ok");
 
 	frappe.ui.form.on(DOCTYPE, {
 		onload(frm) {
+			_dbg("form-onload");
 			frm.page?.clear_indicator?.();
 			frm.page?.set_primary_action?.(null);
 			frm.page?.clear_menu?.();
@@ -233,6 +307,7 @@ function bindForm() {
 			_destroyWrForm(frm);
 		},
 		refresh(frm) {
+			_dbg("form-refresh");
 			mount(frm);
 		},
 		user(frm) {
@@ -252,7 +327,8 @@ function bindForm() {
 	// Missed refresh (handlers bound after Form lifecycle): mount once, after onload/refresh.
 	setTimeout(() => {
 		const frm = window.cur_frm;
-		if (frm?.doctype === DOCTYPE && !frm._wrForm) {
+		if (frm?.doctype === DOCTYPE) {
+			_dbg("mount-fallback-timeout");
 			mount(frm);
 		}
 	}, 0);

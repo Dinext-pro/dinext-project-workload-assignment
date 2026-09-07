@@ -14,6 +14,7 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 )
 from project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual import (
 	compute_team_actual_hours,
+	load_team_utp_hours_by_role,
 	merge_user_actual_totals,
 	query_utp_daily_rows,
 )
@@ -148,6 +149,49 @@ class TestUtpActual(FrappeTestCase):
 		merged = merge_user_actual_totals(actual, "user@example.com")
 		self.assertEqual(merged["workload_w1"], 6.5)
 		self.assertEqual(merged["workload_w2"], 1.0)
+
+	@patch(
+		"project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual.query_utp_daily_rows"
+	)
+	def test_load_team_utp_hours_by_role_prefers_utp_then_assignment(self, mock_query):
+		periods = generate_periods_for_pwr_report("weekly", "quarter", "2026-06-01")
+		mock_query.return_value = [
+			{
+				"user": "sa@example.com",
+				"project": "PRJ-1",
+				"task": "TASK-1",
+				"project_role": "Консультант",
+				"date": periods[0]["start_date"],
+				"hours": 4.0,
+			},
+			{
+				"user": "ba@example.com",
+				"project": "PRJ-1",
+				"task": "TASK-2",
+				"project_role": "",
+				"date": periods[0]["start_date"],
+				"hours": 3.0,
+			},
+			{
+				"user": "none@example.com",
+				"project": "PRJ-1",
+				"task": "TASK-3",
+				"project_role": "",
+				"date": periods[0]["start_date"],
+				"hours": 2.0,
+			},
+		]
+		assignments = [
+			{"user": "sa@example.com", "project_name": "PRJ-1", "task": "TASK-1", "role": "SA"},
+			{"user": "ba@example.com", "project_name": "PRJ-1", "task": "TASK-2", "role": "BA"},
+			{"user": "none@example.com", "project_name": "PRJ-1", "task": "TASK-3", "role": ""},
+		]
+
+		result = load_team_utp_hours_by_role(assignments, periods, "weekly")
+
+		self.assertEqual(result["Консультант"][0], 4.0)
+		self.assertEqual(result["BA"][0], 3.0)
+		self.assertEqual(result[""][0], 2.0)
 
 	def test_query_utp_daily_rows_returns_empty_without_users(self):
 		self.assertEqual(query_utp_daily_rows("2026-01-01", "2026-12-31", projects=["PRJ-1"]), [])

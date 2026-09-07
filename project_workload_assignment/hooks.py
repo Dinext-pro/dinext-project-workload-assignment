@@ -8,7 +8,12 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = [
+    "dinext_common",
+    "dinext_projects",
+    "dinext_projects_pl",
+    "dinext_timesheets",
+]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -22,18 +27,6 @@ app_license = "mit"
 # ]
 
 fixtures = [
-    {
-        "doctype": "Server Script",
-        "filters": [
-            ["module", "in", ["Project Workload Assignment"]]
-        ]
-    },
-    {
-        "doctype": "Client Script",
-        "filters": [
-            ["module", "in", ["Project Workload Assignment"]]
-        ]
-    },
     {
         "doctype": "Custom Field",
         "filters": [
@@ -50,6 +43,7 @@ fixtures = [
 app_include_css = [
 	"/assets/project_workload_assignment/css/assignment_styles.css",
 	"/assets/project_workload_assignment/css/tab-loading.css",
+	"/assets/project_workload_assignment/css/workload-reports-shell.css",
 ]
 # Projects Workload Report is custom DocType → FormMeta.add_code() skipped
 # (no doctype_js). Form UI boots via report-form/entry.js (app_include, route-gated).
@@ -58,6 +52,7 @@ app_include_js = [
 	"/assets/project_workload_assignment/js/core/form-tab.js",
 	"/assets/project_workload_assignment/js/workload-reports/report-form/entry.js",
 	"/assets/project_workload_assignment/js/assignment/dialog.js",
+	"/assets/project_workload_assignment/js/assignment/dialog-multi.js",
 ]
 
 # include js, css files in header of web template
@@ -91,6 +86,7 @@ doctype_js = {
                 # Scripts: workload-reports/report-form/entry.js (app_include_js).
                 ,"Project":[
                     "public/js/core/form-tab.js",
+                    "public/js/project/dashboard.js",
                     "public/js/assignment/dialog.js",
                     "public/js/work_efforts/entry.js",
                     "public/js/forecast/pl-from-we.js",
@@ -116,6 +112,7 @@ doctype_list_js = {
 doctype_tree_js = {
 	"Task": [
 		"public/js/assignment/dialog.js",
+		"public/js/assignment/dialog-multi.js",
 	],
 }
 # doctype_calendar_js = {"Task" : "public/js/assignment/dialog.js"}
@@ -210,13 +207,17 @@ after_migrate = "project_workload_assignment.install.after_migrate"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+# Layer 4a PWA dates (ISS-2026-03288). Local cutover: SS disabled; prod SS still on.
+_pwa_dates = "project_workload_assignment.pwa_dates"
+
+doc_events = {
+	"Task": {
+		"on_update": f"{_pwa_dates}.task_sync.sync_task_dates_to_pwa",
+	},
+	"Issue": {
+		"on_update": f"{_pwa_dates}.issue_sync.sync_issue_dates_to_pwa",
+	},
+}
 
 # Scheduled Tasks
 # ---------------

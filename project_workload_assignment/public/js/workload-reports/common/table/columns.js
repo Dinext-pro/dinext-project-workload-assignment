@@ -125,7 +125,9 @@ export const getColumns = (periods, opts = {}) => {
 
 		const leaf = {
 			field: `hours_${key}`,
-			colId: `hours_${key}`,
+			// colId must change with showFact: AG Grid keeps old cellClass/cellStyle
+			// when colId is stable (toggle Show fact looked like a no-op until period shift).
+			colId: showFact ? `hours_${key}__fact` : `hours_${key}`,
 			headerName: bottom,
 			width: CELL_SIZE,
 			minWidth: CELL_SIZE,

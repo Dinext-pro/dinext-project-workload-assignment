@@ -21,7 +21,108 @@
 }
 
 .work_efforts_container {
-	max-width: 100% !important;
+	--we-form-inset-x: var(--padding-md, 15px);
+	--we-form-inset-y: 12px;
+
+	max-width: none !important;
+	width: 100% !important;
+	padding: 0 !important;
+	box-sizing: border-box;
+}
+
+/*
+ * First tab section (chart + table): form chrome off so grid full-bleed.
+ * Later sections (обязательность, лимиты) keep Frappe padding.
+ * Inset lives on chart and legend. Toolbar stays glued to the grid.
+ */
+.form-section:has(.work_efforts_container),
+.form-section:has(.we-chart-wrapper),
+.form-section:has([data-fieldname="custom_work_efforts_chart"]) {
+	--we-form-inset-x: var(--padding-md, 15px);
+	--we-form-inset-y: 12px;
+	padding: 0 !important;
+	margin: 0;
+	border-bottom: none;
+}
+
+.form-section:has(.work_efforts_container) .section-body,
+.form-section:has(.work_efforts_container) .form-column,
+.form-section:has(.we-chart-wrapper) .section-body,
+.form-section:has(.we-chart-wrapper) .form-column,
+.form-section:has([data-fieldname="custom_work_efforts_chart"]) .section-body,
+.form-section:has([data-fieldname="custom_work_efforts_chart"]) .form-column {
+	padding: 0 !important;
+	margin: 0 !important;
+	width: 100%;
+	max-width: 100%;
+}
+
+.form-section:has(.work_efforts_container) [data-fieldname="custom_work_efforts_chart"],
+.we-chart-wrapper {
+	position: relative;
+	width: 100%;
+	max-width: none !important;
+	box-sizing: border-box;
+	padding: var(--we-form-inset-y) var(--we-form-inset-x) 8px !important;
+}
+
+/* Unlabeled section «Обязательность»: drop card chrome; sep below via ::after. */
+.form-section[data-fieldname="custom_section_break_drhoe"] {
+	padding: 0 !important;
+	margin: 0;
+	border: none;
+	box-shadow: none;
+}
+
+.form-section[data-fieldname="custom_section_break_drhoe"] .section-body,
+.form-section[data-fieldname="custom_section_break_drhoe"] .section-body:first-child {
+	margin: 0 !important;
+	padding: 0;
+}
+
+.form-section[data-fieldname="custom_section_break_drhoe"] .form-column {
+	padding-top: 8px;
+	padding-bottom: 8px;
+}
+
+.form-section[data-fieldname="custom_section_break_drhoe"]::after {
+	content: "";
+	flex: 0 0 auto;
+	width: calc(100% - 2 * var(--we-form-inset-x, var(--padding-md, 15px)));
+	height: 1px;
+	background: var(--border-color);
+	margin-left: var(--we-form-inset-x, var(--padding-md, 15px));
+	margin-right: var(--we-form-inset-x, var(--padding-md, 15px));
+}
+
+/* «Контроль Лимитов»: animate collapse (beat Bootstrap .hide { display:none }). */
+.form-section[data-fieldname="custom_limit_control"] {
+	margin-bottom: 8px;
+}
+.form-section[data-fieldname="custom_limit_control"] > .section-head {
+	transition: margin-bottom 0.28s ease;
+}
+
+.form-section[data-fieldname="custom_limit_control"] > .section-body {
+	display: grid !important;
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-rows: 1fr;
+	overflow: hidden;
+	transition: grid-template-rows 0.28s ease, opacity 0.22s ease;
+	opacity: 1;
+}
+
+.form-section[data-fieldname="custom_limit_control"] > .section-body.hide {
+	grid-template-rows: 0fr;
+	opacity: 0;
+	margin: 0 !important;
+	pointer-events: none;
+}
+
+.form-section[data-fieldname="custom_limit_control"] > .section-body > .form-column {
+	min-height: 0;
+	overflow: hidden;
+	max-width: 100%;
 }
 
 /*
@@ -33,9 +134,8 @@
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: 6px;
-	flex: 0 0 auto;
-	min-width: max-content;
-	width: max-content;
+	flex: 0 1 auto;
+	min-width: 0;
 }
 
 /*
@@ -60,15 +160,14 @@
 	line-height: 1.2;
 }
 
-.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper {
-	margin-left: 10px;
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-checkbox-wrapper {
 	display: inline-flex;
 	align-items: center;
 	flex: 0 0 auto;
 }
 
-.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper .frappe-control,
-.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .assignments-checkbox-wrapper .checkbox {
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-checkbox-wrapper .frappe-control,
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-checkbox-wrapper .checkbox {
 	margin: 0;
 	display: inline-flex;
 	align-items: center;
@@ -78,9 +177,23 @@
 	flex: 0 0 auto;
 }
 
-.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls > .we-legend-help-btn {
-	flex: 0 0 auto;
-	align-self: center;
+/* Domain action labels — one line (parity dinext-table-toolbar-item). */
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls > .btn,
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-check-group .btn {
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-save-plan-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding-left: 8px;
+	padding-right: 8px;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-toolbar-check-group {
+	margin-left: 0;
 }
 
 /* Portaled «Проверить» menu (body) — hug content; reset BS right:0 stretch. */
@@ -97,34 +210,44 @@
 	white-space: nowrap;
 }
 
-/* Legend popover (toolbar "?" → body portal). */
-.we-legend-popover {
-	box-sizing: border-box;
-	padding: 10px 12px;
-	background: var(--fg-color, var(--card-bg));
-	border: 1px solid var(--border-color);
-	border-radius: var(--border-radius-md, 6px);
-	box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.12));
+/* Legend under table. Inset. Sep moved between the 3 blocks, not inside panel. */
+.work_efforts_container .work-efforts-legend {
+	margin: 12px var(--we-form-inset-x, var(--padding-md, 15px)) 8px;
 	font-family: var(--font-stack);
-	font-size: 13px;
+	font-size: 14px;
 	font-weight: 600;
 	letter-spacing: 0.02em;
 	color: var(--text-color);
 }
 
-.we-legend-panel {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
+.work_efforts_container .work-efforts-legend::after {
+	content: "";
+	display: block;
+	height: 1px;
+	background: var(--border-color);
+	margin-top: 8px;
 }
 
-.we-legend-row {
+.work_efforts_container .work-efforts-legend .we-legend-panel--inline {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 16px 24px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	box-sizing: border-box;
+}
+
+.work_efforts_container .work-efforts-legend .we-legend-row {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 }
 
-.we-legend-swatch {
+.work_efforts_container .work-efforts-legend .we-legend-swatch {
 	flex: 0 0 auto;
 	width: 16px;
 	height: 16px;
@@ -133,20 +256,20 @@
 	box-sizing: border-box;
 }
 
-.we-legend-plan-swatch {
+.work_efforts_container .work-efforts-legend .we-legend-plan-swatch {
 	background-color: var(--we-period-plan-bg);
 }
 
-.we-legend-forecast-swatch,
-.we-legend-workload-swatch {
+.work_efforts_container .work-efforts-legend .we-legend-forecast-swatch,
+.work_efforts_container .work-efforts-legend .we-legend-workload-swatch {
 	background-color: var(--we-period-forecast-bg);
 }
 
-.we-legend-workload-swatch {
+.work_efforts_container .work-efforts-legend .we-legend-workload-swatch {
 	position: relative;
 }
 
-.we-legend-workload-dots {
+.work_efforts_container .work-efforts-legend .we-legend-workload-dots {
 	position: absolute;
 	inset: 0;
 	border-radius: 1px;
@@ -154,34 +277,33 @@
 	background-size: 4px 4px;
 }
 
-.we-legend-missing-plan {
+.work_efforts_container .work-efforts-legend .we-legend-missing-plan {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	background: var(--fg-color);
 }
 
-.we-legend-missing-plan span {
+.work_efforts_container .work-efforts-legend .we-legend-missing-plan span {
 	color: var(--alert-text-warning);
 	font-weight: 700;
 	font-size: 11px;
 	line-height: 1;
 }
 
-.we-legend-sep {
-	height: 1px;
-	background: var(--border-color);
-	margin: 2px 0;
+.work_efforts_container .work-efforts-legend .we-legend-sep {
+	display: none;
 }
 
-.we-legend-limits {
+.work_efforts_container .work-efforts-legend .we-legend-limits {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 12px 16px;
+	gap: 16px 24px;
+	width: 100%;
 }
 
-.we-legend-limit {
+.work_efforts_container .work-efforts-legend .we-legend-limit {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -192,25 +314,31 @@
 	box-sizing: border-box;
 }
 
-.we-legend-limit span {
+.work_efforts_container .work-efforts-legend .we-legend-limit span {
 	color: var(--text-color);
 	font-size: 12px;
 	line-height: 1;
 }
 
-.we-legend-limit-normal {
+.work_efforts_container .work-efforts-legend .we-legend-limit-normal {
 	box-shadow: inset 0 0 0 1px var(--we-limit-normal-color);
 	font-weight: 500;
 }
 
-.we-legend-limit-warning {
+.work_efforts_container .work-efforts-legend .we-legend-limit-warning {
 	box-shadow: inset 0 0 0 1px var(--we-limit-warning-color);
 	font-weight: 600;
 }
 
-.we-legend-limit-block {
+.work_efforts_container .work-efforts-legend .we-legend-limit-block {
 	box-shadow: inset 0 0 0 1px var(--we-limit-block-color);
 	font-weight: 700;
+}
+
+/* Legend stays outside table fullscreen host. */
+.work_efforts_container:fullscreen .work-efforts-legend,
+.work_efforts_container.work_efforts_container--fullscreen .work-efforts-legend {
+	display: none !important;
 }
 
 .we-chart-wrapper .we-chart-container {
@@ -227,8 +355,8 @@
 .work_efforts_container .work-efforts-table.dinext-table {
 	width: 100%;
 	min-height: 280px;
-	height: min(50vh, 560px);
-	max-height: 560px;
+	height: min(60vh, 672px);
+	max-height: 672px;
 	--we-row-height: 28px;
 }
 
@@ -374,12 +502,51 @@
 	font-weight: 700;
 }
 
-/* Missing plan — цвет текста (как legacy missing-plan-highlight) */
+/* Missing plan — цвет текста (как legacy .missing-plan-highlight; бить .we-cell--zero) */
 .work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-task,
 .work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-role,
+.work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-cell,
+.work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-cell.we-cell--zero {
+	color: var(--alert-text-warning) !important;
+	font-weight: 700 !important;
+	opacity: 1 !important;
+}
+
+@keyframes we-pulse-warning-text {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
 .work_efforts_container .work-efforts-table .ag-cell.we-missing-plan-cell {
-	color: var(--alert-text-warning);
-	font-weight: 600;
+	animation: we-pulse-warning-text 1.5s ease-in-out 3;
+}
+
+/* Legacy colored tooltip (checks.js .custom-workload-tooltip) */
+.custom-workload-tooltip {
+	font-family: inherit;
+	max-width: 320px;
+	white-space: normal;
+	word-wrap: break-word;
+	line-height: 1.4;
+	background: var(--alert-bg-warning) !important;
+	color: var(--alert-text-warning) !important;
+	border: 1px solid var(--alert-border-warning, var(--alert-text-warning));
+	z-index: 10060 !important;
+}
+
+/* Dialogs above DinextTable while native fullscreen owns stacking */
+:fullscreen .modal,
+:fullscreen .modal.show,
+:fullscreen .modal.in {
+	z-index: 10050 !important;
+}
+:fullscreen .modal-backdrop {
+	z-index: 10040 !important;
 }
 
 /* Нулевые значения — приглушённый цвет (legacy .we-role-value.zero) */
@@ -454,12 +621,7 @@
 	pointer-events: auto;
 }
 
-.work_efforts_container .work-efforts-table .ag-cell[col-id="role"]:hover .we-role-delete:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-.work_efforts_container .work-efforts-table .we-role-delete:not(:disabled):hover {
+.work_efforts_container .work-efforts-table .we-role-delete:hover {
 	color: var(--red-500, #e24c4c);
 	border-color: var(--red-500, #e24c4c);
 	background-color: color-mix(in srgb, var(--red-500, #e24c4c) 12%, transparent);

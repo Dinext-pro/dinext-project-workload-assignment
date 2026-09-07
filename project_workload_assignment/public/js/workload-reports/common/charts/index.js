@@ -24,9 +24,61 @@ const DINEXT_CHARTS_CORE =
 	"/assets/dinext_common/js/charts/dinext-charts-core.js";
 
 let coreLoadPromise = null;
+const _liveHosts = new Set();
+let _themeObserver = null;
 
 function _getState(hostEl) {
 	return hostEl?._wrCharts || null;
+}
+
+function _registerLiveHost(hostEl) {
+	if (hostEl) _liveHosts.add(hostEl);
+	_ensureThemeObserver();
+}
+
+function _unregisterLiveHost(hostEl) {
+	if (hostEl) _liveHosts.delete(hostEl);
+}
+
+/** P&L pattern: rebuild option after Desk `data-theme` switch (no page reload). */
+function _refreshChartsTheme() {
+	for (const hostEl of [..._liveHosts]) {
+		if (!hostEl?.isConnected) {
+			_liveHosts.delete(hostEl);
+			continue;
+		}
+		const state = _getState(hostEl);
+		if (!state?.lastPayload) continue;
+		if (_isChartsSuppressed(hostEl)) {
+			state.themeDirty = true;
+			continue;
+		}
+		state.themeDirty = false;
+		remountChartsFromCache(hostEl);
+	}
+}
+
+function _ensureThemeObserver() {
+	if (typeof MutationObserver === "undefined" || _themeObserver) return;
+	const root = document.documentElement;
+	if (!root) return;
+
+	let theme = root.getAttribute("data-theme");
+	let themeMode = root.getAttribute("data-theme-mode");
+
+	_themeObserver = new MutationObserver(() => {
+		const nextTheme = root.getAttribute("data-theme");
+		const nextThemeMode = root.getAttribute("data-theme-mode");
+		if (nextTheme === theme && nextThemeMode === themeMode) return;
+		theme = nextTheme;
+		themeMode = nextThemeMode;
+		// Let CSS vars (and ECharts `getThemeName`) settle on the new `data-theme`.
+		requestAnimationFrame(() => _refreshChartsTheme());
+	});
+	_themeObserver.observe(root, {
+		attributes: true,
+		attributeFilter: ["data-theme", "data-theme-mode"],
+	});
 }
 
 function _ensureState(hostEl, ctx = {}) {
@@ -38,6 +90,9 @@ function _ensureState(hostEl, ctx = {}) {
 			getArgs: ctx.getArgs || (() => ({})),
 			getTableApi: ctx.getTableApi || (() => null),
 			utilization: 0,
+			stackBy: "wtype",
+			lastPayload: null,
+			lastViewType: null,
 			loadToken: 0,
 			pending: false,
 			io: null,
@@ -166,7 +221,7 @@ function _mountOption(hostEl, panel, option) {
 	state.chart = chart;
 
 	try {
-		updateFixedChartLegend(panel, option);
+		updateFixedChartLegend(panel, option, chart);
 	} catch (err) {
 		console.error("[workload-reports.charts] legend", err);
 	}
@@ -192,6 +247,27 @@ function _mountOption(hostEl, panel, option) {
 	return chart;
 }
 
+function _buildChartOption(state) {
+	const payload = state.lastPayload || {};
+	const viewType = state.lastViewType || "weekly";
+	const opts = { stackBy: state.stackBy === "role" ? "role" : "wtype" };
+	return state.surface === "project"
+		? buildProjectChartOption(payload, viewType, opts)
+		: buildReportChartOption(payload, viewType, opts);
+}
+
+/** Rebuild series from cached payload (stack mode toggle — no refetch). */
+function remountChartsFromCache(hostEl) {
+	const state = _getState(hostEl);
+	if (!state?.panel || !state.lastPayload) return null;
+	try {
+		return _mountOption(hostEl, state.panel, _buildChartOption(state));
+	} catch (err) {
+		_failCharts(hostEl, err);
+		return null;
+	}
+}
+
 /**
  * Bind ctx + placeholder. Does NOT load echarts.
  * @param {HTMLElement} hostEl
@@ -200,6 +276,7 @@ function _mountOption(hostEl, panel, option) {
 export function mountCharts(hostEl, ctx) {
 	if (!hostEl) return;
 	_ensureState(hostEl, ctx || {});
+	_registerLiveHost(hostEl);
 	ensurePlaceholder(hostEl);
 }
 
@@ -242,7 +319,13 @@ export function flushChartsWhenVisible(hostEl) {
 		_disconnectIo(state);
 		if (state.pending) {
 			state.pending = false;
+			state.themeDirty = false;
 			_runReload(hostEl);
+			return;
+		}
+		if (state.themeDirty) {
+			state.themeDirty = false;
+			remountChartsFromCache(hostEl);
 			return;
 		}
 		realignCharts(hostEl);
@@ -277,11 +360,12 @@ export async function reloadCharts(hostEl) {
 		// Dispose before loading message so $chartEl.html does not orphan echarts.
 		disposeChartInstance(state);
 
-		ensureChartControls(hostEl, () => {
-			scheduleChartsReload(hostEl);
+		ensureChartControls(hostEl, {
+			onUtilizationChange: () => scheduleChartsReload(hostEl),
+			onStackByChange: () => remountChartsFromCache(hostEl),
 		});
 
-		showChartMessage(panel, __("Loading chart..."), "loading");
+		showChartMessage(panel, null, "loading");
 
 		const baseArgs =
 			typeof state.getArgs === "function" ? state.getArgs() || {} : {};
@@ -304,11 +388,9 @@ export async function reloadCharts(hostEl) {
 			return null;
 		}
 
-		const option = isProject
-			? buildProjectChartOption(data || {}, viewType)
-			: buildReportChartOption(data || {}, viewType);
-
-		return _mountOption(hostEl, panel, option);
+		state.lastPayload = data || {};
+		state.lastViewType = viewType;
+		return _mountOption(hostEl, panel, _buildChartOption(state));
 	} catch (err) {
 		if (token !== state.loadToken) return null;
 		_failCharts(hostEl, err);
@@ -345,7 +427,9 @@ export function destroyCharts(hostEl) {
 	state.panel = null;
 	state._controlsReady = false;
 	state.pending = false;
+	state.themeDirty = false;
 	state.loadToken += 1;
+	_unregisterLiveHost(hostEl);
 
 	if (hostEl) {
 		hostEl.replaceChildren();

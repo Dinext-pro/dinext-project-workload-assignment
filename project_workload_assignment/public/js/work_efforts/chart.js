@@ -233,11 +233,12 @@ function get_chart_data(frm, selectedRole) {
     }
 
     let datasets = [];
-    let view =  __("Actual/Forecast");
-    if ( frm.view_options == __("Forecast Only") ) {
+    let view = __("Fact/Forecast");
+    const viewMode = String(frm.view_options || "");
+    if (viewMode === __("Forecast Only") || viewMode === "Forecast Only" || viewMode === "Только прогноз") {
         view = __("Forecast");
-    } else if ( frm.view_options == __("Actual Only") ) {
-        view = __("Actual");
+    } else if (viewMode === __("Fact Only") || viewMode === "Fact Only" || viewMode === "Actual Only" || viewMode === "Только факт") {
+        view = __("Fact");
     }
     
     if ( !frm.hide_plan ) {

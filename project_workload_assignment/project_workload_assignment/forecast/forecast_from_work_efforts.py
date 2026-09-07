@@ -71,6 +71,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	_debug_log("STEP 3: Getting team details")
 
 	ProjectTeamDetails = frappe.qb.DocType('Project Team Details')
+	has_virtual_worker = frappe.get_meta("Project Team Details").has_field("virtual_worker")
 	team_query = (
 		frappe.qb.from_(ProjectTeamDetails)
 		.select(
@@ -80,8 +81,9 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 			ProjectTeamDetails.pt_category
 		)
 		.where(ProjectTeamDetails.parent == project)
-		.where(ProjectTeamDetails.virtual_worker == 0)
 	)
+	if has_virtual_worker:
+		team_query = team_query.where(ProjectTeamDetails.virtual_worker == 0)
 	team_details = team_query.run(as_dict=True)
 
 	team_details_map = {}
@@ -94,19 +96,21 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	# ========== 3.1. ПОЛУЧАЕМ ВИРТУАЛЬНЫХ УЧАСТНИКОВ ==========
 	_debug_log("STEP 3.1: Getting virtual team details")
 
-	virtual_query = (
-		frappe.qb.from_(ProjectTeamDetails)
-		.select(
-			ProjectTeamDetails.pt_role,
-			ProjectTeamDetails.pt_cost_level,
-			ProjectTeamDetails.pt_category,
-			ProjectTeamDetails.virtual_worker,
-			ProjectTeamDetails.worker_type
+	virtual_team_details = []
+	if has_virtual_worker:
+		virtual_query = (
+			frappe.qb.from_(ProjectTeamDetails)
+			.select(
+				ProjectTeamDetails.pt_role,
+				ProjectTeamDetails.pt_cost_level,
+				ProjectTeamDetails.pt_category,
+				ProjectTeamDetails.virtual_worker,
+				ProjectTeamDetails.worker_type
+			)
+			.where(ProjectTeamDetails.parent == project)
+			.where(ProjectTeamDetails.virtual_worker == 1)
 		)
-		.where(ProjectTeamDetails.parent == project)
-		.where(ProjectTeamDetails.virtual_worker == 1)
-	)
-	virtual_team_details = virtual_query.run(as_dict=True)
+		virtual_team_details = virtual_query.run(as_dict=True)
 
 	virtual_team_map = {}
 	for vtd in virtual_team_details:

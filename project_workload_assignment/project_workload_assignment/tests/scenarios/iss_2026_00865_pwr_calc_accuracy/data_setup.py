@@ -5,6 +5,10 @@ from __future__ import annotations
 
 import frappe
 
+from project_workload_assignment.project_workload_assignment.tests.scenarios._ci_worker_bootstrap import (
+	ensure_admin_worker_context,
+)
+
 PREFIX = "ISS-2026-00865-PWR"
 ROLE_NAME = f"{PREFIX} Role"
 BUSINESS_USER = "Administrator"
@@ -144,7 +148,8 @@ def _restore_admin_timesheet_hours_on_date_if_saved() -> None:
 
 
 def _admin_timesheet_template_name() -> str | None:
-	return frappe.db.get_value("Worker", {"wuser": BUSINESS_USER}, "wtimesheet_template")
+	ctx = ensure_admin_worker_context()
+	return ctx.get("wtimesheet_template")
 
 
 def set_admin_hours_on_date(hours: float) -> None:
@@ -152,7 +157,7 @@ def set_admin_hours_on_date(hours: float) -> None:
 	global _PWR_TT_HOURS_SAVED, _PWR_TT_HOURS_VALUE
 	tt = _admin_timesheet_template_name()
 	if not tt:
-		frappe.throw("У Administrator нет Worker/wtimesheet_template — сценарий hours_on_date недоступен")
+		frappe.throw("Не удалось обеспечить Worker/wtimesheet_template для Administrator")
 	if not _PWR_TT_HOURS_SAVED:
 		prev = frappe.db.get_value("Timesheet Template", tt, "hours_on_date")
 		_PWR_TT_HOURS_VALUE = float(prev) if prev is not None else 8.0
@@ -380,6 +385,8 @@ def _create_pwa(
 	date_from: str | None = None,
 	date_to: str | None = None,
 ) -> str:
+	# V2 фильтрует назначения по доступным Worker — без Worker у user строки пустые.
+	ensure_admin_worker_context()
 	doc = frappe.get_doc(
 		{
 			"doctype": "Project Workload Assignment",
@@ -436,6 +443,7 @@ def prepare_case_hours_on_date_invariant(
 def prepare_case_hours_without_project_holiday_list(wl_hours: float = 40.0) -> dict[str, str]:
 	"""Проект без holiday_list: оба движка должны согласоваться по сумме (± float)."""
 	reset_owned_data()
+	ensure_admin_worker_context()
 	_detach_admin_worker_holiday_list()
 	company = _default_company()
 	if not company:
@@ -457,6 +465,7 @@ def prepare_case_hours_without_project_holiday_list(wl_hours: float = 40.0) -> d
 def prepare_case_percent_fund_without_holiday_list(wl_percent: float = 50.0) -> dict[str, str]:
 	"""«В % от фонда»: без effective HL — 7 календарных дней × 8 ч × доля."""
 	reset_owned_data()
+	ensure_admin_worker_context()
 	_detach_admin_worker_holiday_list()
 	company = _default_company()
 	if not company:
@@ -478,6 +487,7 @@ def prepare_case_percent_fund_without_holiday_list(wl_percent: float = 50.0) -> 
 def prepare_case_percent_fund_with_company_holiday_fallback(wl_percent: float = 50.0) -> dict[str, str]:
 	"""Project без HL, Company.default_holiday_list — fallback на календарь компании (TC-16)."""
 	reset_owned_data()
+	ensure_admin_worker_context()
 	_detach_admin_worker_holiday_list()
 	company = _default_company()
 	if not company:
@@ -558,38 +568,19 @@ def ensure_second_test_worker() -> str | None:
 	existing = frappe.db.get_value("Worker", {"wuser": SECOND_USER_EMAIL}, "name")
 	if existing:
 		return existing
-	admin_w = frappe.db.get_value(
-		"Worker",
-		{"wuser": BUSINESS_USER},
-		["wtimesheet_template", "wuser_group", "wholiday_list"],
-		as_dict=True,
-	)
-	if not admin_w or not admin_w.get("wtimesheet_template"):
-		return None
-	whl = admin_w.get("wholiday_list")
-	if not whl:
-		company = _default_company()
-		if company:
-			whl = frappe.db.get_value("Company", company, "default_holiday_list")
-	if not whl:
-		candidates = frappe.get_all("Holiday List", limit=1, pluck="name")
-		whl = candidates[0] if candidates else None
-	ug = admin_w.get("wuser_group")
-	if not ug:
-		groups = frappe.get_all("User Group", limit=1, pluck="name")
-		ug = groups[0] if groups else None
-	if not whl or not ug:
-		return None
+	admin_w = ensure_admin_worker_context()
 	doc = frappe.get_doc(
 		{
 			"doctype": "Worker",
 			"wuser": SECOND_USER_EMAIL,
-			"wuser_group": ug,
+			"wuser_group": admin_w["wuser_group"],
 			"wtimesheet_template": admin_w["wtimesheet_template"],
-			"wholiday_list": whl,
+			"wholiday_list": admin_w["wholiday_list"],
+			"wvalid_from": "2020-01-01",
 		}
 	)
 	doc.insert(ignore_permissions=True, ignore_mandatory=True)
+	frappe.db.set_value("Worker", doc.name, "wtype", "Employee", update_modified=False)
 	return doc.name
 
 
@@ -687,6 +678,8 @@ def try_create_application_for_leave_tc09(
 		{
 			"doctype": "Application For Leave",
 			"alworker": worker,
+			# load_user_absences фильтрует по lauser, не по alworker.
+			"lauser": BUSINESS_USER,
 			"status": "Согласовано",
 			"altype_of_leave": tol_list[0],
 			"alfrom_date": leave_day,
