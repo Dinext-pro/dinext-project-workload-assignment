@@ -26,6 +26,11 @@ const _projectsArgs = (args = {}) => ({
 	period_anchor_date: args.period_anchor_date || frappe.datetime?.get_today?.(),
 	load_actual: args.load_actual ? 1 : 0,
 	worker_wtype: args.worker_wtype || "",
+	project_role_filters: Array.isArray(args.project_role_filters)
+		? args.project_role_filters
+		: args.project_role_filters
+			? [args.project_role_filters]
+			: [],
 	mode: args.mode || "user_totals",
 	limit: args.limit,
 	offset: args.offset ?? 0,
@@ -39,6 +44,11 @@ const _projectArgs = (args = {}) => ({
 	date_to: args.date_to,
 	load_actual: args.load_actual ? 1 : 0,
 	worker_wtype: args.worker_wtype || "",
+	project_role_filters: Array.isArray(args.project_role_filters)
+		? args.project_role_filters
+		: args.project_role_filters
+			? [args.project_role_filters]
+			: [],
 });
 
 const _teamChartsArgs = (args = {}) => ({
@@ -50,6 +60,11 @@ const _teamChartsArgs = (args = {}) => ({
 	period_range: args.period_range,
 	period_anchor_date: args.period_anchor_date || frappe.datetime?.get_today?.(),
 	worker_wtype: args.worker_wtype || "",
+	project_role_filters: Array.isArray(args.project_role_filters)
+		? args.project_role_filters
+		: args.project_role_filters
+			? [args.project_role_filters]
+			: [],
 	load_actual: args.load_actual ? 1 : 0,
 	load_utilization: args.load_utilization ? 1 : 0,
 });

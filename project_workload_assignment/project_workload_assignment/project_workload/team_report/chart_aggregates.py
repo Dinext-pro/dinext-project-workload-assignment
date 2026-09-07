@@ -92,9 +92,12 @@ def _add_daily_hours_to_periods(
 		target[idx] += flt(hours)
 
 
-def _fetch_team_assignments(fd: TeamChartFormDict) -> list[dict]:
+def _fetch_team_assignments(fd: TeamChartFormDict, *, for_actual: bool = False) -> list[dict]:
 	from project_workload_assignment.project_workload_assignment.project_workload.core.assignments import (
 		fetch_pwr_report_assignments,
+	)
+	from project_workload_assignment.project_workload_assignment.project_workload.core.project_role_helpers import (
+		normalize_project_role_filters,
 	)
 
 	view_type = fd.get("view_type", "daily")
@@ -104,11 +107,17 @@ def _fetch_team_assignments(fd: TeamChartFormDict) -> list[dict]:
 	project_portfolio = fd.get("project_portfolio")
 	user_group = fd.get("user_group")
 	period_anchor_date = fd.get("period_anchor_date")
+	worker_wtype_filter = normalize_worker_wtype_filter(fd.get("worker_wtype"))
+	project_role_filters = normalize_project_role_filters(fd.get("project_role_filters")) or None
 
 	periods = generate_periods_for_pwr_report(view_type, period_range, period_anchor_date)
 	display_start, display_end = get_visible_window(periods, view_type)
-	assignment_lower = compute_assignment_sql_lower_bound(display_start)
-	window_start = getdate(assignment_lower)
+	# Table fact refetch uses display_start when looking at the past; chart used today-clamped
+	# window and dropped UTP on ended assignments → bars missing where table had fill.
+	if for_actual and getdate(display_start) < getdate():
+		window_start = getdate(display_start)
+	else:
+		window_start = getdate(compute_assignment_sql_lower_bound(display_start))
 	window_end = getdate(display_end)
 
 	use_sql_ug = bool(user_group)
@@ -121,6 +130,8 @@ def _fetch_team_assignments(fd: TeamChartFormDict) -> list[dict]:
 		user_group_parent=user_group,
 		use_sql_user_group_join=use_sql_ug,
 		restrict_users=None,
+		worker_wtype_filter=worker_wtype_filter,
+		project_role_filters=project_role_filters,
 	) or []
 
 	if user_group and not use_sql_ug:
@@ -139,6 +150,42 @@ def _fetch_team_assignments(fd: TeamChartFormDict) -> list[dict]:
 	)
 
 	return filter_assignments_by_permitted_workers(assignments)
+
+
+def _assignments_for_actual(
+	fd: TeamChartFormDict,
+	assignments: list[dict],
+	users_data: dict,
+	wtypes_map: dict,
+	worker_wtype_filter,
+	periods: list[PWRPeriod],
+	view_type: str,
+) -> tuple[list[dict], dict, dict]:
+	"""Past window: refetch like team_workload_grid fact path (ended PWA still pair to UTP)."""
+	display_start, _ = get_visible_window(periods, view_type)
+	if getdate(display_start) >= getdate():
+		return assignments, users_data, wtypes_map
+
+	raw = _fetch_team_assignments(fd, for_actual=True)
+	if not raw:
+		return assignments, users_data, wtypes_map
+
+	from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
+		load_worker_wtypes,
+	)
+
+	users_list = sorted({a["user"] for a in raw if a.get("user")})
+	missing_users = [user for user in users_list if user not in users_data]
+	if missing_users:
+		wtypes_map = {**wtypes_map, **load_worker_wtypes(missing_users)}
+		_, extra_info = _build_workload_context(raw, missing_users)
+		users_data = {**users_data, **extra_info}
+	missing_wtypes = [user for user in users_list if user not in wtypes_map]
+	if missing_wtypes:
+		wtypes_map = {**wtypes_map, **load_worker_wtypes(missing_wtypes)}
+
+	scope = set(filter_users_by_wtype(users_list, worker_wtype_filter, users_data, wtypes_map))
+	return [a for a in raw if a.get("user") in scope], users_data, wtypes_map
 
 
 def _build_workload_context(assignments: list[dict], users_list: list[str]):
@@ -216,6 +263,31 @@ def _compute_workload_by_wtype(
 		wtype = resolve_wtype(user_email, users_data, wtypes_map)
 		daily_loads = wl_ctx.compute_assignment_daily_hours(assignment)
 		_add_daily_hours_to_periods(daily_loads, date_to_period_key, period_index, series[wtype])
+	return series
+
+
+def _normalize_assignment_role(value) -> str:
+	return (value or "").strip()
+
+
+def _compute_workload_by_role(
+	assignments: list[dict],
+	wl_ctx: WorkloadContext,
+	periods: list[PWRPeriod],
+	date_to_period_key: dict[str, str],
+	period_index: dict[str, int],
+) -> dict[str, list[float]]:
+	"""Forecast hours stacked by PWA.role. Empty role → '' bucket."""
+	series: dict[str, list[float]] = {}
+	period_count = len(periods)
+	for assignment in assignments:
+		if not assignment.get("user"):
+			continue
+		role = _normalize_assignment_role(assignment.get("role"))
+		if role not in series:
+			series[role] = _zero_series(period_count)
+		daily_loads = wl_ctx.compute_assignment_daily_hours(assignment)
+		_add_daily_hours_to_periods(daily_loads, date_to_period_key, period_index, series[role])
 	return series
 
 
@@ -346,7 +418,7 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 		date_to_period_key = build_date_to_period_key(periods, view_type)
 
 		assignments = _fetch_team_assignments(fd)
-		if not assignments:
+		if not assignments and not load_actual:
 			return ChartResponse(
 				periods=periods,
 				series=ChartSeries(
@@ -354,6 +426,7 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 					utilization_plan_hours=_zero_series(len(periods)),
 					utilization_forecast_hours=_zero_series(len(periods)),
 					workload_forecast_hours_by_wtype=_zero_wtype_series(len(periods)),
+					workload_forecast_hours_by_role={},
 				),
 				meta=ChartMeta(
 					worker_wtype_filter=worker_wtype_filter or "all",
@@ -377,6 +450,18 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 		users_in_scope_set = set(users_in_scope)
 		assignments = [a for a in assignments if a.get("user") in users_in_scope_set]
 
+		actual_assignments = assignments
+		if load_actual:
+			actual_assignments, users_data, wtypes_map = _assignments_for_actual(
+				fd,
+				assignments,
+				users_data,
+				wtypes_map,
+				worker_wtype_filter,
+				periods,
+				view_type,
+			)
+
 		capacity = _compute_capacity_series(
 			wl_ctx, users_in_scope, periods, view_type, date_to_period_key, period_index
 		)
@@ -390,13 +475,24 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 			date_to_period_key,
 			period_index,
 		)
+		workload_by_role = _compute_workload_by_role(
+			assignments,
+			wl_ctx,
+			periods,
+			date_to_period_key,
+			period_index,
+		)
 
 		util_plan = _zero_series(len(periods))
 		util_forecast = _zero_series(len(periods))
+		util_actual = _zero_series(len(periods))
 		if load_utilization:
 			from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
 				load_project_utilization_tables,
 				load_worker_utilization_tables,
+			)
+			from project_workload_assignment.project_workload_assignment.project_workload.utilization.utilization_actual import (
+				compute_team_utilization_actual_series,
 			)
 			from project_workload_assignment.project_workload_assignment.project_workload.utilization.utilization_forecast import (
 				compute_team_utilization_forecast_series,
@@ -433,20 +529,50 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 				date_to_period_key,
 				period_index,
 			)
+			if load_actual:
+				util_worker_map = worker_utilization_map
+				util_project_map = project_utilization_map
+				if actual_assignments is not assignments:
+					util_users = sorted({a["user"] for a in actual_assignments if a.get("user")})
+					util_worker_map = load_worker_utilization_tables(util_users)
+					util_projects = {
+						a.get("project_name") or a.get("project")
+						for a in actual_assignments
+						if a.get("project_name") or a.get("project")
+					}
+					util_project_map = load_project_utilization_tables(list(util_projects))
+				util_actual = compute_team_utilization_actual_series(
+					actual_assignments,
+					users_data,
+					wtypes_map,
+					util_worker_map,
+					util_project_map,
+					periods,
+					view_type,
+					date_to_period_key,
+					period_index,
+				)
 
 		actual_by_wtype = _zero_wtype_series(len(periods))
+		actual_by_role: dict[str, list[float]] = {}
 		if load_actual:
 			from project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual import (
+				load_team_utp_hours_by_role,
 				load_team_utp_hours_by_wtype,
 			)
 
 			actual_by_wtype = load_team_utp_hours_by_wtype(
-				assignments,
+				actual_assignments,
 				periods,
 				view_type,
 				wtypes_map,
 				users_data,
 				worker_wtype_filter,
+			)
+			actual_by_role = load_team_utp_hours_by_role(
+				actual_assignments,
+				periods,
+				view_type,
 			)
 
 		series = ChartSeries(
@@ -454,9 +580,13 @@ def run_get_team_workload_charts(fd: TeamChartFormDict | None) -> ChartResponse:
 			utilization_plan_hours=util_plan,
 			utilization_forecast_hours=util_forecast,
 			workload_forecast_hours_by_wtype=workload_by_wtype,
+			workload_forecast_hours_by_role=workload_by_role,
 		)
 		if load_actual:
 			series["actual_hours_by_wtype"] = actual_by_wtype
+			series["actual_hours_by_role"] = actual_by_role
+		if load_utilization and load_actual:
+			series["utilization_actual_hours"] = util_actual
 
 		return ChartResponse(
 			periods=periods,
@@ -492,6 +622,11 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		date_from = fd.get("date_from") or frappe.utils.nowdate()
 		date_to = fd.get("date_to") or frappe.utils.add_months(date_from, 1)
 		worker_wtype_filter = normalize_worker_wtype_filter(fd.get("worker_wtype"))
+		from project_workload_assignment.project_workload_assignment.project_workload.core.project_role_helpers import (
+			normalize_project_role_filters,
+		)
+
+		project_role_filters = normalize_project_role_filters(fd.get("project_role_filters")) or None
 		load_actual = _parse_bool(fd.get("load_actual"))
 		load_utilization = _parse_bool(fd.get("load_utilization"))
 
@@ -514,7 +649,10 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		)
 
 		assignments_raw = fetch_project_assignments_with_worker_context(
-			project, str(date_from), str(date_to)
+			project,
+			str(date_from),
+			str(date_to),
+			project_role_filters=project_role_filters,
 		) or []
 		assignments = [
 			{
@@ -567,9 +705,18 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 			date_to_period_key,
 			period_index,
 		)
+		workload_by_role = _compute_workload_by_role(
+			assignments,
+			wl_ctx,
+			periods,
+			date_to_period_key,
+			period_index,
+		)
 		actual_by_wtype = _zero_wtype_series(len(periods))
+		actual_by_role: dict[str, list[float]] = {}
 		if load_actual:
 			from project_workload_assignment.project_workload_assignment.project_workload.utilization.utp_actual import (
+				load_utp_hours_by_role,
 				load_utp_hours_by_wtype,
 			)
 
@@ -585,13 +732,27 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 				worker_wtype_filter,
 				users=users_in_scope,
 			)
+			actual_by_role = load_utp_hours_by_role(
+				project,
+				str(date_from),
+				str(date_to),
+				len(periods),
+				date_to_period_key,
+				period_index,
+				users=users_in_scope,
+				assignments=assignments,
+			)
 
 		util_plan = _zero_series(len(periods))
 		util_forecast = _zero_series(len(periods))
+		util_actual = _zero_series(len(periods))
 		if load_utilization:
 			from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
 				load_project_utilization_tables,
 				load_worker_utilization_tables,
+			)
+			from project_workload_assignment.project_workload_assignment.project_workload.utilization.utilization_actual import (
+				compute_team_utilization_actual_series,
 			)
 			from project_workload_assignment.project_workload_assignment.project_workload.utilization.utilization_forecast import (
 				compute_team_utilization_forecast_series,
@@ -623,17 +784,33 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 				date_to_period_key,
 				period_index,
 			)
+			if load_actual:
+				util_actual = compute_team_utilization_actual_series(
+					assignments,
+					users_data,
+					wtypes_map,
+					worker_utilization_map,
+					project_utilization_map,
+					periods,
+					view_type,
+					date_to_period_key,
+					period_index,
+				)
 
 		series = ChartSeries(
 			project_plan_hours=project_plan,
 			team_capacity_hours=team_capacity,
 			workload_forecast_hours_by_wtype=workload_by_wtype,
+			workload_forecast_hours_by_role=workload_by_role,
 		)
 		if load_actual:
 			series["actual_hours_by_wtype"] = actual_by_wtype
+			series["actual_hours_by_role"] = actual_by_role
 		if load_utilization:
 			series["utilization_plan_hours"] = util_plan
 			series["utilization_forecast_hours"] = util_forecast
+		if load_utilization and load_actual:
+			series["utilization_actual_hours"] = util_actual
 
 		return ChartResponse(
 			periods=periods,

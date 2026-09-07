@@ -14,9 +14,66 @@ import { ensureWorkloadPeriods } from "./period-markers.js";
 import { onAssignmentsToggle } from "./assignments.js";
 import { onCellDoubleClicked, syncPlFromWe } from "./navigation.js";
 import { buildToolbarItems } from "./toolbar.js";
+import {
+    missingPlanRoleTooltipValue,
+    missingPlanTaskTooltipValue,
+} from "./plan_check.js";
+
+function bindMissingPlanTooltips(frm, gridOptions) {
+    const prevOver = gridOptions.onCellMouseOver;
+    const prevOut = gridOptions.onCellMouseOut;
+    gridOptions.enableBrowserTooltips = false;
+    gridOptions.onCellMouseOver = (params) => {
+        if (typeof prevOver === "function") prevOver(params);
+        const we = project_workload_assignment.work_efforts;
+        const colId = params?.column?.getColId?.() || params?.colDef?.field || "";
+        let text;
+        if (colId === "task_subject" || colId === "task_serial") {
+            text = missingPlanTaskTooltipValue(frm)({ data: params?.data });
+        } else if (colId === "role") {
+            text = missingPlanRoleTooltipValue(frm)({ data: params?.data });
+        }
+        if (!text) return;
+        params?.api?.hideTooltip?.();
+        const el =
+            params?.event?.target?.closest?.(".ag-cell") || params?.event?.target;
+        if (el && we?.showCustomTooltip) {
+            // Colored legacy tip only; colDef must not set tooltipValueGetter (AG white popup).
+            el.removeAttribute("title");
+            we.showCustomTooltip(el, text);
+        }
+    };
+    gridOptions.onCellMouseOut = (params) => {
+        if (typeof prevOut === "function") prevOut(params);
+        project_workload_assignment.work_efforts?.hideCustomTooltip?.();
+    };
+}
+
+function bindFullscreenOverlayPortal(options) {
+    const prevEnter = options.onFullscreenEnter;
+    const prevExit = options.onFullscreenExit;
+    options.onFullscreenEnter = (ctx) => {
+        if (typeof prevEnter === "function") prevEnter(ctx);
+        project_workload_assignment.work_efforts?.start_fullscreen_overlay_watch?.();
+        project_workload_assignment.work_efforts?.bring_overlays_into_fullscreen?.();
+    };
+    options.onFullscreenExit = (ctx) => {
+        if (typeof prevExit === "function") prevExit(ctx);
+        project_workload_assignment.work_efforts?.stop_fullscreen_overlay_watch?.();
+    };
+}
 
 function buildTableOptions(frm, state) {
-    return {
+    const gridOptions = {
+        enableCellSpan: true,
+        suppressMovableColumns: true,   // WE column order fixed (Task/Role/periods); no header drag-reorder.
+        rowHeight: 28,                  // Density close to legacy role line (24px) + AG Grid chrome
+        headerHeight: 32,
+        groupHeaderHeight: 28,
+    };
+    bindMissingPlanTooltips(frm, gridOptions);
+
+    const options = {
         container: state.container,
         data: state.rows,
         columns: getColumns(frm, state.periods),
@@ -30,6 +87,14 @@ function buildTableOptions(frm, state) {
         rowCheck: { enabled: true, unit: "mergeHead", selectAll: true },
         // Gutter DnD default-on in DinextTable; WE merge-groups are not reorder targets.
         rowReorder: { enabled: false },
+        filter: {
+            // Role search keeps matching roles, not the whole task merge block.
+            mergeMatchMode: "rows",
+            // A parent kept only as a path to a matching child needs one context row.
+            mergeAncestorMode: "head",
+            // Role tails inherit the visually merged task value while filtering.
+            mergeInheritedFields: ["task_subject"],
+        },
         toolbar: {
             persistKey: `work-efforts:${frm.doc?.name || "new"}`,
             items: buildToolbarItems(frm),
@@ -44,14 +109,10 @@ function buildTableOptions(frm, state) {
         onSaveCells: (ctx) => onSaveCells(frm, ctx),
         onCellDoubleClicked: (params) => onCellDoubleClicked(frm, params),
         mergeGroup: MERGE_GROUP,
-        gridOptions: {
-            enableCellSpan: true,
-            // Density close to legacy role line (24px) + AG Grid chrome
-            rowHeight: 28,
-            headerHeight: 32,
-            groupHeaderHeight: 28,
-        },
+        gridOptions,
     };
+    bindFullscreenOverlayPortal(options);
+    return options;
 }
 
 function applyRuntime(frm, table) {
@@ -80,8 +141,8 @@ export async function initTable(frm) {
             applyRuntime(frm, table);
             syncPlFromWe(frm);
             project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm);
-            if (typeof render_labour_percentage_chart === "function") {
-                render_labour_percentage_chart(frm);
+            if (typeof render_work_efforts_percentage_chart === "function") {
+                render_work_efforts_percentage_chart(frm);
             }
             return table;
         } finally {
@@ -95,8 +156,8 @@ export async function initTable(frm) {
 function afterWeDataReady(frm) {
     syncPlFromWe(frm);
     project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm, false);
-    if (typeof render_labour_percentage_chart === "function") {
-        render_labour_percentage_chart(frm);
+    if (typeof render_work_efforts_percentage_chart === "function") {
+        render_work_efforts_percentage_chart(frm);
     }
 }
 

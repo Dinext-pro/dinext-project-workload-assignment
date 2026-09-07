@@ -27,7 +27,7 @@ function hasFactOnRow(row) {
 function rolesOnTask(frm, taskId) {
     const flat = flattenTree(frm.we?.rows || []);
     return flat
-        .filter((row) => row.task_id === taskId && !isSummaryRow(row))
+        .filter((row) => row.task_id === taskId && !isSummaryRow(row) && !row.we_remaining)
         .map((row) => row.role)
         .filter(Boolean);
 }
@@ -101,9 +101,9 @@ export async function deleteRole(frm, taskId, role) {
                 })
             )
         );
+        frappe.show_alert({ message: __("Role deleted"), indicator: "green" }, 3);
     }
 
-    frappe.show_alert({ message: __("Role deleted"), indicator: "green" }, 3);
     await postRoleMutationRefresh(frm);
 }
 
@@ -135,8 +135,23 @@ function closeAddRoleMenu() {
 }
 
 /**
- * Desk-themed dropdown (Bootstrap menu classes), portaled to body so AG Grid
- * cell overflow does not clip it. Same visual language as WE «Проверить».
+ * Native fullscreen only paints fullscreenElement subtree — body portals hidden.
+ * @returns {HTMLElement}
+ */
+function getPortalHost() {
+    return (
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement ||
+        document.body
+    );
+}
+
+/**
+ * Desk-themed dropdown (Bootstrap menu classes), portaled so AG Grid cell
+ * overflow does not clip it. Host = fullscreenElement when active, else body.
+ * Same visual language as WE «Проверить».
  */
 function openAddRoleMenu(frm, taskId, anchorEl, options) {
     closeAddRoleMenu();
@@ -167,7 +182,7 @@ function openAddRoleMenu(frm, taskId, anchorEl, options) {
         menu.appendChild(li);
     }
 
-    document.body.appendChild(menu);
+    getPortalHost().appendChild(menu);
     const rect = anchorEl.getBoundingClientRect();
     const menuWidth = menu.offsetWidth || 160;
     let left = rect.right - menuWidth;
@@ -216,22 +231,17 @@ function buildAddRoleControl(frm, taskId) {
 }
 
 function buildDeleteRoleControl(frm, row) {
-    const blockedByFact = hasFactOnRow(row);
+    if (row.has_own_pwe === false || hasFactOnRow(row)) {
+        return null;
+    }
 
     const del = document.createElement("button");
     del.type = "button";
     del.className = "btn btn-default btn-xs we-role-delete";
     del.textContent = "×";
     del.setAttribute("aria-label", __("Delete Role"));
-    del.addEventListener("mousedown", stopGridEvent);
-
-    if (blockedByFact) {
-        del.disabled = true;
-        del.title = __("Cannot delete role: the row has actual work efforts");
-        return del;
-    }
-
     del.title = __("Delete Role");
+    del.addEventListener("mousedown", stopGridEvent);
     del.addEventListener("click", (e) => {
         e.stopPropagation();
         confirmDeleteRole(frm, row.task_id, row.role);
@@ -252,18 +262,22 @@ export function roleCellRenderer(frm) {
 
         const label = document.createElement("span");
         label.className = "we-role-label";
-        label.textContent = row.role ? __(row.role) : "—";
+        // Remaining PWA-only rows: dash in Role (legacy sticky parity)
+        label.textContent = row.we_remaining || !row.role ? "—" : __(row.role);
         wrap.appendChild(label);
 
         const actions = document.createElement("div");
         actions.className = "we-role-actions";
 
-        if (row.role) {
-            actions.appendChild(buildDeleteRoleControl(frm, row));
+        if (row.role && !row.we_remaining) {
+            const del = buildDeleteRoleControl(frm, row);
+            if (del) {
+                actions.appendChild(del);
+            }
         }
 
-        // "+" — merge head only (summary already returned above)
-        if (row.merge_group_index === 0) {
+        // "+" — merge head only (summary already returned above); not on remaining
+        if (row.merge_group_index === 0 && !row.we_remaining) {
             const add = buildAddRoleControl(frm, row.task_id);
             if (add) {
                 actions.appendChild(add);

@@ -13,11 +13,17 @@ const FIELD = "custom_work_efforts";
 export function resolveTableContainer(wrapper) {
 	let table = wrapper.find(`.${TABLE_CLASS}`);
 	if (!table.length) {
-		table = $(`<div class="${TABLE_CLASS}"></div>`).appendTo(wrapper);
+		const legend = wrapper.find(".work-efforts-legend");
+		table = $(`<div class="${TABLE_CLASS}"></div>`);
+		if (legend.length) {
+			table.insertBefore(legend);
+		} else {
+			wrapper.append(table);
+		}
 	}
 
 	const containerEl = table[0];
-	containerEl.style.height = "min(50vh, 560px)";
+	containerEl.style.height = "min(60vh, 672px)";
 	containerEl.style.minHeight = "280px";
 	return containerEl;
 }

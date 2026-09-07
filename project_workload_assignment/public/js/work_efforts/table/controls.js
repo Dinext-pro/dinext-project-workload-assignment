@@ -1,5 +1,12 @@
-// we-table/controls.js — period helpers + toolbar domain chrome (incl. legend help)
+// we-table/controls.js — period helpers + toolbar domain chrome + under-table legend
 // ISS-2025-01239
+
+import {
+	VIEW_OPTION_FACT_ONLY,
+	VIEW_OPTION_FORECAST_AND_FACT,
+	VIEW_OPTION_FORECAST_ONLY,
+	normalizeViewMode,
+} from "../constants.js";
 
 /**
  * @param {WorkEffortsForm} frm
@@ -22,7 +29,7 @@ function get_project_roles(frm) {
 function get_display_periods(frm, periodType) {
     if (frm.we_periods && frm.we_periods[periodType]) return frm.we_periods[periodType];
     if (!frm.we_periods) frm.we_periods = {};
-    frm.view_options = frm.view_options || __("Forecast and Actual");
+    frm.view_options = frm.view_options || __(VIEW_OPTION_FORECAST_AND_FACT);
 
     let periods = [];
     let month_start = frappe.datetime.month_start();
@@ -35,12 +42,16 @@ function get_display_periods(frm, periodType) {
 
     if (periodType === "month") {
         let current = start;
+        const mode = normalizeViewMode(frm.view_options);
         while (frappe.datetime.obj_to_str(current) <= frappe.datetime.obj_to_str(end)) {
             let year = current.getFullYear();
             let i = current.getMonth();
-            let is_past = (frm.view_options == __("Forecast and Actual"))
-                ? frappe.datetime.obj_to_str(current) < month_start
-                : (frm.view_options == __("Actual Only"));
+            let is_past =
+                mode === "forecast_only"
+                    ? false
+                    : mode === "fact_only"
+                        ? true
+                        : frappe.datetime.obj_to_str(current) < month_start;
             periods.push({ year: year, month: i + 1, is_past: is_past });
             current = frappe.datetime.str_to_obj(frappe.datetime.add_months(current, 1));
         }
@@ -55,16 +66,16 @@ function get_display_periods(frm, periodType) {
  * @param {JQuery} controls
  */
 function addViewOptionsControl(frm, controls) {
-	frm.view_options = frm.view_options || __("Forecast and Actual");
+	frm.view_options = frm.view_options || __(VIEW_OPTION_FORECAST_AND_FACT);
 	frappe.ui.form.make_control({
 		parent: controls,
 		df: {
 			fieldtype: "Select",
 			fieldname: "view-options",
 			options: [
-				__("Forecast and Actual"),
-				__("Forecast Only"),
-				__("Actual Only"),
+				__(VIEW_OPTION_FORECAST_AND_FACT),
+				__(VIEW_OPTION_FORECAST_ONLY),
+				__(VIEW_OPTION_FACT_ONLY),
 			],
 			get_status: function () {
 				return "Write";
@@ -75,11 +86,6 @@ function addViewOptionsControl(frm, controls) {
 				}
 				frm.we_periods = {};
 				frm.view_options = this.value;
-				project_workload_assignment.work_efforts.updateTable(
-					frm,
-					frm._we_period_type || "month",
-					frm._we_unit || "hours"
-				);
 				project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
 				window.WorkEfforts.onViewOptionsChange(frm);
 			},
@@ -91,7 +97,42 @@ function addViewOptionsControl(frm, controls) {
 }
 
 /**
+ * Toolbar Check control (label left of box — Frappe Check chrome).
+ * @param {JQuery} host
+ * @param {{ fieldname: string, label: string, value: number|boolean, onchange: Function }} opts
+ */
+function addToolbarCheckbox(host, opts) {
+	const wrapper = $('<div class="we-toolbar-checkbox-wrapper"></div>').appendTo(host);
+	const control = frappe.ui.form.make_control({
+		parent: wrapper,
+		df: {
+			fieldtype: "Check",
+			fieldname: opts.fieldname,
+			label: opts.label,
+			onchange: opts.onchange,
+		},
+		value: opts.value,
+		only_input: false,
+		render_input: true,
+	});
+	control.refresh();
+	return control;
+}
+
+/**
+ * Sync Plan checkbox UI after code forces plan visible (e.g. missing-plan check).
+ * @param {boolean} show
+ */
+function set_plan_checkbox(show) {
+	const $input = $(".work-efforts-controls [data-fieldname='show_plan'] input[type='checkbox']");
+	if ($input.length) {
+		$input.prop("checked", !!show);
+	}
+}
+
+/**
  * Mount former shell controls into DinextTable toolbar custom host (once).
+ * Order: view mode → Check → Save plan → Plan → Δ → Assignments.
  * @param {WorkEffortsForm} frm
  * @param {JQuery} host
  */
@@ -105,34 +146,7 @@ function mount_toolbar_controls(frm, host) {
 	const periodType = frm._we_period_type || "month";
 	const unit = frm._we_unit || "hours";
 
-	mount_legend_help(host);
-
-	host.append(`
-		<button class="btn btn-default" id="we_save_plan" type="button">${__("Save Plan")}</button>
-		<button class="btn btn-default" id="toggle_plan" type="button">${__("Show Plan")}</button>
-		<button class="btn btn-default" id="toggle_delta" type="button">${__("Show Δ")}</button>
-	`);
-
 	addViewOptionsControl(frm, host);
-
-	const checkbox_wrapper = $('<div class="assignments-checkbox-wrapper"></div>').appendTo(host);
-	const assignments_checkbox = frappe.ui.form.make_control({
-		parent: checkbox_wrapper,
-		df: {
-			fieldtype: "Check",
-			fieldname: "show_assignments",
-			label: __("Assignments"),
-			onchange: function () {
-				frm.show_assignments = this.get_value();
-				// onAssignmentsToggle loads assignment cache itself when needed
-				window.WorkEfforts.onAssignmentsToggle(frm);
-			},
-		},
-		value: frm.show_assignments,
-		only_input: false,
-		render_input: true,
-	});
-	assignments_checkbox.refresh();
 
 	host.append(`
 		<div class="btn-group we-toolbar-check-group">
@@ -140,33 +154,58 @@ function mount_toolbar_controls(frm, host) {
 				${__("Check")} <span class="caret"></span>
 			</button>
 			<ul class="dropdown-menu dropdown-menu-right">
-				<li id="check_plan_load">${__("Planned Work Efforts Present")}</li>
+				<li id="check_plan_load">${__("Presence of planned work efforts")}</li>
 				<li id="check_workload_overload">${__("Workload exceeds forecast work efforts")}</li>
 			</ul>
 		</div>
 	`);
 
+	host.append(`
+		<button class="btn btn-default we-save-plan-btn" id="we_save_plan" type="button"
+			title="${__("Save plan")}" aria-label="${__("Save plan")}">
+			<i class="fa fa-save" aria-hidden="true"></i>
+			<span class="we-save-plan-label">${__("Plan")}</span>
+		</button>
+	`);
+
 	// Defaults set in render.js ensureWeDefaults before mount.
-	host.find("#toggle_plan").text(frm.hide_plan ? __("Show Plan") : __("Hide Plan"));
-	host.find("#toggle_delta").text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
+	addToolbarCheckbox(host, {
+		fieldname: "show_plan",
+		label: __("Plan"),
+		value: !frm.hide_plan,
+		onchange: function () {
+			frm.hide_plan = !this.get_value();
+			project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
+			project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
+			window.WorkEfforts.onTogglePlanOrDelta(frm);
+		},
+	});
+
+	addToolbarCheckbox(host, {
+		fieldname: "show_delta",
+		label: __("Δ"),
+		value: !frm.hide_delta,
+		onchange: function () {
+			frm.hide_delta = !this.get_value();
+			project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
+			window.WorkEfforts.onTogglePlanOrDelta(frm);
+		},
+	});
+
+	addToolbarCheckbox(host, {
+		fieldname: "show_assignments",
+		// Context: dinext_projects "Assignments"→«Поручения» without context
+		label: __("Assignments", null, "Work Efforts"),
+		value: frm.show_assignments,
+		onchange: function () {
+			frm.show_assignments = this.get_value();
+			// onAssignmentsToggle loads assignment cache itself when needed
+			window.WorkEfforts.onAssignmentsToggle(frm);
+		},
+	});
 
 	host.find("#we_save_plan").on("click", function () {
 		window.WorkEfforts.saveForecastAsPlan(frm);
-	});
-
-	host.find("#toggle_plan").on("click", function () {
-		frm.hide_plan = !frm.hide_plan;
-		$(this).text(frm.hide_plan ? __("Show Plan") : __("Hide Plan"));
-		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
-		project_workload_assignment.work_efforts.render_work_efforts_chart(frm);
-		window.WorkEfforts.onTogglePlanOrDelta(frm);
-	});
-
-	host.find("#toggle_delta").on("click", function () {
-		frm.hide_delta = !frm.hide_delta;
-		$(this).text(frm.hide_delta ? __("Show Δ") : __("Hide Δ"));
-		project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
-		window.WorkEfforts.onTogglePlanOrDelta(frm);
 	});
 
 	host.find("#check_plan_load").on("click", function (e) {
@@ -186,15 +225,103 @@ function mount_toolbar_controls(frm, host) {
 }
 
 /**
- * Same idea as roles.js add-role menu: fixed menu on body escapes overflow clip.
+ * Portal host for overlays. Native fullscreen only paints fullscreenElement subtree —
+ * body / #body portals are invisible there.
+ * @returns {HTMLElement}
+ */
+function get_portal_host() {
+	return (
+		document.fullscreenElement ||
+		document.webkitFullscreenElement ||
+		document.mozFullScreenElement ||
+		document.msFullscreenElement ||
+		document.body
+	);
+}
+
+const OVERLAY_SELECTOR =
+	"#freeze, #dialog-container, .modal, .modal-backdrop, .frappe-toast-area, .awesomplete > ul";
+
+let _overlayWatchObserver = null;
+let _overlayWatchRaf = null;
+
+/**
+ * Move desk overlays (modals, freeze, toasts) into the fullscreen element so they
+ * remain visible while Work Efforts table is in native fullscreen.
+ * @param {JQuery|HTMLElement|string} [selector]
+ */
+function bring_overlays_into_fullscreen(selector) {
+	const host = get_portal_host();
+	if (!host || host === document.body) {
+		return;
+	}
+	const $nodes = selector ? $(selector) : $(OVERLAY_SELECTOR);
+	$nodes.each(function () {
+		if (!this || !this.parentNode) {
+			return;
+		}
+		if (host.contains(this) && this.parentNode === host) {
+			return;
+		}
+		// Prefer moving the .modal root (frappe.ui.Dialog.$wrapper), not an inner node.
+		const modalRoot = this.classList?.contains("modal")
+			? this
+			: this.closest?.(".modal");
+		const node = modalRoot && modalRoot !== host ? modalRoot : this;
+		if (node.parentNode !== host) {
+			host.appendChild(node);
+		}
+		if (node.classList?.contains("modal")) {
+			node.style.zIndex = "10050";
+		}
+		if (node.classList?.contains("modal-backdrop")) {
+			node.style.zIndex = "10040";
+		}
+	});
+	// Custom colored tooltip must live in fullscreen host too
+	project_workload_assignment.work_efforts.initCustomTooltip?.();
+}
+
+/** Watch body for late-mounted Dialog / backdrop while table is fullscreen. */
+function start_fullscreen_overlay_watch() {
+	stop_fullscreen_overlay_watch();
+	bring_overlays_into_fullscreen();
+	const schedule = () => {
+		if (_overlayWatchRaf) cancelAnimationFrame(_overlayWatchRaf);
+		_overlayWatchRaf = requestAnimationFrame(() => {
+			_overlayWatchRaf = null;
+			bring_overlays_into_fullscreen();
+		});
+	};
+	_overlayWatchObserver = new MutationObserver(schedule);
+	_overlayWatchObserver.observe(document.body, { childList: true, subtree: true });
+	// Catch Bootstrap append after dialog.show()
+	[0, 50, 150, 300].forEach((ms) => setTimeout(bring_overlays_into_fullscreen, ms));
+}
+
+function stop_fullscreen_overlay_watch() {
+	if (_overlayWatchObserver) {
+		_overlayWatchObserver.disconnect();
+		_overlayWatchObserver = null;
+	}
+	if (_overlayWatchRaf) {
+		cancelAnimationFrame(_overlayWatchRaf);
+		_overlayWatchRaf = null;
+	}
+}
+
+/**
+ * Same idea as roles.js add-role menu: fixed menu escapes overflow clip.
+ * Host = fullscreenElement when active, else body.
  * @param {JQuery} $btnGroup
  */
 function bindCheckDropdownPortal($btnGroup) {
 	const $toggle = $btnGroup.find(".dropdown-toggle");
 	const $menu = $btnGroup.find(".dropdown-menu");
+	const isPortaled = () => !$menu.parent().is($btnGroup);
 
 	const closeMenu = () => {
-		if (!$menu.parent().is(document.body)) {
+		if (!isPortaled()) {
 			return;
 		}
 		$menu
@@ -225,9 +352,9 @@ function bindCheckDropdownPortal($btnGroup) {
 
 	const openMenu = () => {
 		const rect = $toggle[0].getBoundingClientRect();
-		// Clear BS `.dropdown-menu-right { right: 0 }` — with body + left it stretches full viewport.
+		// Clear BS `.dropdown-menu-right { right: 0 }` — with portal + left it stretches full viewport.
 		$menu
-			.appendTo(document.body)
+			.appendTo(get_portal_host())
 			.addClass("we-toolbar-check-menu")
 			.css({
 				display: "block",
@@ -254,7 +381,7 @@ function bindCheckDropdownPortal($btnGroup) {
 	$toggle.on("click", (e) => {
 		e.preventDefault();
 		e.stopPropagation();
-		if ($menu.parent().is(document.body) && $menu.is(":visible")) {
+		if (isPortaled() && $menu.is(":visible")) {
 			closeMenu();
 			return;
 		}
@@ -266,11 +393,10 @@ function bindCheckDropdownPortal($btnGroup) {
 	});
 }
 
-const LEGEND_HELP_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.35"/><path fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" d="M6.2 6.1a1.85 1.85 0 0 1 3.55.7c0 1.15-.95 1.55-1.55 1.95-.35.25-.5.45-.5.9"/><circle cx="8" cy="11.6" r=".9" fill="currentColor"/></svg>`;
-
-function get_legend_html() {
-	return `
-		<div class="we-legend-panel">
+/** Under-table legend (sticky/original parity — not toolbar popover). */
+function render_legend(container) {
+	container.html(`
+		<div class="we-legend-panel we-legend-panel--inline">
 			<div class="we-legend-row">
 				<div class="we-legend-swatch we-legend-plan-swatch"></div>
 				<span>${__("Planned Task Dates")}</span>
@@ -307,92 +433,17 @@ function get_legend_html() {
 				</div>
 			</div>
 		</div>
-	`;
-}
-
-/**
- * Toolbar "?" control — toggles portaled legend popover.
- * @param {JQuery} host
- */
-function mount_legend_help(host) {
-	if (host.data("we-legend-mounted")) {
-		return;
-	}
-	host.data("we-legend-mounted", true);
-
-	const $btn = $(`
-		<button type="button" class="dinext-table-toolbar-item we-legend-help-btn" title="${__("Legend")}" aria-label="${__("Legend")}" aria-haspopup="dialog" aria-expanded="false">
-			<span class="dinext-table-toolbar-item-icon">${LEGEND_HELP_ICON}</span>
-		</button>
 	`);
-	host.append($btn);
-
-	let $panel = null;
-
-	const closePanel = () => {
-		if (!$panel) {
-			return;
-		}
-		$panel.remove();
-		$panel = null;
-		$btn.attr("aria-expanded", "false");
-		document.removeEventListener("mousedown", onDocDown, true);
-		window.removeEventListener("resize", closePanel);
-		window.removeEventListener("scroll", closePanel, true);
-	};
-
-	const onDocDown = (event) => {
-		if ($panel?.[0]?.contains(event.target) || $btn[0].contains(event.target)) {
-			return;
-		}
-		closePanel();
-	};
-
-	const openPanel = () => {
-		closePanel();
-		$panel = $(`<div class="we-legend-popover" role="dialog" aria-label="${__("Legend")}"></div>`);
-		$panel.html(get_legend_html());
-		$panel.appendTo(document.body);
-
-		const rect = $btn[0].getBoundingClientRect();
-		const panelWidth = Math.min(360, window.innerWidth - 16);
-		let left = rect.right - panelWidth;
-		if (left < 8) {
-			left = 8;
-		}
-		let top = rect.bottom + 6;
-		const panelHeight = $panel.outerHeight() || 200;
-		if (top + panelHeight > window.innerHeight - 8) {
-			top = Math.max(8, rect.top - panelHeight - 6);
-		}
-		$panel.css({
-			position: "fixed",
-			top,
-			left,
-			width: panelWidth,
-			zIndex: 1050,
-		});
-		$btn.attr("aria-expanded", "true");
-		setTimeout(() => {
-			document.addEventListener("mousedown", onDocDown, true);
-			window.addEventListener("resize", closePanel);
-			window.addEventListener("scroll", closePanel, true);
-		}, 0);
-	};
-
-	$btn.on("click", (e) => {
-		e.preventDefault();
-		e.stopPropagation();
-		if ($panel) {
-			closePanel();
-			return;
-		}
-		openPanel();
-	});
 }
 
 Object.assign(project_workload_assignment.work_efforts, {
 	get_project_roles,
 	get_display_periods,
 	mount_toolbar_controls,
+	set_plan_checkbox,
+	render_legend,
+	get_portal_host,
+	bring_overlays_into_fullscreen,
+	start_fullscreen_overlay_watch,
+	stop_fullscreen_overlay_watch,
 });

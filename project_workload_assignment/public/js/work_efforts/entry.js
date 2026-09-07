@@ -14,6 +14,7 @@ frappe.require(
 			return;
 		}
 		if (cur_frm?.doctype === "Project") {
+			project_workload_assignment.work_efforts.load_work_efforts_progress?.(cur_frm);
 			project_workload_assignment.work_efforts.render_work_efforts_table(cur_frm);
 		}
 	}

@@ -30,6 +30,7 @@ export const projectsDefaults = () => ({
 	project_portfolio: "",
 	user_group: "",
 	worker_wtype: "",
+	project_role_filters: [],
 	load_actual: 0,
 	view_type: "weekly",
 	period_range: "quarter",
@@ -41,6 +42,7 @@ export const projectDefaults = () => {
 	const period_range = "quarter";
 	return {
 		worker_wtype: "",
+		project_role_filters: [],
 		load_actual: 0,
 		view_type: "daily",
 		period_range,

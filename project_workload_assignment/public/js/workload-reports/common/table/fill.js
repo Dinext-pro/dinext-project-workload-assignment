@@ -15,15 +15,17 @@ const resolveLoadLevel = (percentage) => {
 
 const formatHours = (value) => {
 	const hours = parseFloat(value);
-	if (!Number.isFinite(hours) || hours <= 0) return "0.0h";
-	return `${hours.toFixed(1)}h`;
+	const unit = __("h");
+	if (!Number.isFinite(hours) || hours <= 0) return `0.0${unit}`;
+	return `${hours.toFixed(1)}${unit}`;
 };
 
 const buildFactTooltip = (baseTooltip, planHours, actualHours, percentage, actualPct) => {
 	const lines = [];
+	const unit = __("h");
 	if (baseTooltip) lines.push(baseTooltip);
-	else lines.push(`${__("Plan")}: ${planHours.toFixed(1)}h (${percentage}%)`);
-	lines.push(`${__("Fact")}: ${actualHours.toFixed(1)}h (${actualPct}%)`);
+	else lines.push(`${__("Plan")}: ${planHours.toFixed(1)}${unit} (${percentage}%)`);
+	lines.push(`${__("Fact")}: ${actualHours.toFixed(1)}${unit} (${actualPct}%)`);
 	return lines.join("\n");
 };
 
@@ -66,7 +68,6 @@ export const resolvePeriodVisual = ({
 	const actualPct =
 		availableHours > 0 ? Math.round((actualHours / availableHours) * 100) : 0;
 
-	const displayHours = showFact && actualHours > 0 ? actualHours : planHours;
 	const tip = showFact
 		? buildFactTooltip(tooltip, planHours, actualHours, percentage, actualPct)
 		: tooltip;
@@ -80,9 +81,9 @@ export const resolvePeriodVisual = ({
 		actualBelowPlan: actualHours > 0 && actualHours < planHours,
 		hasActual: actualHours > 0,
 		tooltip: tip,
-		labelHours: formatHours(displayHours),
+		labelHours: formatHours(planHours),
 		labelPct: `${percentage}%`,
-		zero: displayHours === 0,
+		zero: planHours === 0,
 	};
 };
 
