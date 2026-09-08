@@ -44,6 +44,60 @@ def keep_role_entry(role_entry: WorkEffortRoleEntry) -> bool:
     return False
 
 
+def _role_has_positive_fact(role_entry: WorkEffortRoleEntry) -> bool:
+    for key, value in role_entry.items():
+        if key.startswith("fact_") and not key.startswith("fact_utps_"):
+            if _to_float(value) > 0:
+                return True
+    return False
+
+
+def _find_role_entry(role_data: list[WorkEffortRoleEntry], role: object) -> WorkEffortRoleEntry | None:
+    for entry in role_data:
+        if entry.get("role") == role:
+            return entry
+    return None
+
+
+def rollup_fact_to_parents(aggregated_tasks: dict[str, ConsolidatedTaskEntry]) -> None:
+    """Sum child fact_* into the same-named parent role.
+
+    Create a parent role row only when the child has fact > 0. Plan/forecast
+    stay on the owning task. Matches V5–V7 `rollup_fact_data` (without the
+    zero-hour / fact_utps-only edge that spawned empty parent rows).
+    """
+    tasks_for_rollup = list(aggregated_tasks.values())
+    tasks_for_rollup.sort(key=lambda item: item.get("indent", 0), reverse=True)
+
+    for child in tasks_for_rollup:
+        parent_id = child.get("parent_task")
+        if not parent_id or parent_id not in aggregated_tasks:
+            continue
+        parent = aggregated_tasks[parent_id]
+        if "role_data" not in parent:
+            parent["role_data"] = []
+
+        for role_entry in child.get("role_data") or []:
+            if not _role_has_positive_fact(role_entry):
+                continue
+            role = role_entry.get("role")
+            parent_role_entry = _find_role_entry(parent["role_data"], role)
+            if not parent_role_entry:
+                parent_role_entry = {"role": role, "has_own_pwe": False}
+                parent["role_data"].append(parent_role_entry)
+            for key in list(role_entry.keys()):
+                if key.startswith("fact_") and not key.startswith("fact_utps_"):
+                    current_value = _to_float(role_entry.get(key, 0))
+                    if not current_value:
+                        continue
+                    parent_value = _to_float(parent_role_entry.get(key, 0))
+                    parent_role_entry[key] = parent_value + current_value
+                elif key.startswith("fact_utps_"):
+                    child_utps = role_entry.get(key) or []
+                    parent_utps = parent_role_entry.get(key) or []
+                    parent_role_entry[key] = parent_utps + child_utps
+
+
 def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataResponse:
     """Единая загрузка Task + PWE + UTP, rollup fact, tree order.
 
@@ -217,34 +271,7 @@ def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataRespons
             r for r in aggregated_tasks[task_id]["role_data"] if keep_role_entry(r)
         ]
 
-    tasks_for_rollup = list(aggregated_tasks.values())
-    tasks_for_rollup.sort(key=lambda x: x.get("indent", 0), reverse=True)
-
-    for child in tasks_for_rollup:
-        parent_id = child.get("parent_task")
-        if parent_id and parent_id in aggregated_tasks:
-            parent = aggregated_tasks[parent_id]
-            for role_entry in child.get("role_data", []):
-                role = role_entry["role"]
-                parent_role_entry: WorkEffortRoleEntry | None = None
-                for pre in parent.get("role_data", []):
-                    if pre["role"] == role:
-                        parent_role_entry = pre
-                        break
-                if not parent_role_entry:
-                    parent_role_entry = {"role": role, "has_own_pwe": False}
-                    if "role_data" not in parent:
-                        parent["role_data"] = []
-                    parent["role_data"].append(parent_role_entry)
-                for key in list(role_entry.keys()):
-                    if key.startswith("fact_") and not key.startswith("fact_utps_"):
-                        current_value = _to_float(role_entry.get(key, 0))
-                        parent_value = _to_float(parent_role_entry.get(key, 0))
-                        parent_role_entry[key] = parent_value + current_value
-                    elif key.startswith("fact_utps_"):
-                        child_utps = role_entry.get(key, [])
-                        parent_utps = parent_role_entry.get(key, [])
-                        parent_role_entry[key] = parent_utps + child_utps
+    rollup_fact_to_parents(aggregated_tasks)
 
     result_list: ConsolidatedDataResponse = []
     if "" in child_map:
