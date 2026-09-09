@@ -75,6 +75,9 @@ function ensureWeDefaults(frm) {
     if (frm.hide_delta === undefined) {
         frm.hide_delta = true;
     }
+    if (frm.delta_mode !== "abs") {
+        frm.delta_mode = "pct";
+    }
     frm._we_period_type = frm._we_period_type || "month";
     frm._we_unit = frm._we_unit || "hours";
     frm.view_options = frm.view_options || __("Forecast and Fact");
