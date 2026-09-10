@@ -1,8 +1,11 @@
 /**
  * Project Details dashboard (Dates / Work / Work Efforts / Revenue + donuts).
- * Moved from Client Script "Project Tasks Dashboard V2".
- * Disable that CS after deploy — otherwise the bar renders twice.
+ * Bars: get_work_efforts_progress + get_revenue_progress — no other tabs.
+ * Client Script "Project Tasks Dashboard V2" must stay disabled.
  */
+
+const PROJECT_DASHBOARD_CSS =
+	"/assets/project_workload_assignment/css/project-dashboard.css";
 // --- КОНФИГУРАЦИЯ ЦВЕТОВ ---
 const STATUS_COLOR_MAP = {
     "open":         "var(--status-open)",
@@ -27,21 +30,10 @@ const DEFAULT_COLORS = ["var(--color-01)", "var(--color-02)", "var(--color-03)",
         "var(--color-06)", "var(--color-07)", "var(--color-08)", "var(--color-09)", "var(--color-10)"];
 
 frappe.ui.form.on('Project', {
-    onload(frm) {
-        frm.dashboard.chart_area.wrapper?.empty();
-        frm.we_progress_chart = null;
-        frm.revenue_percentage_chart = null;
-        frm.we_progress = null;
-    },
     refresh(frm) {
-        // Инъекция CSS стилей
-        inject_custom_dashboard_css();
-        
-        // Загрузка дашборда
         if(!frm.doc.__islocal) {
             load_and_render_project_dashboard(frm);
-            
-            frm.add_custom_button("𝌠 " + __("Task tree"), 
+            frm.add_custom_button("𝌠 " + __("Task tree"),
 		    () => {
 		        frappe.route_options = {
 					project: frm.docname,
@@ -52,191 +44,202 @@ frappe.ui.form.on('Project', {
     }
 });
 
-function render_work_efforts_percentage_chart( frm ) {
-    if ( !frm.dashboard?.chart_area?.grid ) return;
-    // Prefer lightweight API scalars; aggregatedTasks only as legacy fallback.
-    let hasApi =
-        frm.we_progress &&
-        ( !frm._we_progress_project || frm._we_progress_project === frm.doc.name );
-    if ( !hasApi && !frm.aggregatedTasks ) return;
+function ensure_dashboard_css() {
+	return new Promise((resolve) => {
+		if (document.querySelector('link[href*="project-dashboard.css"]')) {
+			resolve();
+			return;
+		}
+		frappe.require([PROJECT_DASHBOARD_CSS], resolve);
+	});
+}
 
-    let we_data = get_work_efforts_data(frm);
-    let $grid = frm.dashboard.chart_area.grid;
-    let title = __("Work Efforts");
-    let $group = get_chart_group( $grid, "dashboard-percents" );
-    let $card = $group.find( ".linear-card" ).filter( function () {
-        return $( this ).find( ".chart-title" ).first().text() === title;
-    } );
+function get_live_dashboard_grid(frm) {
+    const $grid = frm.dashboard?.chart_area?.grid;
+    if (!$grid?.length) return null;
+    const node = $grid.get(0);
+    if (!node || !document.body.contains(node)) return null;
+    return $grid;
+}
 
-    if ( $card.length ) {
-        let width_percent = Math.min( 100, Math.max( 0, we_data.percent ) );
-        $card.find( ".chart-percent" ).text( we_data.percent + "%" );
-        $card.find( ".progress-bar-fill" ).css( "width", width_percent + "%" );
-        $card.find( ".progress-bar-container" ).attr( "title", we_data.details );
-        $card.find( ".custom-tooltip" ).html( we_data.details );
-        let $tail = $card.find( ".progress-bar-tail" );
-        if ( we_data.percent < 100 ) {
-            if ( !$tail.length ) {
-                $card.find( ".progress-bar-container" ).append(
+function paint_linear_percent_card(frm, title, data) {
+    const $grid = get_live_dashboard_grid(frm);
+    if (!$grid) return null;
+
+    const $group = get_chart_group($grid, "dashboard-percents");
+    const $card = $group.find(".linear-card").filter(function () {
+        return $(this).find(".chart-title").first().text() === title;
+    });
+    const width_percent = Math.min(100, Math.max(0, data.percent));
+
+    if ($card.length) {
+        $card.find(".chart-percent").text(data.percent + "%");
+        $card.find(".progress-bar-fill").css("width", width_percent + "%");
+        $card.find(".progress-bar-container").attr("title", data.details);
+        $card.find(".custom-tooltip").html(data.details);
+        let $tail = $card.find(".progress-bar-tail");
+        if (data.percent < 100) {
+            if (!$tail.length) {
+                $card.find(".progress-bar-container").append(
                     '<div class="progress-bar-tail" style="left: ' + width_percent + '%;"></div>'
                 );
             } else {
-                $tail.css( "left", width_percent + "%" );
+                $tail.css("left", width_percent + "%");
             }
         } else {
             $tail.remove();
         }
-        frm.we_progress_chart = $card;
-        return;
+        return $card;
     }
 
-    let width_percent = Math.min( 100, Math.max( 0, we_data.percent ) );
-    let html = `
+    const html = `
         <div class="chart-card linear-card">
             <div class="chart-header">
                 <span class="chart-title">${title}</span>
-                <span class="chart-percent">${we_data.percent}%</span>
+                <span class="chart-percent">${data.percent}%</span>
             </div>
-            <div class="progress-bar-container" title="${we_data.details}">
+            <div class="progress-bar-container" title="${data.details}">
                 <div class="progress-bar-bg"></div>
                 <div class="progress-bar-fill" style="width: ${width_percent}%; background-color: var(--percent-line);"></div>
-                ${ we_data.percent < 100 ? '<div class="progress-bar-tail" style="left: ' + width_percent + '%;"></div>' : '' }
+                ${ data.percent < 100 ? '<div class="progress-bar-tail" style="left: ' + width_percent + '%;"></div>' : '' }
             </div>
-            <div class="custom-tooltip">${we_data.details}</div>
+            <div class="custom-tooltip">${data.details}</div>
         </div>
     `;
-    let $el = $( html );
-    // Keep order: Dates / Work / Work Efforts / Revenue — insert before Revenue if present.
-    let revenueTitle = __("Revenue");
-    let $revenue = $group.find( ".linear-card" ).filter( function () {
-        return $( this ).find( ".chart-title" ).first().text() === revenueTitle;
-    } );
-    if ( $revenue.length ) {
-        $el.insertBefore( $revenue.first() );
-    } else {
-        $group.append( $el );
-    }
-    frm.we_progress_chart = $el;
+    return $(html).appendTo($group);
+}
+
+function render_work_efforts_percentage_chart(frm) {
+    frm.we_progress_chart = paint_linear_percent_card(
+        frm, __("Work Efforts"), get_work_efforts_data(frm)
+    );
 }
 
 globalThis.render_work_efforts_percentage_chart = render_work_efforts_percentage_chart;
 
-function ensure_work_efforts_progress_bar( frm ) {
-    if ( frm.we_progress ) {
-        render_work_efforts_percentage_chart( frm );
-        return;
-    }
-    const loadFn = () => project_workload_assignment?.work_efforts?.load_work_efforts_progress?.( frm );
-    if ( typeof project_workload_assignment?.work_efforts?.load_work_efforts_progress === "function" ) {
-        loadFn();
-        return;
-    }
-    frappe.require( [ frappe.assets.bundled_asset( "work-efforts.bundle.js" ) ], loadFn );
-}
-
-function render_revenue_percentage_chart( frm ) {
-    if ( !frm.aggregatedBudget || !frm.dashboard?.chart_area?.grid ) return;
-
-    let revenue_data = get_revenue_data(frm);
-    let title = __("Revenue");
-    let $grid = frm.dashboard.chart_area.grid;
-    let $group = get_chart_group( $grid, "dashboard-percents" );
-    let $card = $group.find( ".linear-card" ).filter( function () {
-        return $( this ).find( ".chart-title" ).first().text() === title;
-    } );
-
-    if ( $card.length ) {
-        let width_percent = Math.min( 100, Math.max( 0, revenue_data.percent ) );
-        $card.find( ".chart-percent" ).text( revenue_data.percent + "%" );
-        $card.find( ".progress-bar-fill" ).css( "width", width_percent + "%" );
-        $card.find( ".progress-bar-container" ).attr( "title", revenue_data.details );
-        $card.find( ".custom-tooltip" ).html( revenue_data.details );
-        let $tail = $card.find( ".progress-bar-tail" );
-        if ( revenue_data.percent < 100 ) {
-            if ( !$tail.length ) {
-                $card.find( ".progress-bar-container" ).append(
-                    '<div class="progress-bar-tail" style="left: ' + width_percent + '%;"></div>'
-                );
-            } else {
-                $tail.css( "left", width_percent + "%" );
-            }
-        } else {
-            $tail.remove();
-        }
-        frm.revenue_percentage_chart = $card;
-        return;
-    }
-
-    frm.revenue_percentage_chart = render_linear_chart(
-        $grid, title, revenue_data.percent, revenue_data.details
+function render_revenue_percentage_chart(frm) {
+    frm.revenue_percentage_chart = paint_linear_percent_card(
+        frm, __("Revenue"), get_revenue_data(frm)
     );
 }
 
 globalThis.render_revenue_percentage_chart = render_revenue_percentage_chart;
 
-function load_and_render_project_dashboard(frm) {
-    // Очистка и подготовка контейнера
-    let wrapper = frm.dashboard.chart_area.wrapper;
+function fetch_work_efforts_progress(frm) {
+    if (!frm?.doc?.name || frm.doc.__islocal) return;
+
+    const project = frm.doc.name;
+    if (frm._we_progress_inflight === project) return;
+    frm._we_progress_inflight = project;
+
+    frappe.xcall(
+        "project_workload_assignment.api.get_work_efforts_progress",
+        { project }
+    ).then((data) => {
+        if (frm._we_progress_inflight === project) {
+            frm._we_progress_inflight = null;
+        }
+        if (!data || frm.doc?.name !== project) return;
+        frm.we_progress = data;
+        frm._we_progress_project = project;
+        render_work_efforts_percentage_chart(frm);
+    }).catch((e) => {
+        if (frm._we_progress_inflight === project) {
+            frm._we_progress_inflight = null;
+        }
+        console.error("[ProjectDashboard] get_work_efforts_progress failed", e);
+    });
+}
+
+function fetch_revenue_progress(frm) {
+    if (!frm?.doc?.name || frm.doc.__islocal) return;
+
+    const project = frm.doc.name;
+    if (frm._rev_progress_inflight === project) return;
+    frm._rev_progress_inflight = project;
+
+    frappe.xcall(
+        "dinext_projects_pl.api.get_revenue_progress",
+        { project }
+    ).then((data) => {
+        if (frm._rev_progress_inflight === project) {
+            frm._rev_progress_inflight = null;
+        }
+        if (!data || frm.doc?.name !== project) return;
+        frm.revenue_progress = data;
+        frm._rev_progress_project = project;
+        render_revenue_percentage_chart(frm);
+    }).catch((e) => {
+        if (frm._rev_progress_inflight === project) {
+            frm._rev_progress_inflight = null;
+        }
+        console.error("[ProjectDashboard] get_revenue_progress failed", e);
+    });
+}
+
+function render_project_dashboard_now(frm) {
+    const project = frm.doc.name;
+    if (frm._we_progress_project && frm._we_progress_project !== project) {
+        frm.we_progress = null;
+        frm._we_progress_inflight = null;
+    }
+    if (frm._rev_progress_project && frm._rev_progress_project !== project) {
+        frm.revenue_progress = null;
+        frm._rev_progress_inflight = null;
+    }
+
+    const wrapper = frm.dashboard.chart_area.wrapper;
     wrapper.empty();
-    
     frm.we_progress_chart = null;
     frm.revenue_percentage_chart = null;
-    // Keep frm.we_progress if app already fetched — re-render bar after grid rebuild.
-    
-    // Создаем основной грид контейнер
-    let $grid = $('<div class="custom-dashboard-grid"></div>').appendTo(wrapper);
+
+    const $grid = $('<div class="custom-dashboard-grid"></div>').appendTo(wrapper);
     frm.dashboard.chart_area.grid = $grid;
+    frm._pwa_dash_gen = (frm._pwa_dash_gen || 0) + 1;
+    const gen = frm._pwa_dash_gen;
 
-    // --- РЯД 1: Процентные полосы (Linear Charts) ---
-    // 1. Сроки
-    let time_data = compute_time_data(frm);
-    render_linear_chart($grid, __("Dates"), time_data.percent, time_data.details );
+    const time_data = compute_time_data(frm);
+    render_linear_chart($grid, __("Dates"), time_data.percent, time_data.details);
 
-    // 2. Работы
-    let task_pct = Number(frm.doc.percent_complete) || 0;
-    render_linear_chart($grid, __("Work"), task_pct, __(`Выполнено:`) + ` ${task_pct}%` );
+    const task_pct = Number(frm.doc.percent_complete) || 0;
+    render_linear_chart($grid, __("Work"), task_pct, __(`Выполнено:`) + ` ${task_pct}%`);
 
-    // 3. Трудозатраты (async API — ensure re-render after load)
-    ensure_work_efforts_progress_bar( frm );
-    
-    // 4. Выручка
-    render_revenue_percentage_chart( frm );
+    render_work_efforts_percentage_chart(frm);
+    fetch_work_efforts_progress(frm);
+    render_revenue_percentage_chart(frm);
+    fetch_revenue_progress(frm);
 
-    // Отображаем область
     frm.dashboard.show();
     frm.dashboard.chart_area.show();
 
-    // --- РЯД 2: Пончики (Donut Charts) ---
-    // Данные загружаются асинхронно
     frappe.call({
         method: "get_project_metrics",
-        args: { project: frm.doc.name },
+        args: { project },
         callback: function(r) {
+            if (frm._pwa_dash_gen !== gen || frm.doc?.name !== project) return;
+            const $live = get_live_dashboard_grid(frm);
+            if (!$live) return;
             const data = r.message;
             if (!data) return;
 
-            // 1. Задачи по статусам
-            render_donut_chart($grid, __("Tasks by status"), data.tasks_by_status, (label) => {
+            render_donut_chart($live, __("Tasks by status"), data.tasks_by_status, (label) => {
                 frappe.set_route('List', 'Task', { status: label, project: frm.doc.name });
             });
 
-            // 2. Задачи по приоритетам
-            render_donut_chart($grid, __("Tasks by priority"), data.tasks_by_priority, (label) => {
+            render_donut_chart($live, __("Tasks by priority"), data.tasks_by_priority, (label) => {
                 frappe.set_route('List', 'Task', { priority: label, project: frm.doc.name });
             });
 
-            // 3. Задачи по ответственным
-            render_donut_chart($grid, __("Tasks by assignee"), data.tasks_by_assignee, (label, key) => {
+            render_donut_chart($live, __("Tasks by assignee"), data.tasks_by_assignee, (label, key) => {
                 if ( !key || key == "" ) {
                     key = [ "is", "not set" ];
                 } else {
                     key = [ "like", "%" + key + "%" ];
                 }
-                frappe.set_route('List', 'Task', { project: frm.doc.name, "_assign": key }); 
+                frappe.set_route('List', 'Task', { project: frm.doc.name, "_assign": key });
             });
 
-            // 4. Запросы по типам
-            render_donut_chart($grid, __("Issues by type"), data.issues_by_type, (label) => {
+            render_donut_chart($live, __("Issues by type"), data.issues_by_type, (label) => {
                 if ( !label || label == __("Not set") ) {
                     label = [ "is", "not set" ];
                 }
@@ -245,6 +248,21 @@ function load_and_render_project_dashboard(frm) {
         }
     });
 }
+
+function load_and_render_project_dashboard(frm) {
+    if (frm._pwa_dash_raf) return;
+    frm._pwa_dash_raf = 1;
+    ensure_dashboard_css()
+        .catch(() => {})
+        .then(() => {
+            requestAnimationFrame(() => {
+                frm._pwa_dash_raf = 0;
+                render_project_dashboard_now(frm);
+            });
+        });
+}
+
+globalThis.load_and_render_project_dashboard = load_and_render_project_dashboard;
 
 // --- ФУНКЦИИ ОТРИСОВКИ (RENDERERS) ---
 
@@ -460,381 +478,47 @@ function compute_time_data(frm) {
 }
 
 function get_work_efforts_data(frm) {
-    let plan = 0, fact = 0, pct = null;
-
-    if ( frm.we_progress ) {
-        plan = Number( frm.we_progress.plan_hours ) || 0;
-        fact = Number( frm.we_progress.fact_hours ) || 0;
-        if ( frm.we_progress.percent != null && frm.we_progress.percent !== "" ) {
-            pct = Number( frm.we_progress.percent );
+    let plan = 0, fact = 0, pct = 0;
+    const same =
+        frm.we_progress &&
+        (!frm._we_progress_project || frm._we_progress_project === frm.doc.name);
+    if (same) {
+        plan = Number(frm.we_progress.plan_hours) || 0;
+        fact = Number(frm.we_progress.fact_hours) || 0;
+        if (frm.we_progress.percent != null && frm.we_progress.percent !== "") {
+            pct = Number(frm.we_progress.percent);
+        } else if (plan > 0) {
+            pct = (fact / plan) * 100;
+        } else if (fact > 0) {
+            pct = 100;
         }
-    } else {
-        try {
-            if ( typeof _get_plant_fact_efforts === "function" ) {
-                let vals = _get_plant_fact_efforts( frm );
-                if ( vals ) {
-                    plan = vals.plan; fact = vals.fact;
-                }
-            }
-        } catch ( e ) {}
     }
-
-    if ( pct == null || Number.isNaN( pct ) ) {
-        pct = 0;
-        if ( plan > 0 ) pct = ( fact / plan ) * 100;
-        else if ( fact > 0 ) pct = 100;
-    }
-
+    if (Number.isNaN(pct)) pct = 0;
     return {
-        percent: Math.round( pct * 100 ) / 100,
+        percent: Math.round(pct * 100) / 100,
         details: __("Plan") + ": " + plan + " " + __("h.") + "<br>" + __("Actual") + ": " + fact + __("h.")
     };
 }
 
 function get_revenue_data(frm) {
-    let plan = 0, fact = 0;
-    try {
-        let vals = _get_revenue_values(frm);
-        if ( vals ) {
-            plan = Number( vals.planned ) || 0;
-            fact = Number( vals.actual ) || 0;
+    let plan = 0, fact = 0, pct = 0;
+    const same =
+        frm.revenue_progress &&
+        (!frm._rev_progress_project || frm._rev_progress_project === frm.doc.name);
+    if (same) {
+        plan = Number(frm.revenue_progress.plan) || 0;
+        fact = Number(frm.revenue_progress.fact) || 0;
+        if (frm.revenue_progress.percent != null && frm.revenue_progress.percent !== "") {
+            pct = Number(frm.revenue_progress.percent);
+        } else if (plan > 0) {
+            pct = (fact / plan) * 100;
+        } else if (fact > 0) {
+            pct = 100;
         }
-    } catch(e) {}
-
-    let pct = 0;
-    if (plan > 0) pct = (fact / plan) * 100;
-    else if (fact > 0) pct = 100;
-
+    }
+    if (Number.isNaN(pct)) pct = 0;
     return {
-        percent: Math.round(pct*100)/100,
+        percent: Math.round(pct * 100) / 100,
         details: __("Plan") + ": " + format_currency(plan) + "<br>" + __("Actual") + ": " + format_currency(fact)
     };
-}
-
-// --- CSS STYLES ---
-function inject_custom_dashboard_css() {
-    if ($('#custom-dashboard-styles').length) return;
-    
-    const css = `
-        :root {
-            --percent-line: var(--bg-dark-blue);
-            --status-open: #c9e7fc8c;
-            --status-overdue: #e036368c;
-            --status-templates: #9999998c;
-            --status-working: #70b6f08c;
-            --status-completed: #30a66d8c;
-            --status-cancelled: #7c7c7c8c;
-            --status-pending-review: #007be08c;
-            --priority-high: #fd7e14a8;
-            --priority-medium: #ffc1078c;
-            --priority-low: #c0d0ea;
-            --priority-urgent: #ff000078;
-            --issue-incident: #7808b18c;
-            --issue-cr: #0da6908c;
-            --issue-sr: #1e87c58c;
-            --not-defined: #a4abb675;
-            --color-01: #ffe3ff;
-            --color-02: #ffc6ff;
-            --color-03: #bdb2ff;
-            --color-04: #a0c4ff;
-            --color-05: #9bf6ff;
-            --color-06: #caffbf;
-            --color-07: #fdffb6;
-            --color-08: #ffd6a5;
-            --color-09: #ffadad;
-            --color-10: #f48b6e;
-        }
-        [data-theme="dark"] {
-            --percent-line: var(--bg-dark-blue);
-            --status-open: #c9e7fc;
-            --status-overdue: #d24343;
-            --status-templates: #999999;
-            --status-working: #70b6f0;
-            --status-completed: #30a66d;
-            --status-cancelled: #7c7c7c;
-            --status-pending-review: #007be0;
-            --priority-high: #fd7e14;
-            --priority-medium: #ffc107;
-            --priority-low: #92aed9;
-            --priority-urgent: #ff0000d6;
-            --issue-incident: #7808b1;
-            --issue-cr: #0da690;
-            --issue-sr: #1e87c5;
-            --not-defined: #A4ABB6;
-            --color-01: #b5a6c9;
-            --color-02: #6a4c93;
-            --color-03: #4267ac;
-            --color-04: #1982c4;
-            --color-05: #36949d;
-            --color-06: #52a675;
-            --color-07: #8ac926;
-            --color-08: #ffca3a;
-            --color-09: #ff924c;
-            --color-10: #ff595e;
-        }
-        .custom-dashboard-grid {
-            width: 100%;
-        }
-        .dashboard-group {
-            display: grid;
-            gap: 20px;
-            padding: 15px 0;
-            grid-template-columns: repeat(2, 1fr);
-            grid-auto-columns: 1fr;
-            grid-auto-flow: column;
-        }
-        .chart-card {
-            /* background: #2c333a; Dark mode simulation if needed, or transparent */
-            padding: 10px;
-            border-radius: 8px;
-            position: relative;
-        }
-        .chart-header {
-            text-align: center;
-        }
-        /* --- Linear Charts --- */
-        .chart-title {
-            font-size: 12px;
-            color: #8d99a6; /* Muted text color */
-            display: block;
-        }
-        .chart-percent {
-            margin-bottom: 5px;
-            font-size: x-large;
-            display: block;
-        }
-        .progress-bar-container {
-            height: 12px;
-            position: relative;
-            width: 100%;
-        }
-        .progress-bar-bg {
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-dark-gray);
-            border-radius: 6px;
-            position: absolute;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            border-radius: 6px;
-            position: absolute;
-            left: 0; top: 0;
-            transition: width 1s ease-out;
-            animation: slideIn 1s ease-out;
-        }
-        .progress-bar-tail {
-            position: absolute;
-            height: 100%;
-            width: 4px;
-            background-color: rgba(255,255,255,0.3);
-            margin-left: -2px;
-            top: 0;
-            z-index: 2;
-        }
-        /* Tooltip */
-        .custom-tooltip {
-            display: none;
-            position: absolute;
-            background: var(--bg-color);
-            color: var(--text-color);
-            padding: 5px 8px;
-            font-size: 11px;
-            border-radius: 4px;
-            top: -35px;
-            left: 0;
-            white-space: nowrap;
-            z-index: 10;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        .linear-card:hover .custom-tooltip {
-            display: block;
-        }
-
-        /* --- Donut Charts --- */
-        .donut-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .donut-wrapper {
-            width: 180px;
-            height: 180px;
-            position: relative;
-            margin: 15px;
-        }
-        .donut-svg {
-            overflow: visible;
-        }
-        .donut-segment {
-            /*transition: all 0.3s ease;
-            transform-origin: center;*/
-            transition: stroke-width 0.3s ease, filter 0.3s ease; 
-            transform-origin: center;
-            will-change: stroke-dashoffset;
-        }
-        .donut-segment-hidden {
-            visibility: hidden; 
-        }
-        .donut-segment.hovered {
-            filter: brightness(0.8);
-            cursor: pointer;
-            transform: scale(1.1);
-        }
-        .donut-hit-area {
-            cursor: pointer;
-        }
-        .donut-center-info {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            pointer-events: none;
-        }
-        .donut-val {
-            display: block;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .donut-lbl {
-            display: block;
-            font-size: 10px;
-        }
-        .no-data {
-            text-align: center;
-            color: #555;
-            padding: 40px 0;
-        }
-
-        @keyframes slideIn {
-            from { width: 0; }
-        }
-        
-        /* Responsive fallback */
-        @media (max-width: 1200px) {
-            .dashboard-group {
-                gap: 10px;
-            }
-            .donut-wrapper {
-                width: 150px;
-                height: 150px;
-            }
-        @media (max-width: 768px) {
-            .dashboard-group {
-                gap: initial;
-                padding: 10px 0;
-                grid-template-columns: 1fr, 1fr;
-            }
-            .dashboard-donuts {
-                display: none;
-            }
-        }
-    `;
-    $('<style id="custom-dashboard-styles">' + css + '</style>').appendTo('head');
-}
-
-function _get_plant_fact_efforts( frm ) {
-    if ( frm.aggregatedTasks ) {
-        let aggregatedTasks = frm.aggregatedTasks || {};
-        let periods = get_display_periods(frm, frm.currentPeriodType || "month");
-    
-        let total_plan = 0;
-        let total_actual = 0;
-        
-        // Вспомогательная рекурсивная функция: возвращает { plan, actual } для заданной задачи и роли за период
-        function sumForTaskByPeriod(taskId, period, planRoles, actualRoles) {
-            let task = aggregatedTasks[taskId];
-            if (!task) return { plan: 0, actual: 0 };
-    
-            // если роль задана — ищем только её запись; иначе — суммируем по всем ролям
-            let plan = 0, actual = 0;
-            let e = (task.role_data || []);
-            
-            if ( e && e.length ) {
-                e.forEach(r => {
-                    const planIndex = planRoles.indexOf(r.role);
-                    const actualIndex = actualRoles.indexOf(r.role);
-                    
-                    if (planIndex > -1) {
-                        let curr_plan = parseFloat(r[`plan_${period.year}_${period.month}`]) || 0;
-                        
-                        if ( curr_plan ) {
-                            plan += curr_plan;
-                            planRoles.splice(planIndex, 1);
-                        }
-                    }
-                    
-                    if (actualIndex > -1) {
-                        let curr_actual = parseFloat(r[`fact_${period.year}_${period.month}`]) || 0;
-
-                        if ( curr_actual ) {
-                            actual += curr_actual;
-                            actualRoles.splice(actualIndex, 1);
-                        }
-                    }
-                });
-            }
-    
-            // Если явных данных нет — рекурсивно суммируем детей
-            let childTasks = Object.values(aggregatedTasks).filter(t => t.parent_task === taskId);
-            childTasks.forEach(child => {
-                let childPlanRoles = [...planRoles];
-                let childActualRoles = [...actualRoles];
-                if ( !planRoles.length && !actualRoles.length ) return;
-                let r = sumForTaskByPeriod(child.value, period, childPlanRoles, childActualRoles);
-                plan += r.plan;
-                actual += r.actual;
-            });
-            return { plan: plan, actual: actual};
-        }
-    
-        // Для каждого периода суммируем по всем корням
-        let plan_per_period = [];
-        let actual_per_period = [];
-        
-        let all_roles = get_project_roles(frm).filter(r => r );
-        let rootTasks = Object.values(aggregatedTasks).filter(t => !t.parent_task);
-    
-        if ( rootTasks.length ) {
-            periods.forEach(period => {
-                let total_period_plan = 0;
-                let total_period_actual = 0;
-                rootTasks.forEach(root => {
-                    let planRoles = [...all_roles];
-                    let actualRoles = [...all_roles];
-                    //if ( !planRoles.length && !actualRoles.length ) return;
-                    let res = sumForTaskByPeriod(root.value, period, planRoles, actualRoles);
-                    total_period_plan += res.plan;
-                    total_period_actual += res.actual;
-                });
-                total_plan += total_period_plan;
-                total_actual += total_period_actual;
-            });
-        }
-        return { plan: total_plan, fact: total_actual};
-    }
-    return null;
-}
-
-function _get_revenue_values( frm ) {
-    if ( !frm.aggregatedBudget ) return null;
-    if ( typeof get_budget_display_periods !== "function" || typeof calc_column_total !== "function" ) {
-        return null;
-    }
-
-    let periods = get_budget_display_periods(frm, "month") || [];
-    let roots = typeof getFinancialRootRows === "function"
-        ? getFinancialRootRows(frm.aggregatedBudget)
-        : Object.values(frm.aggregatedBudget).filter(
-            (b) => !b.parent_account && !b.task && !b._parentKey && !b.risk
-        );
-
-    let planned = 0;
-    let actual = 0;
-    periods.forEach(function(period) {
-        let r = calc_column_total(frm, period, roots, true, true);
-        planned += Number(r.plan_income) || 0;
-        actual += Number(r.actual_income) || 0;
-    });
-    return { planned, actual };
 }
