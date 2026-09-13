@@ -87,6 +87,9 @@ class TestIvanPlan(unittest.TestCase):
 		self.assertEqual(_all("t1").plan_hours, 45.0)
 		self.assertEqual(_all("t1.1").plan_hours, 45.0)
 		self.assertEqual(_all("t1.1.3").plan_hours, 45.0)
+		self.assertEqual(_all("t1").assembled_at, "t1")
+		self.assertEqual(_all("t1.1").assembled_at, "t1.1")
+		self.assertEqual(_all("t1.1.3").assembled_at, "t1.1")
 		self.assertEqual(sum(row.hours for row in SLICE_1 + SLICE_2), 55.0)
 
 	def test_leaf_with_own_plan_is_20(self):
@@ -128,6 +131,7 @@ class TestIvanConsumersAndFact(unittest.TestCase):
 	def test_empty_leaf_inherits_parent_slice(self):
 		got = PlanFact.compute(_slice(SLICE_1, USED), "t1.1.3", ROLE)
 		self.assertEqual(got.plan_hours, 10.0)
+		self.assertEqual(got.assembled_at, "t1.1")
 		self.assertEqual(got.consumers, frozenset({"t1", "t1.1", "t1.1.1", "t1.1.2", "t1.1.3"}))
 
 

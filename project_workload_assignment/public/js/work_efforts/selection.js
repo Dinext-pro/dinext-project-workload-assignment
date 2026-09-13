@@ -188,6 +188,8 @@ async function postSaveRefresh(frm) {
     frm._missingPlanMap = {};
     frm._missingPlanPeriodsMap = {};
 
+    frm.we_progress = null;
+    frm._we_progress_inflight = null;
     if (typeof load_and_render_project_dashboard === "function") {
         load_and_render_project_dashboard(frm);
     }
