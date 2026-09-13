@@ -1,6 +1,6 @@
 /**
- * Lightweight work efforts progress for Project Details dashboard bar.
- * Calls get_work_efforts_progress (scalars only) — no consolidated/grid prefetch.
+ * Refetch work efforts scalars after WE mutations.
+ * First paint of the Details bar is owned by project/dashboard.js.
  */
 
 async function load_work_efforts_progress(frm) {
@@ -20,6 +20,7 @@ async function load_work_efforts_progress(frm) {
 		if (!data || frm.doc?.name !== project) return null;
 		frm.we_progress = data;
 		frm._we_progress_project = project;
+		frm._we_progress_inflight = null;
 		if (typeof globalThis.render_work_efforts_percentage_chart === "function") {
 			globalThis.render_work_efforts_percentage_chart(frm);
 		}
@@ -30,18 +31,6 @@ async function load_work_efforts_progress(frm) {
 	}
 }
 
-frappe.ui.form.on("Project", {
-	refresh(frm) {
-		load_work_efforts_progress(frm);
-	},
-});
-
 Object.assign(project_workload_assignment.work_efforts, {
 	load_work_efforts_progress,
 });
-
-// Bundle loads async — refresh may have run before this module; catch up on open Project.
-const _we_progress_frm = typeof cur_frm !== "undefined" ? cur_frm : null;
-if (_we_progress_frm?.doctype === "Project" && !_we_progress_frm.doc?.__islocal) {
-	load_work_efforts_progress(_we_progress_frm);
-}

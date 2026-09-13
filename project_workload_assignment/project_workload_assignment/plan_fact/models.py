@@ -30,6 +30,7 @@ class Result:
 	plan_hours — котёл.
 	fact_hours — сколько уже съели.
 	consumers  — чьи списания едят котёл.
+	assembled_at — узел, где собрали план (своя клетка или сумма детей).
 	"""
 
 	node: str
@@ -37,6 +38,7 @@ class Result:
 	plan_hours: float
 	fact_hours: float
 	consumers: frozenset[str]
+	assembled_at: str
 
 
 @dataclass(frozen=True)

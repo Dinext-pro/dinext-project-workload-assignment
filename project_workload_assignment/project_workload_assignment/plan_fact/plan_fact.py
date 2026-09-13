@@ -42,6 +42,7 @@ class PlanFact:
 			plan_hours=hours,
 			fact_hours=cls._sum_used(snapshot.used, consumers, role),
 			consumers=consumers,
+			assembled_at=assembled_at,
 		)
 
 	@classmethod
@@ -70,12 +71,14 @@ class PlanFact:
 		if used_rows:
 			fact_hours = cls._sum_used(used_rows, frozenset(consumers), parts[0].role)
 		first = parts[0]
+		inherited = [row.assembled_at for row in parts if row.assembled_at != row.node]
 		return Result(
 			node=first.node,
 			role=first.role,
 			plan_hours=plan_hours,
 			fact_hours=fact_hours,
 			consumers=frozenset(consumers),
+			assembled_at=inherited[0] if inherited and len(inherited) == len(parts) else first.node,
 		)
 
 	@classmethod

@@ -179,20 +179,11 @@ class TimesheetLimitsFormInput(TypedDict, total=False):
 
 
 class PlanSource(TypedDict, total=False):
-	"""Один источник плана (лист или узел, с которого взяты часы)."""
+	"""Откуда часы плана: клетка предка или дети узла сборки."""
 
 	task_name: str
 	subject: str
 	planned_hours: float
-
-
-class PlanData(TypedDict, total=False):
-	"""Данные плана по задаче и роли."""
-
-	task_name: str
-	planned_hours: float
-	subject: str
-	plan_sources: list[PlanSource]
 
 
 class HoursData(TypedDict, total=False):

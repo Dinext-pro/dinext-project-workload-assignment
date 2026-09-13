@@ -75,7 +75,7 @@ class TimesheetLimitsBulkLoader:
 			raw_amounts = frappe.db.get_all(
 				"Project Work Efforts Amount",
 				filters={"parent": ["in", pwe_names]},
-				fields=["parent", "pwea_year", "pwea_month", "pwea_plan"],
+				fields=["parent", "pwea_year", "pwea_month", "pwea_plan", "pwea_expected"],
 			)
 			for a in raw_amounts:
 				resolved = _resolve_plan_year_month(a.pwea_year, a.pwea_month, fy_cache)
@@ -87,6 +87,7 @@ class TimesheetLimitsBulkLoader:
 						"year": year,
 						"month": month,
 						"plan": frappe.utils.flt(a.pwea_plan or 0),
+						"expected": frappe.utils.flt(a.pwea_expected or 0),
 					}
 				)
 
