@@ -1,4 +1,4 @@
-import { MERGE_GROUP } from "./constants.js";
+import { MERGE_GROUP, TABLE_MAX_HEIGHT } from "./constants.js";
 import { initState } from "./state.js";
 import { loadGridData, reloadTable } from "./data.js";
 import { applyPlanDeltaVisibility, getColumns, refreshColumns } from "./columns.js";
@@ -79,6 +79,7 @@ function buildTableOptions(frm, state) {
         columns: getColumns(frm, state.periods),
         summaryRows: buildSummaryRows(frm, state.periods, state.summaryRows),
         summary: { pin: "bottom", edit: false, clipboard: false, selection: false },
+        layout: { height: "auto", maxHeight: TABLE_MAX_HEIGHT },
         expandedIds: getExpandedIds(frm),
         edit: false,
         selection: { enabled: true },
