@@ -431,9 +431,7 @@
 
 .work_efforts_container .work-efforts-table.dinext-table {
 	width: 100%;
-	min-height: 280px;
-	height: min(60vh, 672px);
-	max-height: 672px;
+	max-height: min(60vh, 672px);
 	--we-row-height: 28px;
 }
 
