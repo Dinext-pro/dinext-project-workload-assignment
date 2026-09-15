@@ -23,8 +23,6 @@ export function resolveTableContainer(wrapper) {
 	}
 
 	const containerEl = table[0];
-	containerEl.style.height = "min(60vh, 672px)";
-	containerEl.style.minHeight = "280px";
 	return containerEl;
 }
 
