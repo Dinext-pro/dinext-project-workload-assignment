@@ -164,15 +164,12 @@ def run_get_work_efforts_grid(form_dict: WeGridFormInput) -> WeGridResponse:
 	periods = get_display_periods(project, period_type, view_mode)
 	consolidated = build_aggregated_work_efforts_tasks(project)
 	rows = flatten_consolidated_tasks_to_v2_rows(consolidated, periods, view_mode)
-	include_plan = form_dict.get("include_plan", True)
-	if isinstance(include_plan, str):
-		include_plan = include_plan not in ("0", "false", "False")
 	summary_rows = build_we_summary_rows(
 		project,
 		consolidated,
 		periods,
 		view_mode,
-		include_plan=bool(include_plan),
+		include_plan=True,
 	)
 
 	return {
