@@ -58,6 +58,24 @@ export function mountProjectFilters(el, onChange, opts = {}) {
 		},
 	});
 
+	addCheckbox(flow, {
+		label: __("Consider limit"),
+		checked: !!args.consider_limit,
+		onChange: (v) => {
+			args.consider_limit = v ? 1 : 0;
+			_reload();
+		},
+	});
+
+	addCheckbox(flow, {
+		label: __("Consider virtuals"),
+		checked: !!args.consider_virtuals,
+		onChange: (v) => {
+			args.consider_virtuals = v ? 1 : 0;
+			_reload();
+		},
+	});
+
 	addSelect(flow, {
 		fieldname: "view_type",
 		options: VIEW_OPTIONS,

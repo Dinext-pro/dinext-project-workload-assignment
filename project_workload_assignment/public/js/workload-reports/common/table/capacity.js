@@ -53,12 +53,33 @@ const _sumAvailableInRange = (row, startDate, endDate) => {
 	return total;
 };
 
+/** Empty / 0 / missing → 1 (full fund). */
+export const resolveLimitFactor = (row, applyLimit) => {
+	if (!applyLimit) return 1;
+	const raw = _num(row?.workload_limit ?? row?.workloadLimit);
+	if (raw <= 0) return 1;
+	return raw / 100;
+};
+
+/** Same normalize as backend: empty / 0 → 100. */
+export const resolveDisplayLimitPercent = (row) =>
+	Math.round(resolveLimitFactor(row, true) * 100);
+
+const _applyLimitToAvailable = (availableHours, hours, factor) => {
+	const effective = availableHours * factor;
+	if (effective > 0) {
+		return { availableHours: effective, percentage: Math.round((hours / effective) * 100) };
+	}
+	return { availableHours: 0, percentage: hours > 0 ? 999 : 0 };
+};
+
 /**
  * @returns {{ availableHours: number, percentage: number, tooltip: string }}
  */
-export const resolvePeriodLoad = (row, period, planHours, viewType) => {
+export const resolvePeriodLoad = (row, period, planHours, viewType, opts = {}) => {
 	const hours = _num(planHours);
 	const unit = __("h");
+	const factor = resolveLimitFactor(row, !!opts.applyLimit);
 	let availableHours = 0;
 	let tooltip = "";
 
@@ -71,26 +92,31 @@ export const resolvePeriodLoad = (row, period, planHours, viewType) => {
 			parts.push(`${__("Absence hours")}: ${(baseHours - availableHours).toFixed(1)}${unit}`);
 			parts.push(`${__("Available hours")}: ${availableHours.toFixed(1)}${unit}`);
 		}
-		const pct = availableHours > 0 ? Math.round((hours / availableHours) * 100) : 0;
-		parts.push(`${__("Workload")}: ${hours.toFixed(1)}${unit} (${pct}%)`);
+		const applied = _applyLimitToAvailable(availableHours, hours, factor);
+		if (factor !== 1) {
+			parts.push(`${__("Limit")}: ${Math.round(factor * 100)}%`);
+		}
+		parts.push(`${__("Workload")}: ${hours.toFixed(1)}${unit} (${applied.percentage}%)`);
 		tooltip = parts.join("\n");
-		return { availableHours, percentage: pct, tooltip };
+		return { ...applied, tooltip };
 	}
 
 	if (viewType === "weekly") {
 		availableHours = DEFAULT_WEEK_HOURS;
 		const calculated = _sumAvailableInRange(row, period?.start_date, period?.end_date);
 		if (calculated > 0) availableHours = calculated;
-		const pct = availableHours > 0 ? Math.round((hours / availableHours) * 100) : 0;
-		tooltip = `${__("Weekly available hours")}: ${availableHours.toFixed(1)}${unit}\n${__("Workload")}: ${hours.toFixed(1)}${unit} (${pct}%)`;
-		return { availableHours, percentage: pct, tooltip };
+		const applied = _applyLimitToAvailable(availableHours, hours, factor);
+		const limitNote = factor !== 1 ? `\n${__("Limit")}: ${Math.round(factor * 100)}%` : "";
+		tooltip = `${__("Weekly available hours")}: ${availableHours.toFixed(1)}${unit}${limitNote}\n${__("Workload")}: ${hours.toFixed(1)}${unit} (${applied.percentage}%)`;
+		return { ...applied, tooltip };
 	}
 
 	// monthly (default)
 	availableHours = DEFAULT_MONTH_HOURS;
 	const calculated = _sumAvailableInRange(row, period?.start_date, period?.end_date);
 	if (calculated > 0) availableHours = calculated;
-	const pct = availableHours > 0 ? Math.round((hours / availableHours) * 100) : 0;
-	tooltip = `${__("Monthly available hours")}: ${availableHours.toFixed(1)}${unit}\n${__("Workload")}: ${hours.toFixed(1)}${unit} (${pct}%)`;
-	return { availableHours, percentage: pct, tooltip };
+	const applied = _applyLimitToAvailable(availableHours, hours, factor);
+	const limitNote = factor !== 1 ? `\n${__("Limit")}: ${Math.round(factor * 100)}%` : "";
+	tooltip = `${__("Monthly available hours")}: ${availableHours.toFixed(1)}${unit}${limitNote}\n${__("Workload")}: ${hours.toFixed(1)}${unit} (${applied.percentage}%)`;
+	return { ...applied, tooltip };
 };
