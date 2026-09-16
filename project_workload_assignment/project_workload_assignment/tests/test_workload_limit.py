@@ -14,6 +14,7 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 	FULL_FUND_LIMIT,
 	_row_interval,
 	fill_person_limit_remainders,
+	find_team_limit_ceiling_violations,
 	find_team_limit_sum_violations,
 	is_explicit_limit,
 	normalize_workload_limit,
@@ -233,6 +234,39 @@ class TestWorkloadLimitHelpers(FrappeTestCase):
 			{"pt_participant": "b@x", "workload_limit": 70},
 		]
 		self.assertEqual(find_team_limit_sum_violations(rows), [])
+		self.assertEqual(find_team_limit_ceiling_violations(rows), [])
+
+	def test_single_real_role_over_100_is_blocked(self):
+		rows = [{"pt_participant": "a@x", "pt_role": "Dev", "workload_limit": 150}]
+		self.assertEqual(find_team_limit_sum_violations(rows), [])
+		self.assertEqual(len(find_team_limit_ceiling_violations(rows)), 1)
+		self.assertEqual(find_team_limit_ceiling_violations(rows)[0]["peak"], 150)
+
+	def test_single_real_role_at_100_is_allowed(self):
+		rows = [{"pt_participant": "a@x", "pt_role": "Dev", "workload_limit": 100}]
+		self.assertEqual(find_team_limit_sum_violations(rows), [])
+		self.assertEqual(find_team_limit_ceiling_violations(rows), [])
+
+	def test_virtual_row_over_100_is_blocked(self):
+		rows = [{"virtual_worker": 1, "pt_role": "QA", "workload_limit": 150}]
+		self.assertEqual(find_team_limit_sum_violations(rows), [])
+		self.assertEqual(len(find_team_limit_ceiling_violations(rows)), 1)
+
+	def test_two_virtuals_same_role_each_100_allowed(self):
+		rows = [
+			{"virtual_worker": 1, "pt_role": "QA", "workload_limit": 100},
+			{"virtual_worker": 1, "pt_role": "QA", "workload_limit": 100},
+		]
+		self.assertEqual(find_team_limit_sum_violations(rows), [])
+		self.assertEqual(find_team_limit_ceiling_violations(rows), [])
+
+	def test_overlapping_70_plus_40_still_blocked(self):
+		rows = [
+			{"pt_participant": "a@x", "pt_role": "Dev", "workload_limit": 70},
+			{"pt_participant": "a@x", "pt_role": "PM", "workload_limit": 40},
+		]
+		self.assertEqual(find_team_limit_ceiling_violations(rows), [])
+		self.assertEqual(len(find_team_limit_sum_violations(rows)), 1)
 
 	def test_document_rows_without_getitem(self):
 		rows = [
@@ -278,6 +312,12 @@ class TestWorkloadLimitHelpers(FrappeTestCase):
 		self.assertFalse(fill_person_limit_remainders(zero_eighty))
 		self.assertEqual(peak_limit_sum(zero_eighty), 80)
 		self.assertEqual(find_team_limit_sum_violations(zero_eighty), [])
+		self.assertEqual(
+			find_team_limit_ceiling_violations(
+				[_FakeTeamRow(virtual_worker=1, pt_role="QA", workload_limit=150)]
+			)[0]["peak"],
+			150,
+		)
 
 
 class TestProjectTreeCapacityStamp(FrappeTestCase):
