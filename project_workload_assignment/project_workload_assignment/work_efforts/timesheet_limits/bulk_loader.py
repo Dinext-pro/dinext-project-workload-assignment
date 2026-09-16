@@ -44,7 +44,8 @@ class TimesheetLimitsBulkLoader:
 				fields=task_fields,
 			)
 		except Exception as exc:
-			# Gantt Custom Field; missing on PWA-only CI site.
+			# TEMPORARY crutch: gantt Custom Field missing on PWA-only CI.
+			# Remove when CI installs gantt or PWA owns the field.
 			if "custom_linked_issue" not in str(exc) and "1054" not in str(exc):
 				raise
 			raw_tasks = frappe.db.get_all(
