@@ -29,37 +29,56 @@ function pwr_pl_register_forecast_from_we_menu(frm) {
 	// New PL: project_budget_*; develop PL: project_pl_* — share one menu array.
 	frappe.provide("dinext_projects.project_pl_forecast_menu");
 	frappe.provide("dinext_projects.project_budget_forecast_menu");
-	if (!Array.isArray(dinext_projects.project_pl_forecast_menu)) {
-		dinext_projects.project_pl_forecast_menu = [];
-	}
-	if (
-		!Array.isArray(dinext_projects.project_budget_forecast_menu) ||
-		dinext_projects.project_budget_forecast_menu !== dinext_projects.project_pl_forecast_menu
-	) {
-		if (
-			Array.isArray(dinext_projects.project_budget_forecast_menu) &&
-			dinext_projects.project_budget_forecast_menu.length &&
-			!dinext_projects.project_pl_forecast_menu.length
-		) {
-			dinext_projects.project_pl_forecast_menu = dinext_projects.project_budget_forecast_menu;
-		}
-		dinext_projects.project_budget_forecast_menu = dinext_projects.project_pl_forecast_menu;
-	}
-	dinext_projects.project_budget_forecast_menu = dinext_projects.project_pl_forecast_menu =
-		dinext_projects.project_pl_forecast_menu.filter(
-			(item) => !item[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]
-		);
-	dinext_projects.project_budget_forecast_menu.push({
-		label: PWR_PL_FORECAST_COST_LABEL,
-		action: (frm) => add_forecast_from_work_efforts_handler(frm, "cost"),
-		[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]: true,
-	});
+	const weItems = [
+		{
+			label: PWR_PL_FORECAST_COST_LABEL,
+			action: (frm) => add_forecast_from_work_efforts_handler(frm, "cost"),
+			[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]: true,
+			__pwr_pl_forecast_kind: "cost",
+		},
+	];
 	if (pwr_pl_is_tm_project(frm)) {
-		dinext_projects.project_budget_forecast_menu.push({
+		weItems.push({
 			label: PWR_PL_FORECAST_REVENUE_LABEL,
 			action: (frm) => add_forecast_from_work_efforts_handler(frm, "revenue"),
 			[PWR_PL_FORECAST_FROM_WE_MENU_FLAG]: true,
+			__pwr_pl_forecast_kind: "revenue",
 		});
+	}
+	if (typeof dinext_projects.replace_forecast_menu_items === "function") {
+		dinext_projects.replace_forecast_menu_items(PWR_PL_FORECAST_FROM_WE_MENU_FLAG, weItems);
+	} else {
+		if (!Array.isArray(dinext_projects.project_pl_forecast_menu)) {
+			dinext_projects.project_pl_forecast_menu = [];
+		}
+		if (!Array.isArray(dinext_projects.project_budget_forecast_menu)) {
+			dinext_projects.project_budget_forecast_menu = [];
+		}
+		if (
+			dinext_projects.project_budget_forecast_menu !==
+			dinext_projects.project_pl_forecast_menu
+		) {
+			const seen = new Set();
+			const merged = [];
+			for (const item of dinext_projects.project_pl_forecast_menu.concat(
+				dinext_projects.project_budget_forecast_menu
+			)) {
+				if (!item || seen.has(item)) {
+					continue;
+				}
+				seen.add(item);
+				merged.push(item);
+			}
+			dinext_projects.project_pl_forecast_menu = merged;
+			dinext_projects.project_budget_forecast_menu = merged;
+		}
+		const menu = dinext_projects.project_budget_forecast_menu;
+		for (let i = menu.length - 1; i >= 0; i--) {
+			if (menu[i] && menu[i][PWR_PL_FORECAST_FROM_WE_MENU_FLAG]) {
+				menu.splice(i, 1);
+			}
+		}
+		weItems.forEach((item) => menu.push(item));
 	}
 	const refresh =
 		dinext_projects.refresh_project_budget_forecast_dropdown ||

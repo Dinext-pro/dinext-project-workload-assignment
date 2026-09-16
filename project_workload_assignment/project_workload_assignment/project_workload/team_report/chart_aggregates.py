@@ -208,7 +208,7 @@ def _build_workload_context(
 			projects_set.add(name)
 	users_data = load_users_with_worker_context(users_list)
 	projects_data = load_projects(list(projects_set))
-	working_hours_overrides = load_working_hours_overrides(users_data)
+	working_hours_overrides = load_working_hours_overrides(users_data, projects_data)
 	holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
 	user_absences = load_user_absences(users_list)
 	monthly_plan_cache = load_monthly_plan_cache(assignments)
