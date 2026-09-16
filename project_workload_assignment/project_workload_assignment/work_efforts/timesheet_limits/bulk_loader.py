@@ -36,16 +36,27 @@ class TimesheetLimitsBulkLoader:
 		task_meta: dict = {}
 		children_map: dict = {}
 
-		raw_tasks = frappe.db.get_all(
-			"Task",
-			filters={"project": ["in", project_list]},
-			fields=["name", "parent_task", "subject", "custom_linked_issue", "project"],
-		)
+		task_fields = ["name", "parent_task", "subject", "custom_linked_issue", "project"]
+		try:
+			raw_tasks = frappe.db.get_all(
+				"Task",
+				filters={"project": ["in", project_list]},
+				fields=task_fields,
+			)
+		except Exception as exc:
+			# Gantt Custom Field; missing on PWA-only CI site.
+			if "custom_linked_issue" not in str(exc) and "1054" not in str(exc):
+				raise
+			raw_tasks = frappe.db.get_all(
+				"Task",
+				filters={"project": ["in", project_list]},
+				fields=["name", "parent_task", "subject", "project"],
+			)
 		for t in raw_tasks:
 			task_meta[t.name] = {
 				"subject": t.subject or t.name,
 				"parent_task": t.parent_task or None,
-				"custom_linked_issue": bool(t.custom_linked_issue),
+				"custom_linked_issue": bool(getattr(t, "custom_linked_issue", None)),
 			}
 			proj = t.project or ""
 			children_map.setdefault((proj, t.name), [])
