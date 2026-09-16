@@ -44,6 +44,8 @@ export const projectDefaults = () => {
 		worker_wtype: "",
 		project_role_filters: [],
 		load_actual: 0,
+		consider_limit: 1,
+		consider_virtuals: 0,
 		view_type: "daily",
 		period_range,
 		date_from,

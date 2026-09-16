@@ -206,6 +206,7 @@ export async function loadTable(container, fetchFn, opts = {}) {
 		const columns = getColumns(grid.periods, {
 			viewType: opts.viewType,
 			showFact,
+			applyLimit: !!opts.applyLimit,
 		});
 		let rows = toTableRows(grid.rows || []);
 

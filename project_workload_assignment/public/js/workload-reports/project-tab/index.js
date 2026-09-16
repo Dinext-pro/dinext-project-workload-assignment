@@ -57,6 +57,7 @@ const _reload = (frm, el) => {
 	const tableDone = common.loadTable(el._wr.table, () => common.getProjectData(args), {
 		viewType: args.view_type,
 		showFact: !!args.load_actual,
+		applyLimit: !!args.consider_limit,
 	});
 	const chartsDone = common.scheduleChartsReload(el._wr.charts);
 	return Promise.all([tableDone, chartsDone]).then(() => {
@@ -205,6 +206,12 @@ const _bindForm = () => {
 		refresh(frm) {
 			_dbg("form-refresh", { project: frm?.doc?.name });
 			scheduleMount(frm);
+		},
+		after_save(frm) {
+			const el = frm.get_field(FIELD)?.$wrapper?.get?.(0);
+			if (_hostIsLive(el, frm.doc.name)) {
+				_reload(frm, el);
+			}
 		},
 	});
 };
