@@ -244,6 +244,33 @@ def peak_limit_sum(rows: list) -> float:
 	return peak
 
 
+def _row_limit_label(row) -> str:
+	return (
+		(_row_get(row, "pt_role") or "").strip()
+		or (_row_get(row, "pt_participant") or "").strip()
+		or (_row_get(row, "pt_worker") or "").strip()
+		or "virtual"
+	)
+
+
+def find_team_limit_ceiling_violations(rows: list) -> list[dict]:
+	"""Любая строка (реал или виртуал) с числом > 100. Пустое / 0 / 100 — не потолок."""
+	violations: list[dict] = []
+	for row in rows or []:
+		value = _row_get(row, "workload_limit")
+		if value is None or (isinstance(value, str) and value.strip() == ""):
+			continue
+		try:
+			number = float(value)
+		except (TypeError, ValueError):
+			continue
+		if number > FULL_FUND_LIMIT + 1e-6:
+			violations.append(
+				{"person": _row_limit_label(row), "peak": number, "rows": [row]}
+			)
+	return violations
+
+
 def find_team_limit_sum_violations(rows: list) -> list[dict]:
 	"""Пик суммы лимитов одного человека > 100 на пересекающихся датах."""
 	by_person: dict[str, list] = defaultdict(list)
@@ -267,20 +294,31 @@ def validate_project_team_limit_sum(doc, method=None) -> None:
 		return
 	rows = doc.get("custom_ts_details") or []
 	fill_person_limit_remainders(rows)
-	violations = find_team_limit_sum_violations(rows)
-	if not violations:
+	ceiling = find_team_limit_ceiling_violations(rows)
+	sums = find_team_limit_sum_violations(rows)
+	if not ceiling and not sums:
 		return
-	lines = [
-		frappe._(
-			"Workload limit of one person cannot exceed 100% on overlapping dates."
-		)
-	]
-	for item in violations:
+	lines: list[str] = []
+	if ceiling:
+		lines.append(frappe._("Workload limit of one role cannot exceed 100%."))
+		for item in ceiling:
+			lines.append(
+				frappe._("{0}: {1}% (max 100%)").format(
+					item["person"], frappe.utils.flt(item["peak"], 2)
+				)
+			)
+	if sums:
 		lines.append(
-			frappe._("{0}: {1}% (max 100%)").format(
-				item["person"], frappe.utils.flt(item["peak"], 2)
+			frappe._(
+				"Workload limit of one person cannot exceed 100% on overlapping dates."
 			)
 		)
+		for item in sums:
+			lines.append(
+				frappe._("{0}: {1}% (max 100%)").format(
+					item["person"], frappe.utils.flt(item["peak"], 2)
+				)
+			)
 	frappe.throw("<br>".join(lines), title=frappe._("Workload limit"))
 
 

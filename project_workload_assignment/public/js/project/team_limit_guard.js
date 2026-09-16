@@ -175,12 +175,33 @@ const _fillAll = (frm) => {
 	}
 };
 
-const _violations = (frm) =>
-	Object.entries(_personGroups(frm))
-		.filter(([, rows]) => rows.length > 1 && _peakSum(rows) > 100.000001)
-		.map(([person, rows]) => ({ person, peak: _peakSum(rows), rows }));
-
 const _label = (row) => row.pt_role || row.pt_participant || row.pt_worker || "";
+
+const _rowOverCeiling = (row) => {
+	if (_isEmptyLimit(row.workload_limit)) return false;
+	const n = Number(row.workload_limit);
+	return Number.isFinite(n) && n > 100.000001;
+};
+
+const _violations = (frm) => {
+	const ceiling = _teamRows(frm)
+		.filter(_rowOverCeiling)
+		.map((row) => ({
+			person: _label(row) || (row.virtual_worker ? "virtual" : ""),
+			peak: Number(row.workload_limit),
+			rows: [row],
+			kind: "ceiling",
+		}));
+	const sums = Object.entries(_personGroups(frm))
+		.filter(([, rows]) => rows.length > 1 && _peakSum(rows) > 100.000001)
+		.map(([person, rows]) => ({
+			person,
+			peak: _peakSum(rows),
+			rows,
+			kind: "sum",
+		}));
+	return [...ceiling, ...sums];
+};
 
 const applyRemainder = (frm, cdt, cdn) => {
 	if (_filling) return;
@@ -200,12 +221,24 @@ frappe.ui.form.on("Project", {
 		_fillAll(frm);
 		const bad = _violations(frm);
 		if (!bad.length) return;
-		const lines = [
-			__("Workload limit of one person cannot exceed 100% on overlapping dates."),
-		];
-		for (const item of bad) {
-			const roles = item.rows.map(_label).filter(Boolean).join(", ");
-			lines.push(`${item.person}: ${item.peak.toFixed(1)}% (${roles})`);
+		const lines = [];
+		const ceiling = bad.filter((item) => item.kind === "ceiling");
+		const sums = bad.filter((item) => item.kind === "sum");
+		if (ceiling.length) {
+			lines.push(__("Workload limit of one role cannot exceed 100%."));
+			for (const item of ceiling) {
+				const roles = item.rows.map(_label).filter(Boolean).join(", ");
+				lines.push(`${item.person}: ${item.peak.toFixed(1)}% (${roles})`);
+			}
+		}
+		if (sums.length) {
+			lines.push(
+				__("Workload limit of one person cannot exceed 100% on overlapping dates.")
+			);
+			for (const item of sums) {
+				const roles = item.rows.map(_label).filter(Boolean).join(", ");
+				lines.push(`${item.person}: ${item.peak.toFixed(1)}% (${roles})`);
+			}
 		}
 		frappe.msgprint({
 			title: __("Workload limit"),

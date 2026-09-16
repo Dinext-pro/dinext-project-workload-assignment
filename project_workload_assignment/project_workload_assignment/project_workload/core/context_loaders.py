@@ -285,9 +285,12 @@ def load_projects(projects_list: list[str]) -> dict[str, ProjectWorkloadInfo]:
 	if not projects_list:
 		return projects_data
 
+	fields = ["name", "project_name", "holiday_list", "company"]
+	if frappe.get_meta("Project").has_field("custom_working_hours_on_date"):
+		fields.append("custom_working_hours_on_date")
 	projects_db = frappe.qb.get_query(
 		"Project",
-		fields=["name", "project_name", "holiday_list", "company"],
+		fields=fields,
 		filters=[["name", "in", projects_list]],
 	).run(as_dict=True)
 	company_holiday_lists = load_company_holiday_lists({
@@ -304,6 +307,9 @@ def load_projects(projects_list: list[str]) -> dict[str, ProjectWorkloadInfo]:
 			project_info,
 			company_holiday_lists,
 		)
+		whod = project_row.get("custom_working_hours_on_date")
+		if whod:
+			project_info["working_hours_on_date"] = whod
 		projects_data[project_row["name"]] = project_info
 	return projects_data
 
@@ -328,11 +334,16 @@ def load_tasks(tasks_list: list[str]) -> dict[str, TaskWorkloadInfo]:
 
 def load_working_hours_overrides(
 	users_data: dict[str, UserWorkloadInfo],
+	projects_data: dict[str, ProjectWorkloadInfo] | None = None,
 ) -> dict[str, dict[str, float]]:
 	working_hours_overrides: dict[str, dict[str, float]] = {}
 	working_hours_refs: set[str] = set()
 	for user_data in users_data.values():
 		ref = user_data.get("tt_working_hours_on_date")
+		if ref:
+			working_hours_refs.add(ref)
+	for project_data in (projects_data or {}).values():
+		ref = project_data.get("working_hours_on_date")
 		if ref:
 			working_hours_refs.add(ref)
 
