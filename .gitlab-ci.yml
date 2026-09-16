@@ -1,4 +1,5 @@
 # Managed by dinext_control_center — do not copy policy scripts into this repo.
+# canary seed overlay + mr-gate
 # Required MR jobs from /ci/dinext-app.yml: gitflow:mr-guard, app:smoke, app:unit, docs-agent:mr-analyze
 include:
   - project: erpnext/dinext/dinext_control_center
