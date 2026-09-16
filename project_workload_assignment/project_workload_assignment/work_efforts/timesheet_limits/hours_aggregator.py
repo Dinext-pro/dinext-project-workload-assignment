@@ -18,7 +18,6 @@ class TimesheetHoursAggregator:
 	@classmethod
 	def aggregate(
 		cls,
-		plan_task: str,
 		tasks: list[str],
 		role: str,
 		timesheet_name: str | None,
@@ -30,7 +29,7 @@ class TimesheetHoursAggregator:
 		cache: dict | None = None,
 	) -> HoursData:
 		hours_cache = cache if cache is not None else {}
-		ck = plan_task + role
+		ck = f"{role}|{','.join(sorted(tasks))}"
 		if year is not None:
 			ck += f"_{year}_{month}"
 		if ck in hours_cache:
@@ -38,13 +37,12 @@ class TimesheetHoursAggregator:
 
 		if year is not None and month is not None:
 			total = cls._from_grid_positions(
-				plan_task, role, year, month, local_positions
+				tasks, role, year, month, local_positions
 			)
 			hours_cache[ck] = total
 			return total
 
 		total = cls._from_utp_db(
-			plan_task,
 			tasks,
 			role,
 			timesheet_name,
@@ -57,12 +55,13 @@ class TimesheetHoursAggregator:
 	@classmethod
 	def _from_grid_positions(
 		cls,
-		plan_task: str,
+		tasks: list[str],
 		role: str,
 		year: int,
 		month: int,
 		local_positions: list[TimesheetPositionInput],
 	) -> HoursData:
+		task_set = set(tasks)
 		total: HoursData = {"total": 0}
 		users: set[str] = set()
 		for pos in local_positions:
@@ -71,7 +70,7 @@ class TimesheetHoursAggregator:
 			pos_year = LimitsParsing.as_int(pos.get("year"))
 			pos_month = LimitsParsing.as_int(pos.get("month"))
 			if (
-				pos_task == plan_task
+				pos_task in task_set
 				and pos_role == role
 				and pos_year == year
 				and pos_month == month
@@ -86,7 +85,6 @@ class TimesheetHoursAggregator:
 	@classmethod
 	def _from_utp_db(
 		cls,
-		plan_task: str,
 		tasks: list[str],
 		role: str,
 		timesheet_name: str | None,

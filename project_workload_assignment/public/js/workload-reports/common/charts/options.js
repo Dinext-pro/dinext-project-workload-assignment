@@ -70,7 +70,7 @@ export const filterWtypeSeries = (data, wtype, workerWtypeFilter) => {
 	return hideZeros(rows);
 };
 
-const _lineSeries = ({ name, lineColor, areaColor, lineOpacity, areaOpacity, z, data, lineWidth }) => ({
+const _lineSeries = ({ name, lineColor, areaColor, lineOpacity, areaOpacity, z, data, lineWidth, dashed }) => ({
 	name,
 	type: "line",
 	smooth: true,
@@ -81,6 +81,7 @@ const _lineSeries = ({ name, lineColor, areaColor, lineOpacity, areaOpacity, z, 
 		color: lineColor,
 		opacity: lineOpacity ?? 0.85,
 		width: lineWidth ?? 2,
+		...(dashed ? { type: "dashed" } : {}),
 	},
 	areaStyle: {
 		color: areaColor || lineColor,
@@ -635,7 +636,7 @@ export const buildReportChartOption = (payload, viewType, opts = {}) => {
 
 /**
  * Project tab chart option.
- * series: team_capacity_hours, project_plan_hours, workload_forecast_hours_by_wtype
+ * series: team_capacity_hours, team_capacity_net_hours, project_plan_hours, workload_forecast_hours_by_wtype
  * optional: actual_hours_by_wtype, utilization_plan_hours, utilization_forecast_hours, utilization_actual_hours
  */
 export const buildProjectChartOption = (payload, viewType, opts = {}) => {
@@ -658,6 +659,16 @@ export const buildProjectChartOption = (payload, viewType, opts = {}) => {
 			areaOpacity: CAPACITY_AREA_OPACITY,
 			z: Z_CAPACITY,
 			data: series.team_capacity_hours,
+		}),
+		_lineSeries({
+			name: __("Team capacity (limit)"),
+			lineColor: LINE_COLORS.teamCapacityNet,
+			areaColor: LINE_COLORS.teamCapacityNetArea,
+			lineOpacity: CAPACITY_LINE_OPACITY,
+			areaOpacity: 0.08,
+			z: Z_CAPACITY,
+			dashed: true,
+			data: series.team_capacity_net_hours,
 		}),
 		buildProjectPlanDashSeries(series.project_plan_hours),
 	];

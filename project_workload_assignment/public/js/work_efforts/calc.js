@@ -180,7 +180,8 @@ function calc_we_column_total_optimized(frm, roles, period, calc_plan = true, ca
             let plan_sum = (roleMap && roleMap.get(role)) ? (roleMap.get(role).get(planKey) || 0) : 0;
             let actual_sum = (roleMap && roleMap.get(role)) ? (roleMap.get(role).get(actualKey) || 0) : 0;
 
-            if (!plan_sum && calc_plan) {
+            // hide_plan / calc_plan must not skip child rollup — same rule as forecast.
+            if (!plan_sum) {
                 plan_sum = computeSum(rootId, role, 'plan', year, month);
             }
             if (!actual_sum) {

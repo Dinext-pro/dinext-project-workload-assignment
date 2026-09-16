@@ -88,6 +88,7 @@ doctype_js = {
                 ,"Project":[
                     "public/js/core/form-tab.js",
                     "public/js/project/dashboard.js",
+                    "public/js/project/team_limit_guard.js",
                     "public/js/assignment/dialog.js",
                     "public/js/work_efforts/entry.js",
                     "public/js/forecast/pl-from-we.js",
@@ -217,6 +218,12 @@ doc_events = {
 	},
 	"Issue": {
 		"on_update": f"{_pwa_dates}.issue_sync.sync_issue_dates_to_pwa",
+	},
+	"Project": {
+		"validate": (
+			"project_workload_assignment.project_workload_assignment.project_workload"
+			".core.team_limits.validate_project_team_limit_sum"
+		),
 	},
 }
 

@@ -25,6 +25,11 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
 	AbsenceEntry,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.core.team_limits import (
+	load_project_team_limits,
+	resolve_role_limit,
+	resolve_user_limit,
+)
 from project_workload_assignment.project_workload_assignment.project_workload.core.workload_engine import (
 	WorkloadContext,
 )
@@ -682,6 +687,8 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 					count += 1
 			return count
 		
+		team_limits = load_project_team_limits(project, start_date_obj, end_date_obj)
+
 		# Функция для рекурсивного добавления задач в tree_data
 		def add_task_to_tree(task_id, role, user_email, user_row_data, indent_level, parent_role_row):
 			"""Рекурсивно добавляет задачу и всех её детей в tree_data"""
@@ -733,7 +740,8 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 				'email': user_email,
 				'roleName': role,
 				'level': 'task',
-				'has_direct_load': task_info['has_direct_load']
+				'has_direct_load': task_info['has_direct_load'],
+				'workload_limit': resolve_role_limit(team_limits, user_email, role),
 			}
 		
 			# Данные задачи по периодам
@@ -790,7 +798,10 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 				'expandable': False,
 				'isUser': True,
 				'email': user_email,
-				'level': 'user'
+				'level': 'user',
+				'workload_limit': resolve_user_limit(
+					team_limits, user_email, list(user_roles.keys())
+				),
 			}
 		
 			# Общая нагрузка пользователя
@@ -843,7 +854,8 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 					'isRole': True,
 					'email': user_email,
 					'roleName': role,
-					'level': 'role'
+					'level': 'role',
+					'workload_limit': resolve_role_limit(team_limits, user_email, role),
 				}
 		
 				# Нагрузка по роли

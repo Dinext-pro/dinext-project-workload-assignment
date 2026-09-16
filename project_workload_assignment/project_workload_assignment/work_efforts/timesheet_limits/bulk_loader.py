@@ -36,16 +36,28 @@ class TimesheetLimitsBulkLoader:
 		task_meta: dict = {}
 		children_map: dict = {}
 
-		raw_tasks = frappe.db.get_all(
-			"Task",
-			filters={"project": ["in", project_list]},
-			fields=["name", "parent_task", "subject", "custom_linked_issue", "project"],
-		)
+		task_fields = ["name", "parent_task", "subject", "custom_linked_issue", "project"]
+		try:
+			raw_tasks = frappe.db.get_all(
+				"Task",
+				filters={"project": ["in", project_list]},
+				fields=task_fields,
+			)
+		except Exception as exc:
+			# TEMPORARY crutch: gantt Custom Field missing on PWA-only CI.
+			# Remove when CI installs gantt or PWA owns the field.
+			if "custom_linked_issue" not in str(exc) and "1054" not in str(exc):
+				raise
+			raw_tasks = frappe.db.get_all(
+				"Task",
+				filters={"project": ["in", project_list]},
+				fields=["name", "parent_task", "subject", "project"],
+			)
 		for t in raw_tasks:
 			task_meta[t.name] = {
 				"subject": t.subject or t.name,
 				"parent_task": t.parent_task or None,
-				"custom_linked_issue": bool(t.custom_linked_issue),
+				"custom_linked_issue": bool(getattr(t, "custom_linked_issue", None)),
 			}
 			proj = t.project or ""
 			children_map.setdefault((proj, t.name), [])
@@ -75,7 +87,7 @@ class TimesheetLimitsBulkLoader:
 			raw_amounts = frappe.db.get_all(
 				"Project Work Efforts Amount",
 				filters={"parent": ["in", pwe_names]},
-				fields=["parent", "pwea_year", "pwea_month", "pwea_plan"],
+				fields=["parent", "pwea_year", "pwea_month", "pwea_plan", "pwea_expected"],
 			)
 			for a in raw_amounts:
 				resolved = _resolve_plan_year_month(a.pwea_year, a.pwea_month, fy_cache)
@@ -87,6 +99,7 @@ class TimesheetLimitsBulkLoader:
 						"year": year,
 						"month": month,
 						"plan": frappe.utils.flt(a.pwea_plan or 0),
+						"expected": frappe.utils.flt(a.pwea_expected or 0),
 					}
 				)
 

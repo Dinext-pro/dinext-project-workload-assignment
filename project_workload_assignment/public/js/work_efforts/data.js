@@ -128,7 +128,7 @@ export async function loadGridData(frm, periodType) {
             period_type,
             view_options: viewLabel,
             view_mode: normalizeViewMode(viewLabel),
-            include_plan: frm.hide_plan ? 0 : 1,
+            include_plan: 1,
         });
         if (!message) {
             throw new Error("Empty grid response");
