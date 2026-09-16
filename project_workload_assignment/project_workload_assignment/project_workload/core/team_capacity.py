@@ -67,13 +67,20 @@ def real_team_emails(rows: list[dict]) -> list[str]:
 
 
 def virtual_available_hours(date_str: str, project: str, wl_ctx: WorkloadContext) -> float:
+	"""Фонд виртуала: holiday проекта → 0; иначе short-day WHOD; иначе 8. Без absences."""
 	project_data = wl_ctx.projects_data.get(project) or {}
 	holiday_list = project_data.get("effective_holiday_list") or project_data.get("holiday_list")
 	if holiday_list:
 		dates = wl_ctx.holiday_date_sets.get(holiday_list) or {}
 		if date_str in dates:
 			return 0.0
-	return float(DEFAULT_HOURS_ON_DATE)
+	hours = float(DEFAULT_HOURS_ON_DATE)
+	ref = project_data.get("working_hours_on_date")
+	if ref:
+		override_dict = (getattr(wl_ctx, "working_hours_overrides", None) or {}).get(ref) or {}
+		if date_str in override_dict:
+			hours = float(override_dict[date_str])
+	return hours
 
 
 def _person_key(row: dict) -> str | None:
