@@ -20,7 +20,7 @@ from project_workload_assignment.project_workload_assignment.work_efforts.models
 from project_workload_assignment.project_workload_assignment.work_efforts.work_efforts_progress import run_get_work_efforts_progress
 from project_workload_assignment.project_workload_assignment.work_efforts.save_changes import run_save_forecast_changes
 from project_workload_assignment.project_workload_assignment.work_efforts.save_forecast_as_plan import run_save_forecast_as_plan
-from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits import run_calculate_timesheet_limits
+from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits import TimesheetLimitsCalculator
 from project_workload_assignment.project_workload_assignment.project_workload.models import (
 	ChartResponse,
 	ErrorOverloadResponse,
@@ -220,14 +220,33 @@ def calculate_timesheet_limits() -> TimesheetLimitsResponse:
 	Temporary home in PWA; later move to dinext_timesheets.
 	"""
 	form_input: TimesheetLimitsFormInput = frappe.form_dict
-	return run_calculate_timesheet_limits(form_input)
+	return TimesheetLimitsCalculator.run(form_input)
+
+
+@frappe.whitelist()
+def resolve_plan_node(project: str | None = None, task: str | None = None, role: str | None = None) -> str | None:
+	"""Узел сборки плана. Для журналов вместо своего find_task_with_plan."""
+	from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.bulk_loader import (
+		TimesheetLimitsBulkLoader,
+	)
+	from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.plan_fact_adapter import (
+		TimesheetPlanFactAdapter,
+	)
+
+	project = project or frappe.form_dict.get("project")
+	task = task or frappe.form_dict.get("task")
+	role = role or frappe.form_dict.get("role") or ""
+	if not project or not task:
+		return None
+	bulk = TimesheetLimitsBulkLoader.load([{"project": project}])
+	return TimesheetPlanFactAdapter.assembled_node(bulk, project, task, role)
 
 
 @frappe.whitelist()
 def calculate_user_timesheet_limits() -> TimesheetLimitsResponse:
 	"""Alias of ``calculate_timesheet_limits`` for UT / gantt callers."""
 	form_input: TimesheetLimitsFormInput = frappe.form_dict
-	return run_calculate_timesheet_limits(form_input)
+	return TimesheetLimitsCalculator.run(form_input)
 
 
 @frappe.whitelist()

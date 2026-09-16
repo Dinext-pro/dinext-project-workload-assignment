@@ -132,7 +132,9 @@ def calc_we_column_total(
 			role_map = role_value_map.get(root_id, {}).get(role, {})
 			plan_sum = role_map.get(plan_key, 0.0)
 			actual_sum = role_map.get(actual_key, 0.0)
-			if calc_plan and not plan_sum:
+			# hide_plan / include_plan must not change the formula: same root
+			# rollup for plan and forecast (empty parent month → children).
+			if not plan_sum:
 				plan_sum = compute_sum(root_id, role, "plan", year, month)
 			if not actual_sum:
 				actual_sum = compute_sum(root_id, role, actual_value_key, year, month)

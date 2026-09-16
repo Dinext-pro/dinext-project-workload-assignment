@@ -37,6 +37,8 @@ export const LINE_COLORS = {
 	capacityArea: "#243660",
 	teamCapacity: "#243660",
 	teamCapacityArea: "#243660",
+	teamCapacityNet: "#5b7c99",
+	teamCapacityNetArea: "#5b7c99",
 	projectPlan: "#91cc75",
 	utilizationPlan: "#5d4037",
 };

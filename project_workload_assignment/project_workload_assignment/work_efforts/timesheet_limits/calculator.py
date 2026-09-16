@@ -9,7 +9,6 @@ import frappe
 
 from project_workload_assignment.project_workload_assignment.work_efforts.models import (
 	LimitStatus,
-	PlanData,
 	TimesheetLimitsFormInput,
 	TimesheetLimitsResponse,
 	TimesheetPositionInput,
@@ -24,8 +23,8 @@ from project_workload_assignment.project_workload_assignment.work_efforts.timesh
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.parsing import (
 	LimitsParsing,
 )
-from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.plan_resolver import (
-	TaskPlanResolver,
+from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.plan_fact_adapter import (
+	TimesheetPlanFactAdapter,
 )
 
 
@@ -62,9 +61,7 @@ class TimesheetLimitsCalculator:
 		return results
 
 	@classmethod
-	def _session_limits_override(
-		cls, form_dict: TimesheetLimitsFormInput
-	) -> dict[str, float | None] | None:
+	def _session_limits_override(cls, form_dict: TimesheetLimitsFormInput) -> dict[str, float | None] | None:
 		if not form_dict.get("project_limits"):
 			return None
 		raw_limits = form_dict.get("project_limits")
@@ -100,12 +97,14 @@ class TimesheetLimitsCalculator:
 		rows: TimesheetLimitsResponse = []
 
 		for project_role in project_roles:
-			plan = state.find_task_with_plan(proj, doc, project_role, year, month)
-			task_for_fact, task_for_plan, used_parent = cls._fact_scope(doc, plan, proj, bulk, state)
+			screen = TimesheetPlanFactAdapter.for_screen(
+				bulk, proj or "", doc, project_role, year, month
+			)
+			planned = screen.plan_hours if screen else 0.0
+			consumers = list(screen.consumers) if screen else [doc]
 
 			total_hours = TimesheetHoursAggregator.aggregate(
-				task_for_plan,
-				task_for_fact,
+				consumers,
 				project_role,
 				timesheet_name,
 				status,
@@ -115,11 +114,9 @@ class TimesheetLimitsCalculator:
 				cache=state.total_hours_cache,
 			)
 
-			planned = plan["planned_hours"] if plan else 0.0
 			pct = int((total_hours.get("total", 0) / planned) * 100) if planned > 0 else 0
 			limits = cls._project_limits(proj, session_limits_override, bulk)
 			limit_status, limit = cls._limit_status(plan_required, planned, pct, limits)
-			plan_task_subject = (plan or {}).get("subject") or doc_subject
 			requirement = state.project_settings.get(proj, "Опционально")
 
 			rows.append(
@@ -134,13 +131,13 @@ class TimesheetLimitsCalculator:
 					"completion_percentage": pct,
 					"status": limit_status,
 					"limit": limit,
-					"used_parent_for_plan": used_parent,
-					"used_children_for_actual": len(task_for_fact) > 1,
-					"child_tasks_count": max(len(task_for_fact) - 1, 0),
+					"used_parent_for_plan": bool(screen and screen.used_parent),
+					"used_children_for_actual": len(consumers) > 1,
+					"child_tasks_count": max(len(consumers) - 1, 0),
 					"task_subject": doc_subject,
 					"plan_required": plan_required,
-					"plan_task_subject": plan_task_subject,
-					"plan_sources": (plan or {}).get("plan_sources") or [],
+					"plan_task_subject": screen.plan_task_subject if screen else doc_subject,
+					"plan_sources": list(screen.plan_sources) if screen else [],
 					"has_linked_issue": state.has_linked_issue(doc)
 					if requirement == "Обязательно для всех Запросов"
 					else None,
@@ -158,29 +155,6 @@ class TimesheetLimitsCalculator:
 		if role:
 			return [role]
 		return list(state.get_project_roles(project))
-
-	@classmethod
-	def _fact_scope(
-		cls,
-		doc: str,
-		plan: PlanData | None,
-		project: str | None,
-		bulk: TimesheetLimitsBulkData,
-		state: "_CalculatorState",
-	) -> tuple[list[str], str, bool]:
-		used_parent = False
-		task_for_fact: list[str] = [doc]
-		task_for_plan = doc
-
-		if plan:
-			if plan["task_name"] != doc:
-				used_parent = True
-				task_for_plan = plan["task_name"]
-			task_for_fact = [plan["task_name"]] + state.get_all_children(project, task_for_plan)
-		elif state.has_children(project, doc):
-			task_for_fact = task_for_fact + state.get_all_children(project, doc)
-
-		return task_for_fact, task_for_plan, used_parent
 
 	@classmethod
 	def _project_limits(
@@ -220,27 +194,9 @@ class _CalculatorState:
 
 	def __init__(self, bulk: TimesheetLimitsBulkData):
 		self.bulk = bulk
-		self.plan_cache: dict = {}
 		self.total_hours_cache: dict = {}
 		self.project_settings: dict = {}
 		self.root_task_with_issue_cache: dict = {}
-		self.all_children_cache: dict = {}
-
-	def get_all_children(self, project: str | None, task: str) -> list[str]:
-		ck = (project or "") + task
-		if ck not in self.all_children_cache:
-			self.all_children_cache[ck] = self._collect_children_recursive(project, task)
-		return self.all_children_cache[ck]
-
-	def _collect_children_recursive(self, project: str | None, task: str) -> list[str]:
-		result: list[str] = []
-		for child in self.bulk.children_map.get((project or "", task), []):
-			result.append(child)
-			result.extend(self._collect_children_recursive(project, child))
-		return result
-
-	def has_children(self, project: str | None, task: str) -> bool:
-		return bool(self.bulk.children_map.get((project or "", task)))
 
 	def has_linked_issue(self, task_name: str) -> bool:
 		return self.bulk.task_meta.get(task_name, {}).get("custom_linked_issue", False)
@@ -259,36 +215,6 @@ class _CalculatorState:
 			current = self.bulk.task_meta.get(current, {}).get("parent_task")
 		self.root_task_with_issue_cache[ck] = None
 		return None
-
-	def find_task_with_plan(
-		self,
-		project: str | None,
-		task: str,
-		role: str,
-		year: int | None,
-		month: int | None,
-	) -> PlanData | None:
-		requirement = self.project_settings.get(project, "Опционально")
-		root_task_with_issue = None
-		can_go_above_root_issue = False
-
-		if requirement == "Обязательно для всех Запросов":
-			root_task_with_issue = self.find_root_task_with_linked_issue(project, task)
-			if not root_task_with_issue:
-				can_go_above_root_issue = True
-
-		return TaskPlanResolver.resolve(
-			project or "",
-			task,
-			role,
-			year,
-			month,
-			self.bulk,
-			requirement=requirement,
-			root_task_with_issue=root_task_with_issue,
-			can_go_above_root_issue=can_go_above_root_issue,
-			plan_cache=self.plan_cache,
-		)
 
 	def is_plan_required(self, project: str | None, task_name: str) -> bool:
 		if not project or not task_name:

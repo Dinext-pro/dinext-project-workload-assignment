@@ -155,6 +155,7 @@ class ProjectChartFormInput(TypedDict, total=False):
 	worker_wtype: str | None
 	load_actual: bool | str | int
 	load_utilization: bool | str | int
+	consider_virtuals: bool | str | int
 
 
 class OverloadCheckFormInput(TypedDict, total=False):
@@ -507,6 +508,7 @@ class ChartSeries(TypedDict, total=False):
 	workload_forecast_hours_by_role: dict[str, list[float]]
 	project_plan_hours: list[float]
 	team_capacity_hours: list[float]
+	team_capacity_net_hours: list[float]
 	actual_hours_by_wtype: dict[str, list[float]]
 	actual_hours_by_role: dict[str, list[float]]
 class ChartMeta(TypedDict, total=False):
