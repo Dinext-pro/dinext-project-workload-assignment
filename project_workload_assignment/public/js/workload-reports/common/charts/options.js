@@ -637,6 +637,7 @@ export const buildReportChartOption = (payload, viewType, opts = {}) => {
 /**
  * Project tab chart option.
  * series: team_capacity_hours, team_capacity_net_hours, project_plan_hours, workload_forecast_hours_by_wtype
+ * opts.considerLimit: ON plots net hours, OFF plots gross; one Team capacity line.
  * optional: actual_hours_by_wtype, utilization_plan_hours, utilization_forecast_hours, utilization_actual_hours
  */
 export const buildProjectChartOption = (payload, viewType, opts = {}) => {
@@ -650,6 +651,11 @@ export const buildProjectChartOption = (payload, viewType, opts = {}) => {
 	const showFact = !!meta.actual_loaded;
 	const showUtilization = !!meta.utilization_loaded;
 
+	const considerLimit = opts.considerLimit == null ? true : !!opts.considerLimit;
+	const capacityHours = considerLimit
+		? series.team_capacity_net_hours
+		: series.team_capacity_hours;
+
 	const chartSeries = [
 		_lineSeries({
 			name: __("Team capacity"),
@@ -658,17 +664,7 @@ export const buildProjectChartOption = (payload, viewType, opts = {}) => {
 			lineOpacity: CAPACITY_LINE_OPACITY,
 			areaOpacity: CAPACITY_AREA_OPACITY,
 			z: Z_CAPACITY,
-			data: series.team_capacity_hours,
-		}),
-		_lineSeries({
-			name: __("Team capacity (limit)"),
-			lineColor: LINE_COLORS.teamCapacityNet,
-			areaColor: LINE_COLORS.teamCapacityNetArea,
-			lineOpacity: CAPACITY_LINE_OPACITY,
-			areaOpacity: 0.08,
-			z: Z_CAPACITY,
-			dashed: true,
-			data: series.team_capacity_net_hours,
+			data: capacityHours,
 		}),
 		buildProjectPlanDashSeries(series.project_plan_hours),
 	];

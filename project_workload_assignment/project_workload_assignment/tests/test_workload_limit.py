@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from datetime import date
+from unittest.mock import MagicMock, patch
 
 from frappe.tests.utils import FrappeTestCase
 
@@ -13,6 +14,7 @@ from project_workload_assignment.project_workload_assignment.project_workload.ca
 from project_workload_assignment.project_workload_assignment.project_workload.core.team_limits import (
 	FULL_FUND_LIMIT,
 	_row_interval,
+	clear_real_row_virtual_calendar,
 	fill_person_limit_remainders,
 	find_team_limit_ceiling_violations,
 	find_team_limit_sum_violations,
@@ -23,6 +25,7 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 	resolve_role_limit,
 	resolve_user_limit,
 	row_overlaps_window,
+	validate_virtual_calendar_required,
 )
 
 
@@ -34,6 +37,20 @@ class _FakeTeamRow:
 
 	def get(self, key, default=None):
 		return getattr(self, key, default)
+
+
+def _meta_with_virtual_calendar_fields():
+	"""CI site may lack the three Custom Fields; helpers no-op without has_field."""
+	meta = MagicMock()
+	owned = {
+		"virtual_holiday_list",
+		"virtual_working_hours_on_date",
+		"virtual_hours_on_date",
+		"virtual_worker",
+		"workload_limit",
+	}
+	meta.has_field.side_effect = lambda name: name in owned
+	return meta
 
 
 class TestWorkloadLimitHelpers(FrappeTestCase):
@@ -317,6 +334,51 @@ class TestWorkloadLimitHelpers(FrappeTestCase):
 				[_FakeTeamRow(virtual_worker=1, pt_role="QA", workload_limit=150)]
 			)[0]["peak"],
 			150,
+		)
+
+	@patch(
+		"project_workload_assignment.project_workload_assignment.project_workload.core.team_limits.frappe.get_meta"
+	)
+	def test_clear_calendar_when_row_becomes_real(self, get_meta):
+		get_meta.return_value = _meta_with_virtual_calendar_fields()
+		row = {
+			"virtual_worker": 0,
+			"virtual_holiday_list": "HL-V",
+			"virtual_working_hours_on_date": "WHOD-V",
+			"virtual_hours_on_date": 6,
+		}
+		keep = {
+			"virtual_worker": 1,
+			"virtual_holiday_list": "HL-V",
+			"virtual_working_hours_on_date": "WHOD-V",
+			"virtual_hours_on_date": 6,
+		}
+		clear_real_row_virtual_calendar([row, keep])
+		self.assertIsNone(row["virtual_holiday_list"])
+		self.assertIsNone(row["virtual_working_hours_on_date"])
+		self.assertIsNone(row["virtual_hours_on_date"])
+		self.assertEqual(keep["virtual_holiday_list"], "HL-V")
+
+	@patch(
+		"project_workload_assignment.project_workload_assignment.project_workload.core.team_limits.frappe.get_meta"
+	)
+	def test_virtual_calendar_requires_whod_and_hours(self, get_meta):
+		import frappe
+
+		get_meta.return_value = _meta_with_virtual_calendar_fields()
+		with self.assertRaises(frappe.ValidationError):
+			validate_virtual_calendar_required(
+				[{"virtual_worker": 1, "pt_role": "QA", "virtual_holiday_list": "HL-V"}]
+			)
+		validate_virtual_calendar_required(
+			[
+				{
+					"virtual_worker": 1,
+					"pt_role": "QA",
+					"virtual_working_hours_on_date": "WHOD-V",
+					"virtual_hours_on_date": 8,
+				}
+			]
 		)
 
 
