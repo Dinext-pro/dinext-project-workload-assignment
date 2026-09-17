@@ -250,7 +250,11 @@ function _mountOption(hostEl, panel, option) {
 function _buildChartOption(state) {
 	const payload = state.lastPayload || {};
 	const viewType = state.lastViewType || "weekly";
-	const opts = { stackBy: state.stackBy === "role" ? "role" : "wtype" };
+	const args = typeof state.getArgs === "function" ? state.getArgs() || {} : {};
+	const opts = {
+		stackBy: state.stackBy === "role" ? "role" : "wtype",
+		considerLimit: args.consider_limit == null ? true : !!args.consider_limit,
+	};
 	return state.surface === "project"
 		? buildProjectChartOption(payload, viewType, opts)
 		: buildReportChartOption(payload, viewType, opts);

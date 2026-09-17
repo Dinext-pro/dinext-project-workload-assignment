@@ -26,6 +26,8 @@ class _FakeCapacityCtx:
 		short_days=None,
 		working_hours_ref="WHOD",
 		absences=None,
+		extra_holidays=None,
+		extra_short_days=None,
 	):
 		self.projects_data = {
 			project: {
@@ -35,6 +37,10 @@ class _FakeCapacityCtx:
 		}
 		self.holiday_date_sets = {"HL": {day: True for day in (holiday_dates or [])}}
 		self.working_hours_overrides = {working_hours_ref: dict(short_days or {})}
+		for name, days in (extra_holidays or {}).items():
+			self.holiday_date_sets[name] = {day: True for day in days}
+		for name, days in (extra_short_days or {}).items():
+			self.working_hours_overrides[name] = dict(days)
 		self.user_absences = absences or {}
 		self._hours = hours_by_user
 
@@ -82,6 +88,7 @@ class TestComputeTeamCapacitySeries(FrappeTestCase):
 		holidays=None,
 		short_days=None,
 		absences=None,
+		extra_short_days=None,
 	):
 		date_to_period_key, period_index = _one_day()
 		ctx = _FakeCapacityCtx(
@@ -89,6 +96,7 @@ class TestComputeTeamCapacitySeries(FrappeTestCase):
 			holiday_dates=holidays,
 			short_days=short_days,
 			absences=absences,
+			extra_short_days=extra_short_days,
 		)
 		return compute_team_capacity_series(
 			"PROJ",
@@ -222,3 +230,70 @@ class TestComputeTeamCapacitySeries(FrappeTestCase):
 		)
 		self.assertEqual(gross[0], 7.0)
 		self.assertAlmostEqual(net[0], 3.5)
+
+	def test_virtual_row_holiday_overrides_project(self):
+		ctx = _FakeCapacityCtx(
+			{},
+			extra_holidays={"HL-V": ["2026-09-15"]},
+		)
+		row = {"virtual_worker": 1, "virtual_holiday_list": "HL-V"}
+		self.assertEqual(virtual_available_hours("2026-09-15", "PROJ", ctx, row), 0.0)
+		self.assertEqual(virtual_available_hours("2026-09-16", "PROJ", ctx, row), 8.0)
+
+	def test_virtual_row_hours_on_date(self):
+		ctx = _FakeCapacityCtx({})
+		row = {"virtual_worker": 1, "virtual_hours_on_date": 6}
+		self.assertEqual(virtual_available_hours("2026-09-17", "PROJ", ctx, row), 6.0)
+
+	def test_virtual_row_whod_overrides_project(self):
+		ctx = _FakeCapacityCtx(
+			{},
+			short_days={"2026-09-16": 7.0},
+			extra_short_days={"WHOD-V": {"2026-09-16": 5.0}},
+		)
+		row = {
+			"virtual_worker": 1,
+			"virtual_working_hours_on_date": "WHOD-V",
+		}
+		self.assertEqual(virtual_available_hours("2026-09-16", "PROJ", ctx, row), 5.0)
+		self.assertEqual(virtual_available_hours("2026-09-16", "PROJ", ctx, {}), 7.0)
+
+	def test_virtual_empty_uses_company_effective_holiday(self):
+		ctx = _FakeCapacityCtx({}, holiday_dates=["2026-09-15"])
+		ctx.projects_data["PROJ"]["holiday_list"] = None
+		ctx.projects_data["PROJ"]["effective_holiday_list"] = "HL"
+		self.assertEqual(virtual_available_hours("2026-09-15", "PROJ", ctx, {}), 0.0)
+
+	def test_virtual_row_hours_used_in_series(self):
+		rows = [
+			{
+				"name": "v1",
+				"virtual_worker": 1,
+				"pt_role": "QA",
+				"workload_limit": 50,
+				"virtual_hours_on_date": 6,
+			}
+		]
+		gross, net = self._run(rows, hours={}, consider_virtuals=True)
+		self.assertEqual(gross[0], 6.0)
+		self.assertEqual(net[0], 3.0)
+
+	def test_virtual_row_whod_used_in_series_not_hardcoded_eight(self):
+		rows = [
+			{
+				"name": "v1",
+				"virtual_worker": 1,
+				"pt_role": "QA",
+				"workload_limit": 100,
+				"virtual_working_hours_on_date": "WHOD-V",
+				"virtual_hours_on_date": 8,
+			}
+		]
+		gross, _ = self._run(
+			rows,
+			hours={},
+			consider_virtuals=True,
+			short_days={"2026-09-15": 8.0},
+			extra_short_days={"WHOD-V": {"2026-09-15": 5.0}},
+		)
+		self.assertEqual(gross[0], 5.0)

@@ -177,6 +177,15 @@ const _fillAll = (frm) => {
 
 const _label = (row) => row.pt_role || row.pt_participant || row.pt_worker || "";
 
+const _showLimitError = (lines) => {
+	const dialog = new frappe.ui.Dialog({
+		title: __("Workload limit"),
+		indicator: "red",
+	});
+	dialog.$body.html(lines.join("<br>"));
+	dialog.show();
+};
+
 const _rowOverCeiling = (row) => {
 	if (_isEmptyLimit(row.workload_limit)) return false;
 	const n = Number(row.workload_limit);
@@ -227,8 +236,9 @@ frappe.ui.form.on("Project", {
 		if (ceiling.length) {
 			lines.push(__("Workload limit of one role cannot exceed 100%."));
 			for (const item of ceiling) {
-				const roles = item.rows.map(_label).filter(Boolean).join(", ");
-				lines.push(`${item.person}: ${item.peak.toFixed(1)}% (${roles})`);
+				lines.push(
+					__("{0}: {1}% (max 100%)", [item.person, item.peak.toFixed(1)])
+				);
 			}
 		}
 		if (sums.length) {
@@ -236,20 +246,36 @@ frappe.ui.form.on("Project", {
 				__("Workload limit of one person cannot exceed 100% on overlapping dates.")
 			);
 			for (const item of sums) {
-				const roles = item.rows.map(_label).filter(Boolean).join(", ");
-				lines.push(`${item.person}: ${item.peak.toFixed(1)}% (${roles})`);
+				lines.push(
+					__("{0}: {1}% (max 100%)", [item.person, item.peak.toFixed(1)])
+				);
 			}
 		}
-		frappe.msgprint({
-			title: __("Workload limit"),
-			message: lines.join("<br>"),
-			indicator: "red",
-		});
 		frappe.validated = false;
+		_showLimitError(lines);
+		throw new Error(lines.join(" "));
 	},
 });
 
+const CALENDAR_FIELDS = [
+	"virtual_holiday_list",
+	"virtual_working_hours_on_date",
+	"virtual_hours_on_date",
+];
+
+const clearVirtualCalendar = (cdt, cdn) => {
+	CALENDAR_FIELDS.forEach((fieldname) => {
+		if (!frappe.meta.get_docfield("Project Team Details", fieldname)) return;
+		frappe.model.set_value(cdt, cdn, fieldname, null);
+	});
+};
+
 frappe.ui.form.on("Project Team Details", {
+	virtual_worker(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (!row || row.virtual_worker) return;
+		clearVirtualCalendar(cdt, cdn);
+	},
 	pt_participant(frm, cdt, cdn) {
 		applyRemainder(frm, cdt, cdn);
 	},
