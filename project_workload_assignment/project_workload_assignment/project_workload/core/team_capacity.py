@@ -45,6 +45,13 @@ def load_team_capacity_rows(
 		fields.append("workload_limit")
 	if meta.has_field("virtual_worker"):
 		fields.append("virtual_worker")
+	for extra in (
+		"virtual_holiday_list",
+		"virtual_working_hours_on_date",
+		"virtual_hours_on_date",
+	):
+		if meta.has_field(extra):
+			fields.append(extra)
 
 	rows = frappe.get_all(
 		"Project Team Details",
@@ -66,16 +73,66 @@ def real_team_emails(rows: list[dict]) -> list[str]:
 	return sorted(emails)
 
 
-def virtual_available_hours(date_str: str, project: str, wl_ctx: WorkloadContext) -> float:
-	"""Фонд виртуала: holiday проекта → 0; иначе short-day WHOD; иначе 8. Без absences."""
+def collect_virtual_calendar_refs(rows: list[dict]) -> tuple[set[str], set[str]]:
+	"""Holiday List и Working Hours On Date со строк виртуалов."""
+	holidays: set[str] = set()
+	whods: set[str] = set()
+	for row in rows or []:
+		if not row.get("virtual_worker"):
+			continue
+		holiday = (row.get("virtual_holiday_list") or "").strip()
+		if holiday:
+			holidays.add(holiday)
+		whod = (row.get("virtual_working_hours_on_date") or "").strip()
+		if whod:
+			whods.add(whod)
+	return holidays, whods
+
+
+def _virtual_base_hours(row: dict | None) -> float:
+	raw = (row or {}).get("virtual_hours_on_date")
+	if raw is None or raw == "":
+		return float(DEFAULT_HOURS_ON_DATE)
+	try:
+		hours = float(raw)
+	except (TypeError, ValueError):
+		return float(DEFAULT_HOURS_ON_DATE)
+	if hours <= 0:
+		return float(DEFAULT_HOURS_ON_DATE)
+	return hours
+
+
+def _virtual_holiday_list(row: dict | None, project_data: dict) -> str | None:
+	holiday = ((row or {}).get("virtual_holiday_list") or "").strip()
+	if holiday:
+		return holiday
+	return project_data.get("effective_holiday_list") or project_data.get("holiday_list")
+
+
+def _virtual_whod_ref(row: dict | None, project_data: dict) -> str | None:
+	ref = ((row or {}).get("virtual_working_hours_on_date") or "").strip()
+	if ref:
+		return ref
+	return project_data.get("working_hours_on_date") or project_data.get(
+		"company_working_hours_on_date"
+	)
+
+
+def virtual_available_hours(
+	date_str: str,
+	project: str,
+	wl_ctx: WorkloadContext,
+	row: dict | None = None,
+) -> float:
+	"""Фонд виртуала: holiday строки/проекта/компании → 0; иначе short-day WHOD; иначе hours_on_date/8."""
 	project_data = wl_ctx.projects_data.get(project) or {}
-	holiday_list = project_data.get("effective_holiday_list") or project_data.get("holiday_list")
+	holiday_list = _virtual_holiday_list(row, project_data)
 	if holiday_list:
 		dates = wl_ctx.holiday_date_sets.get(holiday_list) or {}
 		if date_str in dates:
 			return 0.0
-	hours = float(DEFAULT_HOURS_ON_DATE)
-	ref = project_data.get("working_hours_on_date")
+	hours = _virtual_base_hours(row)
+	ref = _virtual_whod_ref(row, project_data)
 	if ref:
 		override_dict = (getattr(wl_ctx, "working_hours_overrides", None) or {}).get(ref) or {}
 		if date_str in override_dict:
@@ -178,7 +235,7 @@ def compute_team_capacity_series(
 			if not active:
 				continue
 			if is_virtual:
-				hours = virtual_available_hours(date_str, project, wl_ctx)
+				hours = virtual_available_hours(date_str, project, wl_ctx, active[0])
 			else:
 				hours = wl_ctx.get_available_hours(date_str, email, project)
 			if hours <= 0:
