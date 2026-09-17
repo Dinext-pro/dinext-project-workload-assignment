@@ -71,3 +71,4 @@ def after_install():
 
 def after_migrate():
 	ensure_report_indexes()
+	frappe.clear_cache(doctype="Project Team Details")
