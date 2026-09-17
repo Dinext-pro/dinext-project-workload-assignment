@@ -31,6 +31,7 @@ const DEFAULT_COLORS = ["var(--color-01)", "var(--color-02)", "var(--color-03)",
 
 frappe.ui.form.on('Project', {
     refresh(frm) {
+        reclaim_dashboard_globals();
         if(!frm.doc.__islocal) {
             load_and_render_project_dashboard(frm);
             frm.add_custom_button("𝌠 " + __("Task tree"),
@@ -54,25 +55,62 @@ function ensure_dashboard_css() {
 	});
 }
 
-function get_live_dashboard_grid(frm) {
-    const $grid = frm.dashboard?.chart_area?.grid;
-    if (!$grid?.length) return null;
-    const node = $grid.get(0);
+const PWA_BAR_DATES = "dates";
+const PWA_BAR_WORK = "work";
+const PWA_BAR_WE = "work-efforts";
+const PWA_BAR_REV = "revenue";
+
+function reclaim_dashboard_globals() {
+    globalThis.render_work_efforts_percentage_chart = render_work_efforts_percentage_chart;
+    globalThis.render_revenue_percentage_chart = render_revenue_percentage_chart;
+    globalThis.load_and_render_project_dashboard = load_and_render_project_dashboard;
+}
+
+function get_chart_host(frm) {
+    const area = frm.dashboard?.chart_area;
+    if (!area) return null;
+    const $host = area.wrapper?.length ? area.wrapper : area.body;
+    if (!$host?.length) return null;
+    const node = $host.get(0);
     if (!node || !document.body.contains(node)) return null;
+    return $host;
+}
+
+function find_pwa_bar($grid, key) {
+    return $grid.find('.linear-card[data-pwa-bar="' + key + '"]');
+}
+
+function get_live_dashboard_grid(frm) {
+    let $grid = frm.dashboard?.chart_area?.grid;
+    if ($grid?.length) {
+        const node = $grid.get(0);
+        if (node && document.body.contains(node)) return $grid;
+    }
+    const $host = get_chart_host(frm);
+    if (!$host) return null;
+    $grid = $host.find(".custom-dashboard-grid").first();
+    if (!$grid.length) {
+        $grid = $('<div class="custom-dashboard-grid"></div>').appendTo($host);
+    }
+    frm.dashboard.chart_area.grid = $grid;
     return $grid;
 }
 
-function paint_linear_percent_card(frm, title, data) {
+function paint_linear_percent_card(frm, title, data, key) {
     const $grid = get_live_dashboard_grid(frm);
     if (!$grid) return null;
 
     const $group = get_chart_group($grid, "dashboard-percents");
-    const $card = $group.find(".linear-card").filter(function () {
-        return $(this).find(".chart-title").first().text() === title;
-    });
+    let $card = key ? find_pwa_bar($grid, key) : $();
+    if (!$card.length) {
+        $card = $group.find(".linear-card").filter(function () {
+            return $(this).find(".chart-title").first().text() === title;
+        });
+    }
     const width_percent = Math.min(100, Math.max(0, data.percent));
 
     if ($card.length) {
+        if (key) $card.attr("data-pwa-bar", key);
         $card.find(".chart-percent").text(data.percent + "%");
         $card.find(".progress-bar-fill").css("width", width_percent + "%");
         $card.find(".progress-bar-container").attr("title", data.details);
@@ -93,7 +131,7 @@ function paint_linear_percent_card(frm, title, data) {
     }
 
     const html = `
-        <div class="chart-card linear-card">
+        <div class="chart-card linear-card"${key ? ' data-pwa-bar="' + key + '"' : ""}>
             <div class="chart-header">
                 <span class="chart-title">${title}</span>
                 <span class="chart-percent">${data.percent}%</span>
@@ -109,9 +147,53 @@ function paint_linear_percent_card(frm, title, data) {
     return $(html).appendTo($group);
 }
 
+function restore_percent_bars(frm) {
+    if (!frm?.doc?.name || frm.doc.__islocal) return;
+    const $grid = get_live_dashboard_grid(frm);
+    if (!$grid) return;
+    if (!$grid.find(".linear-card").length) {
+        const time_data = compute_time_data(frm);
+        render_linear_chart($grid, __("Dates"), time_data.percent, time_data.details, null, PWA_BAR_DATES);
+        const task_pct = Number(frm.doc.percent_complete) || 0;
+        render_linear_chart($grid, __("Work"), task_pct, __("Completed:") + ` ${task_pct}%`, null, PWA_BAR_WORK);
+    }
+    render_work_efforts_percentage_chart(frm);
+    render_revenue_percentage_chart(frm);
+    frm.dashboard?.show?.();
+    frm.dashboard?.chart_area?.show?.();
+}
+
+function bind_dashboard_persist(frm) {
+    const $host = get_chart_host(frm);
+    if (!$host) return;
+    const node = $host.get(0);
+    if (frm._pwa_dash_obs_node === node) return;
+    if (frm._pwa_dash_obs) {
+        frm._pwa_dash_obs.disconnect();
+        frm._pwa_dash_obs = null;
+    }
+    const obs = new MutationObserver(() => {
+        if (frm._pwa_dash_restoring) return;
+        const $grid = get_live_dashboard_grid(frm);
+        if (!$grid) return;
+        if (find_pwa_bar($grid, PWA_BAR_WE).length && find_pwa_bar($grid, PWA_BAR_REV).length) {
+            return;
+        }
+        frm._pwa_dash_restoring = 1;
+        requestAnimationFrame(() => {
+            reclaim_dashboard_globals();
+            restore_percent_bars(frm);
+            frm._pwa_dash_restoring = 0;
+        });
+    });
+    obs.observe(node, { childList: true, subtree: true });
+    frm._pwa_dash_obs = obs;
+    frm._pwa_dash_obs_node = node;
+}
+
 function render_work_efforts_percentage_chart(frm) {
     frm.we_progress_chart = paint_linear_percent_card(
-        frm, __("Work Efforts"), get_work_efforts_data(frm)
+        frm, __("Work Efforts"), get_work_efforts_data(frm), PWA_BAR_WE
     );
 }
 
@@ -119,7 +201,7 @@ globalThis.render_work_efforts_percentage_chart = render_work_efforts_percentage
 
 function render_revenue_percentage_chart(frm) {
     frm.revenue_percentage_chart = paint_linear_percent_card(
-        frm, __("Revenue"), get_revenue_data(frm)
+        frm, __("Revenue"), get_revenue_data(frm), PWA_BAR_REV
     );
 }
 
@@ -142,6 +224,7 @@ function fetch_work_efforts_progress(frm) {
         if (!data || frm.doc?.name !== project) return;
         frm.we_progress = data;
         frm._we_progress_project = project;
+        reclaim_dashboard_globals();
         render_work_efforts_percentage_chart(frm);
     }).catch((e) => {
         if (frm._we_progress_inflight === project) {
@@ -168,6 +251,7 @@ function fetch_revenue_progress(frm) {
         if (!data || frm.doc?.name !== project) return;
         frm.revenue_progress = data;
         frm._rev_progress_project = project;
+        reclaim_dashboard_globals();
         render_revenue_percentage_chart(frm);
     }).catch((e) => {
         if (frm._rev_progress_inflight === project) {
@@ -188,6 +272,7 @@ function render_project_dashboard_now(frm) {
         frm._rev_progress_inflight = null;
     }
 
+    frm._pwa_dash_restoring = 1;
     const wrapper = frm.dashboard.chart_area.wrapper;
     wrapper.empty();
     frm.we_progress_chart = null;
@@ -199,10 +284,10 @@ function render_project_dashboard_now(frm) {
     const gen = frm._pwa_dash_gen;
 
     const time_data = compute_time_data(frm);
-    render_linear_chart($grid, __("Dates"), time_data.percent, time_data.details);
+    render_linear_chart($grid, __("Dates"), time_data.percent, time_data.details, null, PWA_BAR_DATES);
 
     const task_pct = Number(frm.doc.percent_complete) || 0;
-    render_linear_chart($grid, __("Work"), task_pct, __(`Выполнено:`) + ` ${task_pct}%`);
+    render_linear_chart($grid, __("Work"), task_pct, __("Completed:") + ` ${task_pct}%`, null, PWA_BAR_WORK);
 
     render_work_efforts_percentage_chart(frm);
     fetch_work_efforts_progress(frm);
@@ -211,6 +296,17 @@ function render_project_dashboard_now(frm) {
 
     frm.dashboard.show();
     frm.dashboard.chart_area.show();
+    bind_dashboard_persist(frm);
+    reclaim_dashboard_globals();
+    frm._pwa_dash_restoring = 0;
+    setTimeout(() => {
+        reclaim_dashboard_globals();
+        restore_percent_bars(frm);
+    }, 0);
+    setTimeout(() => {
+        reclaim_dashboard_globals();
+        restore_percent_bars(frm);
+    }, 150);
 
     frappe.call({
         method: "get_project_metrics",
@@ -269,16 +365,16 @@ globalThis.load_and_render_project_dashboard = load_and_render_project_dashboard
 function get_chart_group($parent , groupClass ) {
     let group = $parent.find( "." + groupClass );
     if ( !group || !group.length ) {
-        group = $( "<div class='" + groupClass + " dashboard-group'></div" ).appendTo( $parent );
+        group = $( "<div class='" + groupClass + " dashboard-group'></div>" ).appendTo( $parent );
     }
     return group;
 }
 
-function render_linear_chart($parent, title, percent, tooltipText, color) {
+function render_linear_chart($parent, title, percent, tooltipText, color, key) {
     let width_percent = Math.min(100, Math.max(0, percent)); // Clamp 0-100
     
     const html = `
-        <div class="chart-card linear-card">
+        <div class="chart-card linear-card"${key ? ' data-pwa-bar="' + key + '"' : ""}>
             <div class="chart-header">
                 <span class="chart-title">${title}</span>
                 <span class="chart-percent">${percent}%</span>
@@ -496,7 +592,7 @@ function get_work_efforts_data(frm) {
     if (Number.isNaN(pct)) pct = 0;
     return {
         percent: Math.round(pct * 100) / 100,
-        details: __("Plan") + ": " + plan + " " + __("h.") + "<br>" + __("Actual") + ": " + fact + __("h.")
+        details: __("Plan") + ": " + plan + " " + __("h.") + "<br>" + __("Fact") + ": " + fact + __("h.")
     };
 }
 
@@ -519,6 +615,6 @@ function get_revenue_data(frm) {
     if (Number.isNaN(pct)) pct = 0;
     return {
         percent: Math.round(pct * 100) / 100,
-        details: __("Plan") + ": " + format_currency(plan) + "<br>" + __("Actual") + ": " + format_currency(fact)
+        details: __("Plan") + ": " + format_currency(plan) + "<br>" + __("Fact") + ": " + format_currency(fact)
     };
 }

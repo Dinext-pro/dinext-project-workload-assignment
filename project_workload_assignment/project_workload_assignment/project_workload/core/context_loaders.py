@@ -257,6 +257,40 @@ def load_company_holiday_lists(companies: set[str] | list[str]) -> dict[str, str
 	}
 
 
+def _company_whod_fieldname() -> str | None:
+	meta = frappe.get_meta("Company")
+	for fieldname in (
+		"custom_working_hours_on_date",
+		"default_working_hours_on_date",
+		"working_hours_on_date",
+	):
+		if meta.has_field(fieldname):
+			return fieldname
+	for df in meta.fields:
+		if df.fieldtype == "Link" and df.options == "Working Hours On Date":
+			return df.fieldname
+	return None
+
+
+def load_company_working_hours_on_date(companies: set[str] | list[str]) -> dict[str, str]:
+	"""Company.name -> Working Hours On Date, если на Company есть такой Link."""
+	if not companies:
+		return {}
+	fieldname = _company_whod_fieldname()
+	if not fieldname:
+		return {}
+	company_rows = frappe.qb.get_query(
+		"Company",
+		fields=["name", fieldname],
+		filters=[["name", "in", list(companies)]],
+	).run(as_dict=True)
+	return {
+		row["name"]: row.get(fieldname)
+		for row in company_rows
+		if row.get(fieldname)
+	}
+
+
 def resolve_project_holiday_list(
 	project_info: ProjectWorkloadInfo | dict,
 	company_holiday_lists: dict[str, str] | None = None,
@@ -293,9 +327,9 @@ def load_projects(projects_list: list[str]) -> dict[str, ProjectWorkloadInfo]:
 		fields=fields,
 		filters=[["name", "in", projects_list]],
 	).run(as_dict=True)
-	company_holiday_lists = load_company_holiday_lists({
-		row["company"] for row in projects_db if row.get("company")
-	})
+	companies = {row["company"] for row in projects_db if row.get("company")}
+	company_holiday_lists = load_company_holiday_lists(companies)
+	company_whod = load_company_working_hours_on_date(companies)
 	for project_row in projects_db:
 		project_info = ProjectWorkloadInfo(
 			name=project_row["name"],
@@ -310,6 +344,9 @@ def load_projects(projects_list: list[str]) -> dict[str, ProjectWorkloadInfo]:
 		whod = project_row.get("custom_working_hours_on_date")
 		if whod:
 			project_info["working_hours_on_date"] = whod
+		company = project_row.get("company")
+		if company and company_whod.get(company):
+			project_info["company_working_hours_on_date"] = company_whod[company]
 		projects_data[project_row["name"]] = project_info
 	return projects_data
 
@@ -335,6 +372,7 @@ def load_tasks(tasks_list: list[str]) -> dict[str, TaskWorkloadInfo]:
 def load_working_hours_overrides(
 	users_data: dict[str, UserWorkloadInfo],
 	projects_data: dict[str, ProjectWorkloadInfo] | None = None,
+	extra_refs: set[str] | list[str] | None = None,
 ) -> dict[str, dict[str, float]]:
 	working_hours_overrides: dict[str, dict[str, float]] = {}
 	working_hours_refs: set[str] = set()
@@ -343,7 +381,11 @@ def load_working_hours_overrides(
 		if ref:
 			working_hours_refs.add(ref)
 	for project_data in (projects_data or {}).values():
-		ref = project_data.get("working_hours_on_date")
+		for key in ("working_hours_on_date", "company_working_hours_on_date"):
+			ref = project_data.get(key)
+			if ref:
+				working_hours_refs.add(ref)
+	for ref in extra_refs or []:
 		if ref:
 			working_hours_refs.add(ref)
 
@@ -370,6 +412,7 @@ def load_working_hours_overrides(
 def load_holiday_data(
 	users_data: dict[str, UserWorkloadInfo],
 	projects_data: dict[str, ProjectWorkloadInfo],
+	extra_lists: set[str] | list[str] | None = None,
 ) -> tuple[dict[str, list[HolidayEntry]], dict[str, dict[str, bool]]]:
 	"""Возвращает (holiday_lists_cache, holiday_date_sets)."""
 	holiday_lists_cache: dict[str, list[HolidayEntry]] = {}
@@ -383,6 +426,9 @@ def load_holiday_data(
 	for user in users_data.values():
 		if user.get("wholiday_list"):
 			all_holiday_lists.add(user["wholiday_list"])
+	for list_name in extra_lists or []:
+		if list_name:
+			all_holiday_lists.add(list_name)
 
 	if not all_holiday_lists:
 		return holiday_lists_cache, holiday_date_sets

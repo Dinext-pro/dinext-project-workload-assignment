@@ -192,6 +192,8 @@ def _build_workload_context(
 	assignments: list[dict],
 	users_list: list[str],
 	extra_projects: list[str] | None = None,
+	extra_holiday_lists: set[str] | list[str] | None = None,
+	extra_working_hours_refs: set[str] | list[str] | None = None,
 ):
 	from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
 		load_holiday_data,
@@ -208,8 +210,12 @@ def _build_workload_context(
 			projects_set.add(name)
 	users_data = load_users_with_worker_context(users_list)
 	projects_data = load_projects(list(projects_set))
-	working_hours_overrides = load_working_hours_overrides(users_data, projects_data)
-	holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
+	working_hours_overrides = load_working_hours_overrides(
+		users_data, projects_data, extra_refs=extra_working_hours_refs
+	)
+	holiday_lists_cache, holiday_date_sets = load_holiday_data(
+		users_data, projects_data, extra_lists=extra_holiday_lists
+	)
 	user_absences = load_user_absences(users_list)
 	monthly_plan_cache = load_monthly_plan_cache(assignments)
 
@@ -679,6 +685,7 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 
 		assignment_users = sorted({a["user"] for a in assignments if a.get("user")})
 		from project_workload_assignment.project_workload_assignment.project_workload.core.team_capacity import (
+			collect_virtual_calendar_refs,
 			compute_team_capacity_series,
 			load_team_capacity_rows,
 			real_team_emails,
@@ -687,8 +694,13 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		team_rows = load_team_capacity_rows(project, getdate(date_from), getdate(date_to))
 		team_emails = real_team_emails(team_rows)
 		users_list = sorted(set(assignment_users) | set(team_emails))
+		virtual_holidays, virtual_whods = collect_virtual_calendar_refs(team_rows)
 		wl_ctx, users_data = _build_workload_context(
-			assignments, users_list, extra_projects=[project]
+			assignments,
+			users_list,
+			extra_projects=[project],
+			extra_holiday_lists=virtual_holidays,
+			extra_working_hours_refs=virtual_whods,
 		)
 		from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
 			load_worker_wtypes,

@@ -288,11 +288,69 @@ def find_team_limit_sum_violations(rows: list) -> list[dict]:
 	return violations
 
 
+VIRTUAL_CALENDAR_FIELDS = (
+	"virtual_holiday_list",
+	"virtual_working_hours_on_date",
+	"virtual_hours_on_date",
+)
+
+
+def clear_real_row_virtual_calendar(rows: list) -> None:
+	"""Живая строка не хранит календарь виртуала."""
+	meta = frappe.get_meta("Project Team Details")
+	owned = [name for name in VIRTUAL_CALENDAR_FIELDS if meta.has_field(name)]
+	if not owned:
+		return
+	for row in rows or []:
+		if _row_get(row, "virtual_worker"):
+			continue
+		for fieldname in owned:
+			if _row_get(row, fieldname) not in (None, ""):
+				_row_set(row, fieldname, None)
+
+
+def validate_virtual_calendar_required(rows: list) -> None:
+	"""Виртуал: WHOD и Hours On Date обязательны. Holiday — нет."""
+	meta = frappe.get_meta("Project Team Details")
+	need_whod = meta.has_field("virtual_working_hours_on_date")
+	need_hours = meta.has_field("virtual_hours_on_date")
+	if not need_whod and not need_hours:
+		return
+	missing: list[str] = []
+	for index, row in enumerate(rows or [], start=1):
+		if not _row_get(row, "virtual_worker"):
+			continue
+		role = (_row_get(row, "pt_role") or "").strip() or str(index)
+		if need_whod and not (_row_get(row, "virtual_working_hours_on_date") or "").strip():
+			missing.append(
+				frappe._("- {0} (row {1}): Working Hours On Date").format(role, index)
+			)
+		if need_hours:
+			raw = _row_get(row, "virtual_hours_on_date")
+			try:
+				hours = float(raw)
+			except (TypeError, ValueError):
+				hours = 0.0
+			if raw in (None, "") or hours <= 0:
+				missing.append(
+					frappe._("- {0} (row {1}): Hours On Date").format(role, index)
+				)
+	if missing:
+		frappe.throw(
+			frappe._("Fill calendar fields for virtual team members:")
+			+ "<br>"
+			+ "<br>".join(missing),
+			title=frappe._("Virtual calendar"),
+		)
+
+
 def validate_project_team_limit_sum(doc, method=None) -> None:
+	rows = doc.get("custom_ts_details") or []
+	clear_real_row_virtual_calendar(rows)
+	validate_virtual_calendar_required(rows)
 	meta = frappe.get_meta("Project Team Details")
 	if not meta.has_field("workload_limit"):
 		return
-	rows = doc.get("custom_ts_details") or []
 	fill_person_limit_remainders(rows)
 	ceiling = find_team_limit_ceiling_violations(rows)
 	sums = find_team_limit_sum_violations(rows)
