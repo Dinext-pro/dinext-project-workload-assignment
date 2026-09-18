@@ -101,6 +101,9 @@ class TimesheetLimitsCalculator:
 				bulk, proj or "", doc, project_role, year, month
 			)
 			planned = screen.plan_hours if screen else 0.0
+			forecast = cls._forecast_hours(
+				bulk, proj or "", doc, project_role, year, month
+			)
 			consumers = list(screen.consumers) if screen else [doc]
 
 			total_hours = TimesheetHoursAggregator.aggregate(
@@ -126,6 +129,7 @@ class TimesheetLimitsCalculator:
 					"document_name": doc,
 					"role": project_role,
 					"planned_hours": planned,
+					"forecast_hours": forecast,
 					"total_hours": total_hours.get("total", 0),
 					"hours_data": total_hours,
 					"completion_percentage": pct,
@@ -147,6 +151,21 @@ class TimesheetLimitsCalculator:
 				}
 			)
 		return rows
+
+	@classmethod
+	def _forecast_hours(
+		cls,
+		bulk: TimesheetLimitsBulkData,
+		project: str,
+		task: str,
+		role: str,
+		year: int | None,
+		month: int | None,
+	) -> float:
+		got = TimesheetPlanFactAdapter.result(
+			bulk, project, task, role, year, month, hours_key="expected"
+		)
+		return float(got.plan_hours) if got else 0.0
 
 	@classmethod
 	def _project_roles(
