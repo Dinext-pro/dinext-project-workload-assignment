@@ -344,9 +344,53 @@ def validate_virtual_calendar_required(rows: list) -> None:
 		)
 
 
+def validate_virtual_row_type_required(rows: list) -> None:
+	"""Виртуал: Type (Employee/Supplier) обязателен."""
+	missing: list[str] = []
+	for index, row in enumerate(rows or [], start=1):
+		if not _row_get(row, "virtual_worker"):
+			continue
+		wtype = (_row_get(row, "worker_type") or "").strip()
+		if wtype in ("Employee", "Supplier"):
+			continue
+		role = (_row_get(row, "pt_role") or "").strip() or str(index)
+		missing.append(frappe._("- {0} (row {1})").format(role, index))
+	if missing:
+		frappe.throw(
+			frappe._("Fill Type (Employee or Supplier) for virtual team members:")
+			+ "<br>"
+			+ "<br>".join(missing),
+			title=frappe._("Project team"),
+		)
+
+
+def validate_real_row_worker_required(rows: list) -> None:
+	"""Живая строка: Worker обязателен. Виртуал — нет. Нет поля — no-op."""
+	meta = frappe.get_meta("Project Team Details")
+	if not meta.has_field("pt_worker"):
+		return
+	missing: list[str] = []
+	for index, row in enumerate(rows or [], start=1):
+		if _row_get(row, "virtual_worker"):
+			continue
+		if (_row_get(row, "pt_worker") or "").strip():
+			continue
+		role = (_row_get(row, "pt_role") or "").strip() or str(index)
+		missing.append(frappe._("- {0} (row {1})").format(role, index))
+	if missing:
+		frappe.throw(
+			frappe._("Fill Worker for non-virtual team members:")
+			+ "<br>"
+			+ "<br>".join(missing),
+			title=frappe._("Project team"),
+		)
+
+
 def validate_project_team_limit_sum(doc, method=None) -> None:
 	rows = doc.get("custom_ts_details") or []
 	clear_real_row_virtual_calendar(rows)
+	validate_real_row_worker_required(rows)
+	validate_virtual_row_type_required(rows)
 	validate_virtual_calendar_required(rows)
 	meta = frappe.get_meta("Project Team Details")
 	if not meta.has_field("workload_limit"):
