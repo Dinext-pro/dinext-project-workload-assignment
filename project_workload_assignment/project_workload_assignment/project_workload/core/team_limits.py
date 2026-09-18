@@ -438,23 +438,19 @@ def row_overlaps_window(row: dict, window_start: date | None, window_end: date |
 	return True
 
 
-def load_project_team_limits(
+def _iter_project_team_limit_rows(
 	project: str,
 	window_start: date | None,
 	window_end: date | None,
-) -> dict[tuple[str, str], float]:
-	"""`(pt_participant, pt_role)` → min limit в окне. Виртуальные строки пропускает."""
-	result: dict[tuple[str, str], float] = {}
+):
 	if not project:
-		return result
+		return
 	meta = frappe.get_meta("Project Team Details")
 	if not meta.has_field("workload_limit"):
-		return result
-
+		return
 	fields = ["pt_participant", "pt_role", "workload_limit", "pt_valid_from", "pt_valid_for"]
 	if meta.has_field("virtual_worker"):
 		fields.append("virtual_worker")
-
 	rows = frappe.get_all(
 		"Project Team Details",
 		filters={"parent": project, "parenttype": "Project"},
@@ -470,12 +466,60 @@ def load_project_team_limits(
 			continue
 		if not row_overlaps_window(row, window_start, window_end):
 			continue
-		limit = normalize_workload_limit(row.get("workload_limit"))
-		key = (user, role)
-		prev = result.get(key)
-		if prev is None or limit < prev:
-			result[key] = limit
+		yield user, role, {
+			"limit": normalize_workload_limit(row.get("workload_limit")),
+			"pt_valid_from": row.get("pt_valid_from"),
+			"pt_valid_for": row.get("pt_valid_for"),
+			"role": role,
+		}
+
+
+def load_project_team_limit_segments(
+	project: str,
+	window_start: date | None,
+	window_end: date | None,
+) -> dict[tuple[str, str], list[dict]]:
+	"""`(pt_participant, pt_role)` → сегменты лимита в окне. Виртуалов нет."""
+	result: dict[tuple[str, str], list[dict]] = {}
+	for user, role, segment in _iter_project_team_limit_rows(project, window_start, window_end):
+		result.setdefault((user, role), []).append(segment)
 	return result
+
+
+def load_project_team_limits(
+	project: str,
+	window_start: date | None,
+	window_end: date | None,
+) -> dict[tuple[str, str], float]:
+	"""`(pt_participant, pt_role)` → min limit в окне. Виртуальные строки пропускает."""
+	result: dict[tuple[str, str], float] = {}
+	for key, segments in load_project_team_limit_segments(
+		project, window_start, window_end
+	).items():
+		result[key] = min(item["limit"] for item in segments)
+	return result
+
+
+def limit_segments_are_approximate(segments: list | None) -> bool:
+	return len(segments or []) > 1
+
+
+def stamp_limit_display(
+	row: dict,
+	limit: float,
+	segments: list | None,
+	*,
+	approximate: bool | None = None,
+) -> None:
+	row["workload_limit"] = limit
+	segs = list(segments or [])
+	is_approx = (
+		limit_segments_are_approximate(segs) if approximate is None else approximate
+	)
+	if not is_approx:
+		return
+	row["workload_limit_approx"] = True
+	row["workload_limit_segments"] = segs
 
 
 def resolve_role_limit(

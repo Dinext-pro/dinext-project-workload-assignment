@@ -138,6 +138,10 @@ def copy_row_meta(legacy_row: dict) -> dict:
 		meta["expandable"] = bool(legacy_row["expandable"])
 	if legacy_row.get("workload_limit") is not None:
 		meta["workload_limit"] = legacy_row["workload_limit"]
+	if legacy_row.get("workload_limit_approx"):
+		meta["workload_limit_approx"] = True
+	if legacy_row.get("workload_limit_segments"):
+		meta["workload_limit_segments"] = legacy_row["workload_limit_segments"]
 	return meta
 
 
