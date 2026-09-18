@@ -25,7 +25,9 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 	resolve_role_limit,
 	resolve_user_limit,
 	row_overlaps_window,
+	validate_real_row_worker_required,
 	validate_virtual_calendar_required,
+	validate_virtual_row_type_required,
 )
 
 
@@ -48,6 +50,7 @@ def _meta_with_virtual_calendar_fields():
 		"virtual_hours_on_date",
 		"virtual_worker",
 		"workload_limit",
+		"pt_worker",
 	}
 	meta.has_field.side_effect = lambda name: name in owned
 	return meta
@@ -128,6 +131,25 @@ class TestWorkloadLimitHelpers(FrappeTestCase):
 			},
 		]
 		self.assertEqual(peak_limit_sum(rows), 70)
+		self.assertEqual(find_team_limit_sum_violations(rows), [])
+
+	def test_peak_sum_allows_sequential_full_fund(self):
+		rows = [
+			{
+				"pt_participant": "a@x",
+				"pt_role": "Analyst",
+				"workload_limit": 100,
+				"pt_valid_from": "2026-09-01",
+				"pt_valid_for": "2026-09-30",
+			},
+			{
+				"pt_participant": "a@x",
+				"pt_role": "Developer",
+				"workload_limit": 100,
+				"pt_valid_from": "2026-10-01",
+			},
+		]
+		self.assertEqual(peak_limit_sum(rows), 100)
 		self.assertEqual(find_team_limit_sum_violations(rows), [])
 
 	def test_peak_sum_three_way_overlap(self):
@@ -379,6 +401,45 @@ class TestWorkloadLimitHelpers(FrappeTestCase):
 					"virtual_hours_on_date": 8,
 				}
 			]
+		)
+
+	@patch(
+		"project_workload_assignment.project_workload_assignment.project_workload.core.team_limits.frappe.get_meta"
+	)
+	def test_real_row_requires_worker(self, get_meta):
+		import frappe
+
+		get_meta.return_value = _meta_with_virtual_calendar_fields()
+		with self.assertRaises(frappe.ValidationError):
+			validate_real_row_worker_required(
+				[{"virtual_worker": 0, "pt_role": "Dev", "pt_participant": "a@x"}]
+			)
+		validate_real_row_worker_required(
+			[
+				{
+					"virtual_worker": 0,
+					"pt_role": "Dev",
+					"pt_participant": "a@x",
+					"pt_worker": "W-1",
+				}
+			]
+		)
+		validate_real_row_worker_required(
+			[{"virtual_worker": 1, "pt_role": "QA", "pt_worker": ""}]
+		)
+
+	def test_virtual_row_requires_type(self):
+		import frappe
+
+		with self.assertRaises(frappe.ValidationError):
+			validate_virtual_row_type_required(
+				[{"virtual_worker": 1, "pt_role": "QA"}]
+			)
+		validate_virtual_row_type_required(
+			[{"virtual_worker": 1, "pt_role": "QA", "worker_type": "Employee"}]
+		)
+		validate_virtual_row_type_required(
+			[{"virtual_worker": 0, "pt_role": "Dev", "worker_type": ""}]
 		)
 
 
