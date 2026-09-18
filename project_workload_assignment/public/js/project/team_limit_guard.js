@@ -299,12 +299,50 @@ const applyRemainder = (frm, cdt, cdn) => {
 	}
 };
 
+const _restoreLoneAfterRemove = (frm, removed) => {
+	const gonePerson = removed ? _personKey(removed) : "";
+	const goneLimit = removed ? Number(removed.workload_limit) : NaN;
+	Object.entries(_personGroups(frm)).forEach(([person, rows]) => {
+		if (rows.length !== 1) return;
+		if (gonePerson && person !== gonePerson) return;
+		const row = rows[0];
+		if (row[AUTOFILL] || !_isExplicitLimit(row.workload_limit)) {
+			_writeLimit(row, 100);
+			return;
+		}
+		const rem = Number(row.workload_limit);
+		if (
+			Number.isFinite(goneLimit) &&
+			Math.abs(rem - 50) < 0.001 &&
+			Math.abs(goneLimit - 50) < 0.001
+		) {
+			_writeLimit(row, 100);
+			row[AUTOFILL] = true;
+		}
+	});
+};
+
+const refillAfterRemove = (frm, cdt, cdn) => {
+	if (_filling) return;
+	const removed = locals[cdt]?.[cdn];
+	_filling = true;
+	try {
+		Object.values(_personGroups(frm)).forEach((rows) => _fillRows(rows, true));
+		_restoreLoneAfterRemove(frm, removed);
+	} finally {
+		_filling = false;
+	}
+};
+
 frappe.ui.form.on("Project", {
 	onload(frm) {
 		_bindTeamFieldRules(frm);
 	},
 	refresh(frm) {
 		_bindTeamFieldRules(frm);
+	},
+	custom_ts_details_remove(frm, cdt, cdn) {
+		refillAfterRemove(frm, cdt, cdn);
 	},
 	validate(frm) {
 		const noWorker = _missingWorkers(frm);
