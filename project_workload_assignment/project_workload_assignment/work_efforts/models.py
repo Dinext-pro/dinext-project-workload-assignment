@@ -205,6 +205,7 @@ class TimesheetLimitResult(TypedDict, total=False):
 	document_name: str
 	role: str
 	planned_hours: float
+	forecast_hours: float
 	total_hours: float
 	hours_data: HoursData
 	completion_percentage: int

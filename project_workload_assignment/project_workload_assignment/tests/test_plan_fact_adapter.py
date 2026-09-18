@@ -9,6 +9,9 @@ from project_workload_assignment.project_workload_assignment.plan_fact import En
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.bulk_loader import (
 	TimesheetLimitsBulkData,
 )
+from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.calculator import (
+	TimesheetLimitsCalculator,
+)
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.plan_fact_adapter import (
 	TimesheetPlanFactAdapter,
 )
@@ -180,6 +183,20 @@ class TestAdapterIvanExpected(unittest.TestCase):
 			_bulk(), PROJECT, "t1.1", ROLE, 2026, 2, hours_key="expected"
 		)
 		self.assertEqual(got.plan_hours, 30.0)
+
+
+class TestCalculatorForecastHours(unittest.TestCase):
+	def test_own_month_expected(self):
+		hours = TimesheetLimitsCalculator._forecast_hours(
+			_bulk(), PROJECT, "t1.1", ROLE, 2026, 1
+		)
+		self.assertEqual(hours, 8.0)
+
+	def test_empty_month_is_zero(self):
+		hours = TimesheetLimitsCalculator._forecast_hours(
+			_bulk(), PROJECT, "t1.1", ROLE, 2026, 3
+		)
+		self.assertEqual(hours, 0.0)
 
 
 class TestAdapterShared(unittest.TestCase):
