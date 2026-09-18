@@ -3,9 +3,30 @@ const HOURS_PREFIX = "hours_";
 export const OPEN_WORKLOAD_TAB_KEY = "pwr_open_workload_tab";
 
 export const NAV_POINTER_CLASS = "wr-nav-pointer";
+const FILTER_USER_KEY = "workload_report_filter_user";
+const FILTER_FLAG_KEY = "workload_report_should_filter";
 
 export function isNavigableProject(row) {
 	return !!(row?.kind === "project" && row.project);
+}
+
+export function userRowEmail(row) {
+	return String(row?.email || row?.user_data?.email || "").trim();
+}
+
+export function isNavigableUser(row) {
+	return !!(row?.kind === "user" && userRowEmail(row));
+}
+
+export function openTeamReportForUser(userEmail) {
+	if (!userEmail) return;
+	try {
+		sessionStorage.setItem(FILTER_USER_KEY, userEmail);
+		sessionStorage.setItem(FILTER_FLAG_KEY, "true");
+	} catch (_e) {
+		/* ignore */
+	}
+	frappe.set_route("Form", "Projects Workload Report", "Projects Workload Report");
 }
 
 export function isNavigableAbsencePeriod(row) {
@@ -156,6 +177,11 @@ export async function handleDoubleClick(row, col, ctx) {
 
 	if (row.kind === "project" && row.project && (isLabel || isPeriod)) {
 		openProjectWorkloadTab(row.project, "custom_workload");
+		return;
+	}
+
+	if (isNavigableUser(row) && (isLabel || isPeriod)) {
+		openTeamReportForUser(userRowEmail(row));
 		return;
 	}
 

@@ -361,7 +361,6 @@ def _load_project_plan_series(
 	date_to_period_key: dict[str, str],
 	period_index: dict[str, int],
 	wl_ctx: WorkloadContext,
-	project_name: str,
 ) -> list[float]:
 	"""Суммарный план PWE по проекту, размазанный по рабочим дням месяца."""
 	series = _zero_series(len(periods))
@@ -395,7 +394,7 @@ def _load_project_plan_series(
 		current_date = month_start
 		while current_date <= month_end:
 			date_str = str(current_date)
-			if wl_ctx.is_working_day(date_str, "", project_name):
+			if wl_ctx.is_working_day(date_str, "", project):
 				working_days.append(date_str)
 			current_date = frappe.utils.add_days(current_date, 1)
 		if not working_days:
@@ -644,12 +643,6 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		load_utilization = _parse_bool(fd.get("load_utilization"))
 		consider_virtuals = _parse_bool(fd.get("consider_virtuals"))
 
-		project_row = frappe.db.get_value(
-			"Project",
-			project,
-			["name", "project_name"],
-			as_dict=True,
-		)
 		# Keep filter date_from/date_to as-is (same window as project tree table).
 		# Clamping to expected_end_date only in charts caused N_chart < N_table
 		# and bar/column pitch drift after period_range switches.
@@ -713,7 +706,6 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		users_in_scope_set = set(users_in_scope)
 		assignments = [a for a in assignments if a.get("user") in users_in_scope_set]
 
-		project_display_name = (project_row or {}).get("project_name") or project
 		period_dates = _period_date_strings(periods, view_type)
 		wl_ctx.preload_user_base_hours(real_team_emails(team_rows), period_dates)
 		team_capacity, team_capacity_net = compute_team_capacity_series(
@@ -736,7 +728,6 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 			date_to_period_key,
 			period_index,
 			wl_ctx,
-			project_display_name,
 		)
 		workload_by_wtype = _compute_workload_by_wtype(
 			assignments,
