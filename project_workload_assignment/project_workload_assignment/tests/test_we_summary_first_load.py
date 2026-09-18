@@ -89,6 +89,17 @@ def _ensure_role() -> str:
 	return ROLE_NAME
 
 
+def _team_worker() -> str:
+	row = frappe.db.sql("select name from `tabWorker` limit 1", as_dict=True)
+	if row:
+		return row[0].name
+	from project_workload_assignment.project_workload_assignment.tests.scenarios._ci_worker_bootstrap import (
+		ensure_admin_worker_context,
+	)
+
+	return ensure_admin_worker_context()["worker"]
+
+
 def _summary_totals(message: dict) -> tuple[float, float]:
 	row = (message.get("summary_rows") or [{}])[0]
 	keys = [p["key"] for p in message.get("periods") or []]
@@ -115,7 +126,7 @@ class TestWeSummaryFirstLoad(FrappeTestCase):
 				"expected_end_date": "2026-04-30",
 			}
 		)
-		project.append("custom_ts_details", {"pt_role": self.role})
+		project.append("custom_ts_details", {"pt_role": self.role, "pt_worker": _team_worker()})
 		project.insert(ignore_permissions=True)
 		self.project = project.name
 
