@@ -19,12 +19,14 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 	find_team_limit_ceiling_violations,
 	find_team_limit_sum_violations,
 	is_explicit_limit,
+	limit_segments_are_approximate,
 	normalize_workload_limit,
 	peak_limit_sum,
 	resolve_person_limits,
 	resolve_role_limit,
 	resolve_user_limit,
 	row_overlaps_window,
+	stamp_limit_display,
 	validate_real_row_worker_required,
 	validate_virtual_calendar_required,
 	validate_virtual_row_type_required,
@@ -104,6 +106,35 @@ class TestWorkloadLimitHelpers(FrappeTestCase):
 
 		limits_under = {("a@x", "Dev"): 40.0, ("a@x", "PM"): 40.0}
 		self.assertEqual(resolve_user_limit(limits_under, "a@x", ["Dev", "PM"]), 80)
+
+	def test_limit_segments_mark_approx_and_keep_min(self):
+		sept = {
+			"limit": 70.0,
+			"pt_valid_from": "2026-09-01",
+			"pt_valid_for": "2026-09-30",
+			"role": "Dev",
+		}
+		octo = {
+			"limit": 40.0,
+			"pt_valid_from": "2026-10-01",
+			"pt_valid_for": "2026-10-31",
+			"role": "Dev",
+		}
+		self.assertFalse(limit_segments_are_approximate([sept]))
+		self.assertTrue(limit_segments_are_approximate([sept, octo]))
+		role = {}
+		stamp_limit_display(role, 40.0, [sept, octo])
+		self.assertEqual(role["workload_limit"], 40.0)
+		self.assertTrue(role["workload_limit_approx"])
+		self.assertEqual(len(role["workload_limit_segments"]), 2)
+		single = {}
+		stamp_limit_display(single, 40.0, [sept])
+		self.assertEqual(single["workload_limit"], 40.0)
+		self.assertNotIn("workload_limit_approx", single)
+		user = {}
+		stamp_limit_display(user, 100.0, [sept, {"limit": 60.0, "role": "PM"}], approximate=False)
+		self.assertEqual(user["workload_limit"], 100.0)
+		self.assertNotIn("workload_limit_approx", user)
 
 	def test_peak_sum_blocks_overlapping_over_100(self):
 		rows = [
@@ -460,7 +491,22 @@ class TestProjectTreeCapacityStamp(FrappeTestCase):
 					"isRole": True,
 					"role": "Dev",
 					"indent": 1,
-					"workload_limit": 50,
+					"workload_limit": 40,
+					"workload_limit_approx": True,
+					"workload_limit_segments": [
+						{
+							"limit": 70,
+							"pt_valid_from": "2026-09-01",
+							"pt_valid_for": "2026-09-30",
+							"role": "Dev",
+						},
+						{
+							"limit": 40,
+							"pt_valid_from": "2026-10-01",
+							"pt_valid_for": "2026-10-31",
+							"role": "Dev",
+						},
+					],
 				},
 			],
 			"metadata": {
@@ -482,7 +528,9 @@ class TestProjectTreeCapacityStamp(FrappeTestCase):
 		user = out["rows"][0]
 		role = user["children"][0]
 		self.assertEqual(user["workload_limit"], 40)
-		self.assertEqual(role["workload_limit"], 50)
+		self.assertEqual(role["workload_limit"], 40)
+		self.assertTrue(role["workload_limit_approx"])
+		self.assertEqual(len(role["workload_limit_segments"]), 2)
 		self.assertEqual(user["workingHours"]["2026-09-15"], 8)
 		self.assertEqual(role["workingHours"]["2026-09-15"], 8)
 		self.assertEqual(user["absences"][0]["type"], "Leave")
