@@ -116,7 +116,9 @@ export const getLabelColumn = (opts = {}) => ({
 	render: (params) => renderParticipant(params, opts),
 	treeContentKey: (params) => {
 		if (!opts.applyLimit || params?.data?.kind !== "role") return "";
-		return `limit:${resolveDisplayLimitPercent(params.data)}`;
+		const row = params.data;
+		const mark = row.workload_limit_approx ? "~" : "";
+		return `limit:${mark}${resolveDisplayLimitPercent(row)}`;
 	},
 	cellClass: (params) =>
 		isNavigableProject(params?.data) || isNavigableUser(params?.data)
