@@ -17,6 +17,7 @@ import { renderParticipant } from "./participant.js";
 import {
 	isNavigableAbsencePeriod,
 	isNavigableProject,
+	isNavigableUser,
 	NAV_POINTER_CLASS,
 } from "./navigation.js";
 
@@ -90,7 +91,11 @@ const _periodCellClass = (period, dateKey, viewType, showFact, applyLimit) => (p
 		_resolveVisual(period, dateKey, viewType, showFact, applyLimit, params)
 	);
 	const row = params?.data;
-	if (isNavigableProject(row) || isNavigableAbsencePeriod(row)) {
+	if (
+		isNavigableProject(row) ||
+		isNavigableAbsencePeriod(row) ||
+		isNavigableUser(row)
+	) {
 		classes.push(NAV_POINTER_CLASS);
 	}
 	return classes;
@@ -114,7 +119,9 @@ export const getLabelColumn = (opts = {}) => ({
 		return `limit:${resolveDisplayLimitPercent(params.data)}`;
 	},
 	cellClass: (params) =>
-		isNavigableProject(params?.data) ? NAV_POINTER_CLASS : undefined,
+		isNavigableProject(params?.data) || isNavigableUser(params?.data)
+			? NAV_POINTER_CLASS
+			: undefined,
 });
 
 export const getColumns = (periods, opts = {}) => {

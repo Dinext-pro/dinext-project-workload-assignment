@@ -5,6 +5,10 @@
 const TEAM_TABLE = "custom_ts_details";
 const OPEN = "0001-01-01";
 const CLOSE = "9999-12-31";
+const WORKER_MANDATORY_WHEN_REAL = "eval:!doc.virtual_worker";
+const TYPE_MANDATORY_WHEN_VIRTUAL = "eval:doc.virtual_worker";
+const TYPE_READONLY_WHEN_REAL = "eval:!doc.virtual_worker";
+const AUTOFILL = "__pwa_limit_autofill";
 
 let _filling = false;
 
@@ -31,14 +35,32 @@ const _personKey = (row) => {
 	return String(row.pt_participant || row.pt_worker || "").trim();
 };
 
-const _start = (row) => row.pt_valid_from || OPEN;
-const _end = (row) => row.pt_valid_for || CLOSE;
+const _iso = (value) => {
+	if (!value) return "";
+	const raw = String(value);
+	if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+	const obj = frappe.datetime?.str_to_obj?.(raw);
+	if (!obj || Number.isNaN(obj.getTime?.() ?? obj.valueOf?.())) return raw;
+	const y = obj.getFullYear();
+	const m = String(obj.getMonth() + 1).padStart(2, "0");
+	const d = String(obj.getDate()).padStart(2, "0");
+	return `${y}-${m}-${d}`;
+};
+
+const _start = (row) => _iso(row.pt_valid_from) || OPEN;
+const _end = (row) => _iso(row.pt_valid_for) || CLOSE;
+
+const _isEmptyForFill = (row) =>
+	!_isExplicitLimit(row.workload_limit) || !!row[AUTOFILL];
 
 const _addDay = (iso) => {
 	if (iso === CLOSE) return CLOSE;
 	const obj = frappe.datetime.str_to_obj(iso);
 	obj.setDate(obj.getDate() + 1);
-	return frappe.datetime.obj_to_str(obj);
+	const y = obj.getFullYear();
+	const m = String(obj.getMonth() + 1).padStart(2, "0");
+	const d = String(obj.getDate()).padStart(2, "0");
+	return `${y}-${m}-${d}`;
 };
 
 const _intervalsOverlap = (a, b) => _start(a) <= _end(b) && _start(b) <= _end(a);
@@ -68,20 +90,20 @@ const _overlapComponents = (rows) => {
 	return Object.values(groups);
 };
 
-const _singleLimit = (value) => {
-	if (!_isExplicitLimit(value) || Number(value) <= 0) return 100;
-	return Number(value);
+const _singleLimit = (row) => {
+	if (_isEmptyForFill(row) || Number(row.workload_limit) <= 0) return 100;
+	return Number(row.workload_limit);
 };
 
 const _resolveComponent = (rows) => {
 	if (!rows.length) return [];
-	if (rows.length === 1) return [_singleLimit(rows[0].workload_limit)];
+	if (rows.length === 1) return [_singleLimit(rows[0])];
 
 	const resolved = rows.map(() => 0);
 	const emptyIndexes = [];
 	let explicitSum = 0;
 	rows.forEach((row, index) => {
-		if (_isExplicitLimit(row.workload_limit)) {
+		if (!_isEmptyForFill(row)) {
 			const number = Number(row.workload_limit);
 			resolved[index] = number;
 			explicitSum += number;
@@ -105,15 +127,18 @@ const _resolveComponent = (rows) => {
 };
 
 const _writeLimit = (row, value) => {
+	const wasAuto = _isEmptyForFill(row);
 	if (!row || !row.doctype || !row.name) {
 		row.workload_limit = value;
+		row[AUTOFILL] = wasAuto;
 		return;
 	}
 	const current = Number(row.workload_limit);
-	if (_isExplicitLimit(row.workload_limit) && Math.abs(current - value) < 0.000001) {
+	if (!wasAuto && Math.abs(current - value) < 0.000001) {
 		return;
 	}
 	frappe.model.set_value(row.doctype, row.name, "workload_limit", value);
+	row[AUTOFILL] = wasAuto;
 };
 
 const _fillRows = (rows, includeSingles) => {
@@ -122,7 +147,7 @@ const _fillRows = (rows, includeSingles) => {
 		if (component.length > 1) {
 			let explicitSum = 0;
 			component.forEach((row) => {
-				if (_isExplicitLimit(row.workload_limit)) {
+				if (!_isEmptyForFill(row)) {
 					explicitSum += Number(row.workload_limit);
 				}
 			});
@@ -177,14 +202,63 @@ const _fillAll = (frm) => {
 
 const _label = (row) => row.pt_role || row.pt_participant || row.pt_worker || "";
 
-const _showLimitError = (lines) => {
+const _showLimitError = (lines, title) => {
 	const dialog = new frappe.ui.Dialog({
-		title: __("Workload limit"),
+		title: title || __("Workload limit"),
 		indicator: "red",
 	});
 	dialog.$body.html(lines.join("<br>"));
 	dialog.show();
 };
+
+const _bindTeamFieldRules = (frm) => {
+	const grid = frm.get_field(TEAM_TABLE)?.grid;
+	if (!grid) return;
+	if (frappe.meta.get_docfield("Project Team Details", "pt_worker")) {
+		grid.update_docfield_property(
+			"pt_worker",
+			"mandatory_depends_on",
+			WORKER_MANDATORY_WHEN_REAL
+		);
+	}
+	if (frappe.meta.get_docfield("Project Team Details", "worker_type")) {
+		grid.update_docfield_property("worker_type", "in_list_view", 0);
+		grid.update_docfield_property(
+			"worker_type",
+			"read_only_depends_on",
+			TYPE_READONLY_WHEN_REAL
+		);
+		grid.update_docfield_property("worker_type", "read_only", 0);
+		grid.update_docfield_property(
+			"worker_type",
+			"mandatory_depends_on",
+			TYPE_MANDATORY_WHEN_VIRTUAL
+		);
+	}
+};
+
+const _missingWorkers = (frm) => {
+	if (!frappe.meta.get_docfield("Project Team Details", "pt_worker")) return [];
+	return _teamRows(frm)
+		.map((row, index) => ({ row, index }))
+		.filter(({ row }) => !row.virtual_worker && !String(row.pt_worker || "").trim())
+		.map(({ row, index }) =>
+			__("- {0} (row {1})", [_label(row) || String(index + 1), index + 1])
+		);
+};
+
+const _validTypes = new Set(["Employee", "Supplier"]);
+
+const _missingTypes = (frm) =>
+	_teamRows(frm)
+		.map((row, index) => ({ row, index }))
+		.filter(
+			({ row }) =>
+				row.virtual_worker && !_validTypes.has(String(row.worker_type || "").trim())
+		)
+		.map(({ row, index }) =>
+			__("- {0} (row {1})", [_label(row) || String(index + 1), index + 1])
+		);
 
 const _rowOverCeiling = (row) => {
 	if (_isEmptyLimit(row.workload_limit)) return false;
@@ -219,14 +293,37 @@ const applyRemainder = (frm, cdt, cdn) => {
 	const peers = _teamRows(frm).filter((other) => _personKey(other) === _personKey(row));
 	_filling = true;
 	try {
-		_fillRows(peers, false);
+		_fillRows(peers, true);
 	} finally {
 		_filling = false;
 	}
 };
 
 frappe.ui.form.on("Project", {
+	onload(frm) {
+		_bindTeamFieldRules(frm);
+	},
+	refresh(frm) {
+		_bindTeamFieldRules(frm);
+	},
 	validate(frm) {
+		const noWorker = _missingWorkers(frm);
+		if (noWorker.length) {
+			const lines = [__("Fill Worker for non-virtual team members:"), ...noWorker];
+			frappe.validated = false;
+			_showLimitError(lines, __("Project team"));
+			throw new Error(lines.join(" "));
+		}
+		const noType = _missingTypes(frm);
+		if (noType.length) {
+			const lines = [
+				__("Fill Type (Employee or Supplier) for virtual team members:"),
+				...noType,
+			];
+			frappe.validated = false;
+			_showLimitError(lines, __("Project team"));
+			throw new Error(lines.join(" "));
+		}
 		_fillAll(frm);
 		const bad = _violations(frm);
 		if (!bad.length) return;
@@ -289,6 +386,10 @@ frappe.ui.form.on("Project Team Details", {
 		applyRemainder(frm, cdt, cdn);
 	},
 	workload_limit(frm, cdt, cdn) {
+		if (!_filling) {
+			const row = locals[cdt][cdn];
+			if (row) row[AUTOFILL] = false;
+		}
 		applyRemainder(frm, cdt, cdn);
 	},
 });
