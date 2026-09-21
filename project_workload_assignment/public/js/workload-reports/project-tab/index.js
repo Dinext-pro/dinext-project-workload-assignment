@@ -58,6 +58,7 @@ const _reload = (frm, el) => {
 		viewType: args.view_type,
 		showFact: !!args.load_actual,
 		applyLimit: !!args.consider_limit,
+		toolbar: el._wrToolbar,
 	});
 	const chartsDone = common.scheduleChartsReload(el._wr.charts);
 	return Promise.all([tableDone, chartsDone]).then(() => {
@@ -128,15 +129,25 @@ function mount(frm) {
 			.removeClass("input-max-width")
 			.css({ maxWidth: "none", width: "100%", padding: 0 });
 		el._wr = common.mountLayout(el);
-		el._getArgs = common.mountProjectFilters(el._wr.filters, () => {
+		const session = common.mountProjectFilters(el._wr.filters, () => {
 			_reload(frm, el);
 		}, {
 			getProject: () => frm.doc.name,
+		});
+		el._getArgs = session.getArgs;
+		el._wrToolbar = common.buildPeriodToolbar(session, "workload-reports-project", {
+			getChartsState: () => el._wr.charts._wrCharts,
+			onUtilizationChange: () => common.scheduleChartsReload(el._wr.charts),
+			onStackByChange: () => common.remountChartsFromCache(el._wr.charts),
+			projectArgs: session.args,
+			onProjectArgsChange: () => _reload(frm, el),
 		});
 		common.mountCharts(el._wr.charts, {
 			surface: "project",
 			getArgs: () => ({ project: frm.doc.name, ...el._getArgs() }),
 			getTableApi: () => el._wr.table._wrTable?.table?.api ?? null,
+			projectArgs: session.args,
+			onProjectArgsChange: () => _reload(frm, el),
 		});
 		common.mountChartVisibilityToggle(el._wr.filters, el._wr.charts);
 		_bindChartsTab();

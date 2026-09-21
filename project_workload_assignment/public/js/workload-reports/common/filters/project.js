@@ -1,20 +1,12 @@
 import {
-	VIEW_OPTIONS,
-	PERIOD_OPTIONS,
 	WORKER_OPTIONS,
 	projectDefaults,
 	resetProjectWindow,
 	shiftMonth,
 } from "./periods.js";
-import {
-	mountRow,
-	addSelect,
-	addCheckbox,
-	addPeriodNav,
-	addButton,
-	addMultiSelectList,
-} from "./controls.js";
+import { mountRow, addSelect, addMultiSelectList } from "./controls.js";
 import { fetchProjectRoleOptions } from "./role-options.js";
+import { createFilterSession } from "./session.js";
 
 /**
  * @param {HTMLElement} el
@@ -23,8 +15,15 @@ import { fetchProjectRoleOptions } from "./role-options.js";
  */
 export function mountProjectFilters(el, onChange, opts = {}) {
 	const args = projectDefaults();
-	const { flow, buttons } = mountRow(el);
-	const _reload = () => onChange();
+	const session = createFilterSession(args, {
+		onReload: onChange,
+		onShift: (next, dir) => {
+			next.date_from = shiftMonth(next.date_from, dir);
+			next.date_to = shiftMonth(next.date_to, dir);
+		},
+		onResetWindow: resetProjectWindow,
+	});
+	const { flow } = mountRow(el);
 	const getProject = typeof opts.getProject === "function" ? opts.getProject : () => "";
 
 	addSelect(flow, {
@@ -33,7 +32,7 @@ export function mountProjectFilters(el, onChange, opts = {}) {
 		value: args.worker_wtype,
 		onChange: (v) => {
 			args.worker_wtype = v;
-			_reload();
+			session.reload();
 		},
 	});
 
@@ -45,77 +44,9 @@ export function mountProjectFilters(el, onChange, opts = {}) {
 			fetchProjectRoleOptions({ project: getProject(), worker_wtype: args.worker_wtype }, txt),
 		onChange: (values) => {
 			args.project_role_filters = values || [];
-			_reload();
+			session.reload();
 		},
 	});
 
-	addCheckbox(flow, {
-		label: __("Show fact"),
-		checked: !!args.load_actual,
-		onChange: (v) => {
-			args.load_actual = v ? 1 : 0;
-			_reload();
-		},
-	});
-
-	addCheckbox(flow, {
-		label: __("Consider limit"),
-		checked: !!args.consider_limit,
-		onChange: (v) => {
-			args.consider_limit = v ? 1 : 0;
-			_reload();
-		},
-	});
-
-	addCheckbox(flow, {
-		label: __("Consider virtuals"),
-		checked: !!args.consider_virtuals,
-		onChange: (v) => {
-			args.consider_virtuals = v ? 1 : 0;
-			_reload();
-		},
-	});
-
-	addSelect(flow, {
-		fieldname: "view_type",
-		options: VIEW_OPTIONS,
-		value: args.view_type,
-		onChange: (v) => {
-			args.view_type = v;
-			resetProjectWindow(args);
-			_reload();
-		},
-	});
-
-	addSelect(flow, {
-		fieldname: "period_range",
-		options: PERIOD_OPTIONS,
-		value: args.period_range,
-		onChange: (v) => {
-			args.period_range = v;
-			resetProjectWindow(args);
-			_reload();
-		},
-	});
-
-	addButton(buttons, {
-		title: __("Refresh Data"),
-		text: "↻",
-		onClick: _reload,
-	});
-
-	addPeriodNav(buttons, {
-		onPrev: () => {
-			args.date_from = shiftMonth(args.date_from, -1);
-			args.date_to = shiftMonth(args.date_to, -1);
-			_reload();
-		},
-		onNext: () => {
-			args.date_from = shiftMonth(args.date_from, 1);
-			args.date_to = shiftMonth(args.date_to, 1);
-			_reload();
-		},
-	});
-
-	return () => ({ ...args });
+	return session;
 }

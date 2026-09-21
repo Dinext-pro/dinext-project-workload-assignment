@@ -1,11 +1,11 @@
 /**
- * Chart gutter controls for workload-reports v3.
- * "Add utilization" + stacked-histogram grouping (worker type / project roles).
+ * Chart display controls for workload-reports (toolbar).
+ * Utilization toggle + stacked-histogram grouping (worker type / project roles).
  */
 
 import { addCheckbox } from "../filters/controls.js";
 
-function addStackModeSelect(parent, { value, onChange }) {
+export function addStackModeSelect(parent, { value, onChange }) {
 	const wrap = document.createElement("div");
 	wrap.className = "wr-filter-field wr-chart-stack-mode";
 
@@ -32,46 +32,54 @@ function addStackModeSelect(parent, { value, onChange }) {
 }
 
 /**
- * Mount gutter controls once into panel.$gutterFilters.
- * @param {HTMLElement} hostEl
- * @param {{ onUtilizationChange?: () => void, onStackByChange?: () => void }} hooks
+ * Mount chart toggles into the table toolbar host (once).
+ * @param {HTMLElement} host
+ * @param {{ getChartsState?: () => object, onUtilizationChange?: () => void, onStackByChange?: () => void, projectArgs?: object, onProjectArgsChange?: () => void }} opts
  */
-export function ensureChartControls(hostEl, hooks = {}) {
-	const state = hostEl?._wrCharts;
-	const panel = state?.panel;
-	if (!panel?.$gutterFilters?.length) return;
-	if (state._controlsReady) return;
+export function mountChartToolbarControls(host, opts = {}) {
+	if (!host || host.dataset.wrChartCtl === "1") return;
+	host.dataset.wrChartCtl = "1";
 
-	const onUtilizationChange =
-		typeof hooks === "function" ? hooks : hooks.onUtilizationChange;
-	const onStackByChange = typeof hooks === "function" ? null : hooks.onStackByChange;
+	const live = () =>
+		typeof opts.getChartsState === "function" ? opts.getChartsState() : null;
+	const state = live();
 
-	panel.$gutterFilters.empty();
-
-	const wrap = document.createElement("div");
-	wrap.className = "wr-chart-filters";
-	panel.$gutterFilters.get(0).appendChild(wrap);
-
-	addCheckbox(wrap, {
-		label: __("Add utilization"),
-		checked: !!Number(state.utilization),
+	addCheckbox(host, {
+		label: __("Utilization"),
+		checked: !!Number(state?.utilization),
 		onChange: (on) => {
-			state.utilization = on ? 1 : 0;
-			if (typeof onUtilizationChange === "function") {
-				onUtilizationChange();
-			}
+			const next = live() || state;
+			if (next) next.utilization = on ? 1 : 0;
+			opts.onUtilizationChange?.();
 		},
 	});
 
-	addStackModeSelect(wrap, {
-		value: state.stackBy || "wtype",
+	const projectArgs = opts.projectArgs;
+	if (projectArgs && typeof opts.onProjectArgsChange === "function") {
+		addCheckbox(host, {
+			label: __("Consider limit"),
+			checked: !!projectArgs.consider_limit,
+			onChange: (on) => {
+				projectArgs.consider_limit = on ? 1 : 0;
+				opts.onProjectArgsChange();
+			},
+		});
+		addCheckbox(host, {
+			label: __("Consider virtuals"),
+			checked: !!projectArgs.consider_virtuals,
+			onChange: (on) => {
+				projectArgs.consider_virtuals = on ? 1 : 0;
+				opts.onProjectArgsChange();
+			},
+		});
+	}
+
+	addStackModeSelect(host, {
+		value: state?.stackBy || "wtype",
 		onChange: (mode) => {
-			state.stackBy = mode === "role" ? "role" : "wtype";
-			if (typeof onStackByChange === "function") {
-				onStackByChange();
-			}
+			const next = live() || state;
+			if (next) next.stackBy = mode === "role" ? "role" : "wtype";
+			opts.onStackByChange?.();
 		},
 	});
-
-	state._controlsReady = true;
 }
