@@ -5,6 +5,23 @@
 
 /* —— Projects Workload Report (team summary) —— */
 
+body[data-route*="Projects Workload Report"] .page-head.flex,
+body[data-route*="projects-workload-report"] .page-head.flex {
+	display: none !important;
+}
+
+/* Raven writes inline padding-bottom:60px on .main-section — that is the page scroll. */
+body[data-route*="Projects Workload Report"] .main-section,
+body[data-route*="projects-workload-report"] .main-section {
+	padding-bottom: 0 !important;
+}
+
+body[data-route*="Projects Workload Report"] .form-page,
+body[data-route*="projects-workload-report"] .form-page {
+	border-top-left-radius: 0 !important;
+	border-top-right-radius: 0 !important;
+}
+
 body[data-route*="Projects Workload Report"] .std-form-layout .form-layout .form-section,
 body[data-route*="projects-workload-report"] .std-form-layout .form-layout .form-section {
 	display: none !important;

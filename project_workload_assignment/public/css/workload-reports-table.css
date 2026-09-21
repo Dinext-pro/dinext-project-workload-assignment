@@ -1,7 +1,7 @@
 .workload-reports-root {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 0;
 	width: 100%;
 	min-height: 0;
 }

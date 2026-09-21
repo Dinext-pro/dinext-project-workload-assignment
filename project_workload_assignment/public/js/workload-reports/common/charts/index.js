@@ -13,7 +13,6 @@ import {
 	showChartMessage,
 	disposeChartInstance,
 } from "./shell.js";
-import { ensureChartControls } from "./controls.js";
 import { bindChartAlign, updateFixedChartLegend } from "./align.js";
 import { mountChartVisibilityToggle } from "./visibility.js";
 
@@ -89,6 +88,8 @@ function _ensureState(hostEl, ctx = {}) {
 			surface: ctx.surface || "report",
 			getArgs: ctx.getArgs || (() => ({})),
 			getTableApi: ctx.getTableApi || (() => null),
+			projectArgs: ctx.projectArgs || null,
+			onProjectArgsChange: ctx.onProjectArgsChange || null,
 			utilization: 0,
 			stackBy: "wtype",
 			lastPayload: null,
@@ -105,6 +106,10 @@ function _ensureState(hostEl, ctx = {}) {
 		if (ctx.surface) state.surface = ctx.surface;
 		if (typeof ctx.getArgs === "function") state.getArgs = ctx.getArgs;
 		if (typeof ctx.getTableApi === "function") state.getTableApi = ctx.getTableApi;
+		if (ctx.projectArgs) state.projectArgs = ctx.projectArgs;
+		if (typeof ctx.onProjectArgsChange === "function") {
+			state.onProjectArgsChange = ctx.onProjectArgsChange;
+		}
 	}
 	return state;
 }
@@ -261,7 +266,7 @@ function _buildChartOption(state) {
 }
 
 /** Rebuild series from cached payload (stack mode toggle — no refetch). */
-function remountChartsFromCache(hostEl) {
+export function remountChartsFromCache(hostEl) {
 	const state = _getState(hostEl);
 	if (!state?.panel || !state.lastPayload) return null;
 	try {
@@ -363,11 +368,6 @@ export async function reloadCharts(hostEl) {
 
 		// Dispose before loading message so $chartEl.html does not orphan echarts.
 		disposeChartInstance(state);
-
-		ensureChartControls(hostEl, {
-			onUtilizationChange: () => scheduleChartsReload(hostEl),
-			onStackByChange: () => remountChartsFromCache(hostEl),
-		});
 
 		showChartMessage(panel, null, "loading");
 

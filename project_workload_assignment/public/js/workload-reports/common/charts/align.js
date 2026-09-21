@@ -211,11 +211,22 @@ function swatchModifierClass(series) {
 }
 
 export function updateFixedChartLegend(panel, option, chart) {
-	if (!panel?.$viewport?.length || !option) return;
+	if (!option) return;
+	const $host = panel?.$gutterFilters;
+	if (!$host?.length) return;
+
+	if (
+		panel.$legendBar?.length &&
+		!panel.$legendBar.closest(".dinext-chart-panel__gutter-filters").length
+	) {
+		panel.$legendBar.remove();
+		panel.$legendBar = null;
+	}
+
 	let $bar = panel.$legendBar;
 	if (!$bar?.length) {
 		$bar = $('<div class="wr-chart-legend-bar"></div>');
-		panel.$viewport.prepend($bar);
+		$host.empty().append($bar);
 		panel.$legendBar = $bar;
 	}
 
