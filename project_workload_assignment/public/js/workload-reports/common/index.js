@@ -11,6 +11,7 @@ import {
 	getFormFiltersSection,
 	parkFormLinkFields,
 	unveilFormLinkFields,
+	buildPeriodToolbar,
 } from "./filters/index.js";
 import { loadTable, destroyTable, createProjectsExpandHandler, PAGE_SIZE } from "./table/index.js";
 import { consumeOpenWorkloadTab } from "./table/navigation.js";
@@ -22,6 +23,7 @@ import {
 	destroyCharts,
 	mountChartVisibilityToggle,
 	flushChartsWhenVisible,
+	remountChartsFromCache,
 } from "./charts/index.js";
 import { wrDebug, wrFieldSnapshot } from "./debug.js";
 
@@ -64,6 +66,7 @@ project_workload_assignment.workloadReports.common = {
 	mountLayout: _mountLayout,
 	mountProjectFilters,
 	mountProjectsFiltersFromForm,
+	buildPeriodToolbar,
 	getFormFiltersSection,
 	parkFormLinkFields,
 	unveilFormLinkFields,
@@ -83,6 +86,7 @@ project_workload_assignment.workloadReports.common = {
 	destroyCharts,
 	mountChartVisibilityToggle,
 	flushChartsWhenVisible,
+	remountChartsFromCache,
 	consumeOpenWorkloadTab,
 	wrDebug,
 	wrFieldSnapshot,

@@ -137,7 +137,7 @@ const _resolveFullscreenOpts = (container) => {
 	};
 };
 
-const _createOpts = (container, state, rows, columns, onExpandRow, onReady) => {
+const _createOpts = (container, state, rows, columns, onExpandRow, onReady, toolbar) => {
 	const opts = {
 		container,
 		data: rows,
@@ -166,6 +166,9 @@ const _createOpts = (container, state, rows, columns, onExpandRow, onReady) => {
 	if (fullscreen) {
 		opts.fullscreen = fullscreen;
 	}
+	if (toolbar) {
+		opts.toolbar = toolbar;
+	}
 	if (typeof onExpandRow === "function") {
 		opts.onExpandRow = onExpandRow;
 	}
@@ -176,7 +179,7 @@ const _createOpts = (container, state, rows, columns, onExpandRow, onReady) => {
  * Load / refresh grid into container.
  * Soft reload: hydrate children onto new rows, keep expandedIds, one refresh
  * (no collapse → expand flash).
- * opts: { viewType, showFact, onExpandRow, resetExpand, hydrateExpanded, onLoadMore, preserveExpand }
+ * opts: { viewType, showFact, onExpandRow, resetExpand, hydrateExpanded, onLoadMore, preserveExpand, toolbar }
  */
 export async function loadTable(container, fetchFn, opts = {}) {
 	if (!container) {
@@ -260,7 +263,8 @@ export async function loadTable(container, fetchFn, opts = {}) {
 					if (gen !== state.loadGen) return;
 					syncTableHeight(container);
 					_bindPaging(container, state);
-				}
+				},
+				opts.toolbar
 			);
 			if (preserveExpand && expandedIds.length) {
 				createOpts.expandedIds = expandedIds;

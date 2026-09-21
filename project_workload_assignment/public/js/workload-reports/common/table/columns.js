@@ -22,6 +22,7 @@ import {
 } from "./navigation.js";
 
 export const CELL_SIZE = 48;
+export const LABEL_COL_WIDTH = 220;
 export const getRowHeight = () => CELL_SIZE;
 
 const _num = (value) => {
@@ -109,9 +110,9 @@ export const getLabelColumn = (opts = {}) => ({
 	colId: "label",
 	headerName: __("Member"),
 	tree: true,
-	minWidth: 200,
+	width: LABEL_COL_WIDTH,
+	minWidth: LABEL_COL_WIDTH,
 	pinned: "left",
-	flex: 1,
 	sortable: false,
 	render: (params) => renderParticipant(params, opts),
 	treeContentKey: (params) => {
