@@ -31,7 +31,8 @@
 }
 
 /* Equal square icon buttons (match refresh visual size). */
-.wr-filters-actions .wr-filters-icon-btn {
+.wr-filters-actions .wr-filters-icon-btn,
+.wr-table-toolbar .wr-filters-icon-btn {
 	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
@@ -164,6 +165,34 @@
 	font-weight: normal;
 }
 
+.wr-table-toolbar {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	min-width: 0;
+}
+
+.wr-table-toolbar .wr-chart-stack-mode {
+	width: auto;
+	min-width: 110px;
+	max-width: 160px;
+}
+
+.wr-table-toolbar .wr-chart-stack-mode select {
+	width: auto;
+	min-width: 110px;
+	max-width: 160px;
+	height: 28px;
+	padding: 0 6px;
+	font-size: 12px;
+	line-height: 26px;
+}
+
+.wr-table-toolbar .wr-filter-checkbox {
+	margin-left: 2px;
+}
+
 .wr-filter-period-nav {
 	display: inline-flex;
 	align-items: center;
@@ -171,7 +200,8 @@
 	flex-shrink: 0;
 }
 
-.wr-filters-actions .wr-filter-period-nav .btn {
+.wr-filters-actions .wr-filter-period-nav .btn,
+.wr-table-toolbar .wr-filter-period-nav .btn {
 	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
