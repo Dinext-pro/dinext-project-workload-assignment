@@ -173,6 +173,83 @@
 	align-items: center;
 }
 
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 0;
+	flex: 0 0 auto;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-slot {
+	display: grid;
+	grid-template-columns: 0fr;
+	margin-left: 0;
+	transition: grid-template-columns 0.22s ease, margin-left 0.22s ease;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-slot.is-open {
+	grid-template-columns: 1fr;
+	margin-left: 4px;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-slot-inner {
+	min-width: 0;
+	overflow: hidden;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode {
+	display: inline-flex;
+	align-items: stretch;
+	width: max-content;
+	border: 1px solid var(--border-color, #d1d8dd);
+	border-radius: 4px;
+	overflow: hidden;
+	opacity: 0;
+	transform: translateX(-8px);
+	transition: opacity 0.18s ease, transform 0.22s ease;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-slot.is-open .we-delta-mode {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-btn {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--text-muted, #6c7680);
+	padding: 0 6px;
+	height: 22px;
+	min-width: 26px;
+	font-size: 11px;
+	line-height: 22px;
+	cursor: pointer;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-btn + .we-delta-mode-btn {
+	border-left: 1px solid var(--border-color, #d1d8dd);
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-btn.is-active {
+	background: var(--control-bg, var(--fg-hover-color, #f4f5f6));
+	color: var(--text-color, #36414c);
+	font-weight: 600;
+}
+
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-slot.no-anim,
+.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-slot.no-anim .we-delta-mode {
+	transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode-slot,
+	.work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .we-delta-mode {
+		transition: none;
+	}
+}
+
 .work_efforts_container .dinext-table-toolbar-custom.work-efforts-controls .btn-group {
 	flex: 0 0 auto;
 }
@@ -354,9 +431,7 @@
 
 .work_efforts_container .work-efforts-table.dinext-table {
 	width: 100%;
-	min-height: 280px;
-	height: min(60vh, 672px);
-	max-height: 672px;
+	max-height: min(60vh, 672px);
 	--we-row-height: 28px;
 }
 

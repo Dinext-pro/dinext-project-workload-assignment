@@ -23,6 +23,9 @@ export const MERGE_GROUP = {
 
 export const PERIOD_FIELD_RE = /^(plan|forecast|fact|actual|delta)_/;
 
+/** Auto-height cap (DinextTable `layout.maxHeight`) — same as Project P&L. */
+export const TABLE_MAX_HEIGHT = "min(60vh, 672px)";
+
 /** Select / API view-option labels (EN source; ru.csv for RU UI). */
 export const VIEW_OPTION_FORECAST_AND_FACT = "Forecast and Fact";
 export const VIEW_OPTION_FORECAST_ONLY = "Forecast Only";

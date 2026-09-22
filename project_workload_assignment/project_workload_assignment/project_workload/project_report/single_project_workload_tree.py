@@ -25,6 +25,14 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
 	AbsenceEntry,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.core.team_limits import (
+	limit_segments_are_approximate,
+	load_project_team_limit_segments,
+	load_project_team_limits,
+	resolve_role_limit,
+	resolve_user_limit,
+	stamp_limit_display,
+)
 from project_workload_assignment.project_workload_assignment.project_workload.core.workload_engine import (
 	WorkloadContext,
 )
@@ -682,6 +690,11 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 					count += 1
 			return count
 		
+		team_limits = load_project_team_limits(project, start_date_obj, end_date_obj)
+		team_limit_segments = load_project_team_limit_segments(
+			project, start_date_obj, end_date_obj
+		)
+
 		# Функция для рекурсивного добавления задач в tree_data
 		def add_task_to_tree(task_id, role, user_email, user_row_data, indent_level, parent_role_row):
 			"""Рекурсивно добавляет задачу и всех её детей в tree_data"""
@@ -733,8 +746,13 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 				'email': user_email,
 				'roleName': role,
 				'level': 'task',
-				'has_direct_load': task_info['has_direct_load']
+				'has_direct_load': task_info['has_direct_load'],
 			}
+			stamp_limit_display(
+				task_row,
+				resolve_role_limit(team_limits, user_email, role),
+				team_limit_segments.get((user_email, role)),
+			)
 		
 			# Данные задачи по периодам
 			task_total_hours = 0.0
@@ -790,8 +808,21 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 				'expandable': False,
 				'isUser': True,
 				'email': user_email,
-				'level': 'user'
+				'level': 'user',
 			}
+			user_role_segments = [
+				team_limit_segments.get((user_email, role_name)) or []
+				for role_name in user_roles
+			]
+			user_segments = [item for segs in user_role_segments for item in segs]
+			stamp_limit_display(
+				user_row,
+				resolve_user_limit(team_limits, user_email, list(user_roles.keys())),
+				user_segments,
+				approximate=any(
+					limit_segments_are_approximate(segs) for segs in user_role_segments
+				),
+			)
 		
 			# Общая нагрузка пользователя
 			user_total_hours = 0.0
@@ -843,8 +874,13 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 					'isRole': True,
 					'email': user_email,
 					'roleName': role,
-					'level': 'role'
+					'level': 'role',
 				}
+				stamp_limit_display(
+					role_row,
+					resolve_role_limit(team_limits, user_email, role),
+					team_limit_segments.get((user_email, role)),
+				)
 		
 				# Нагрузка по роли
 				role_total_hours = 0.0

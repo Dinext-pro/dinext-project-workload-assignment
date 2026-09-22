@@ -10,11 +10,12 @@ const BTN_COLLAPSED_CLASS = "wr-chart-visibility-toggle--collapsed";
 const TRANSITION_MS = 280;
 
 /**
- * Prepend visibility button into `.wr-filters-actions`.
+ * Mount visibility button into `.wr-filters-actions`.
  * @param {HTMLElement} filtersEl
  * @param {HTMLElement} chartsEl
+ * @param {{ append?: boolean }} [opts] append=true → after existing actions (PWR: Clear then ▼)
  */
-export function mountChartVisibilityToggle(filtersEl, chartsEl) {
+export function mountChartVisibilityToggle(filtersEl, chartsEl, opts = {}) {
 	if (!filtersEl || !chartsEl) return null;
 
 	const actions = filtersEl.querySelector(".wr-filters-actions");
@@ -102,7 +103,11 @@ export function mountChartVisibilityToggle(filtersEl, chartsEl) {
 		apply({ animate: true });
 	});
 
-	actions.insertBefore(btn, actions.firstChild);
+	if (opts.append) {
+		actions.appendChild(btn);
+	} else {
+		actions.insertBefore(btn, actions.firstChild);
+	}
 	apply({ animate: false });
 	return btn;
 }

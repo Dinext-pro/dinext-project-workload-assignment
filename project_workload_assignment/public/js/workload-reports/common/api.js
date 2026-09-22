@@ -72,6 +72,7 @@ const _teamChartsArgs = (args = {}) => ({
 const _projectChartsArgs = (args = {}) => ({
 	..._projectArgs(args),
 	load_utilization: args.load_utilization ? 1 : 0,
+	consider_virtuals: args.consider_virtuals ? 1 : 0,
 });
 
 /** Projects page roots: mode user_totals. */

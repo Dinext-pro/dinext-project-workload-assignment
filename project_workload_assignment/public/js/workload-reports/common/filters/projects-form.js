@@ -4,25 +4,19 @@
  * add toolbar extras (worker, fact, period, view) in the same row.
  */
 
-import {
-	VIEW_OPTIONS,
-	PERIOD_OPTIONS,
-	WORKER_OPTIONS,
-	projectsDefaults,
-	resetProjectsAnchor,
-	shiftMonth,
-} from "./periods.js";
-import {
-	mountRow,
-	addSelect,
-	addCheckbox,
-	addPeriodNav,
-	addButton,
-	addMultiSelectList,
-} from "./controls.js";
+import { WORKER_OPTIONS, projectsDefaults, resetProjectsAnchor, shiftMonth } from "./periods.js";
+import { mountRow, addSelect, addButton, addMultiSelectList } from "./controls.js";
 import { fetchProjectRoleOptions } from "./role-options.js";
+import { createFilterSession } from "./session.js";
 
 const FORM_LINK_FIELDS = ["user", "project", "project_portfolio", "user_group"];
+
+const FORM_LINK_PLACEHOLDERS = {
+	user: "Participant",
+	project: "Project",
+	project_portfolio: "Portfolio",
+	user_group: "Group",
+};
 
 function _compactControl($wrapper) {
 	if (!$wrapper?.length) return;
@@ -68,8 +62,8 @@ function _relocateFormField(frm, fieldname, parent) {
 
 	const $input = field.$wrapper.find("input").first();
 	if ($input.length) {
-		const label = field.df?.label || fieldname;
-		$input.attr("placeholder", __(label));
+		const key = FORM_LINK_PLACEHOLDERS[fieldname] || field.df?.label || fieldname;
+		$input.attr("placeholder", __(key));
 	}
 	return field;
 }
@@ -155,7 +149,7 @@ export function parkFormLinkFields(frm) {
  * @param {object} frm
  * @param {HTMLElement} el — host for wr-filters-row (inside form filters section)
  * @param {Function} onChange
- * @returns {() => object} getArgs
+ * @returns {ReturnType<createFilterSession>}
  */
 export function mountProjectsFiltersFromForm(frm, el, onChange) {
 	const args = projectsDefaults();
@@ -163,8 +157,22 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 		args[key] = frm.doc?.[key] || "";
 	}
 
+	const session = createFilterSession(args, {
+		onReload: onChange,
+		onShift: (next, dir) => {
+			next.period_anchor_date = shiftMonth(next.period_anchor_date, dir);
+		},
+		onResetWindow: resetProjectsAnchor,
+	});
+	session.getArgs = () => ({
+		...args,
+		user: frm.doc?.user || "",
+		project: frm.doc?.project || "",
+		project_portfolio: frm.doc?.project_portfolio || "",
+		user_group: frm.doc?.user_group || "",
+	});
+
 	const { flow, buttons } = mountRow(el);
-	const _reload = () => onChange();
 
 	for (const fieldname of FORM_LINK_FIELDS) {
 		_relocateFormField(frm, fieldname, flow);
@@ -176,7 +184,7 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 		value: args.worker_wtype,
 		onChange: (v) => {
 			args.worker_wtype = v;
-			_reload();
+			session.reload();
 		},
 	});
 
@@ -200,55 +208,7 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 			),
 		onChange: (values) => {
 			args.project_role_filters = values || [];
-			_reload();
-		},
-	});
-
-	addCheckbox(flow, {
-		label: __("Show fact"),
-		checked: !!args.load_actual,
-		onChange: (v) => {
-			args.load_actual = v ? 1 : 0;
-			_reload();
-		},
-	});
-
-	addSelect(flow, {
-		fieldname: "view_type",
-		options: VIEW_OPTIONS,
-		value: args.view_type,
-		onChange: (v) => {
-			args.view_type = v;
-			resetProjectsAnchor(args);
-			_reload();
-		},
-	});
-
-	addSelect(flow, {
-		fieldname: "period_range",
-		options: PERIOD_OPTIONS,
-		value: args.period_range,
-		onChange: (v) => {
-			args.period_range = v;
-			resetProjectsAnchor(args);
-			_reload();
-		},
-	});
-
-	addButton(buttons, {
-		title: __("Refresh Data"),
-		text: "↻",
-		onClick: _reload,
-	});
-
-	addPeriodNav(buttons, {
-		onPrev: () => {
-			args.period_anchor_date = shiftMonth(args.period_anchor_date, -1);
-			_reload();
-		},
-		onNext: () => {
-			args.period_anchor_date = shiftMonth(args.period_anchor_date, 1);
-			_reload();
+			session.reload();
 		},
 	});
 
@@ -268,15 +228,9 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 				frm.set_value(key, "");
 				args[key] = "";
 			}
-			_reload();
+			session.reload();
 		},
 	});
 
-	return () => ({
-		...args,
-		user: frm.doc?.user || "",
-		project: frm.doc?.project || "",
-		project_portfolio: frm.doc?.project_portfolio || "",
-		user_group: frm.doc?.user_group || "",
-	});
+	return session;
 }

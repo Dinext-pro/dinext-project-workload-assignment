@@ -104,32 +104,50 @@ def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataRespons
     Используется legacy consolidated и WE grid v2 (без второго SQL-стека).
     """
     Task = frappe.qb.DocType("Task")
-    tasks_query = (
-        frappe.qb.from_(Task)
-        .select(
+
+    def _tasks_query(*, include_linked_issue: bool):
+        fields = [
             Task.name.as_("value"),
             Task.subject,
             Task.is_group.as_("expandable"),
             Task.parent_task,
             Task.type,
             Task.status,
-            Task.custom_linked_issue,
-            Task.color,
-            Task.exp_start_date,
-            Task.exp_end_date,
-            Task.custom_planned_start_date,
-            Task.custom_planned_end_date,
-            Task.act_start_date,
-            Task.act_end_date,
+        ]
+        if include_linked_issue:
+            fields.append(Task.custom_linked_issue)
+        fields.extend(
+            [
+                Task.color,
+                Task.exp_start_date,
+                Task.exp_end_date,
+                Task.custom_planned_start_date,
+                Task.custom_planned_end_date,
+                Task.act_start_date,
+                Task.act_end_date,
+            ]
         )
-        .where(Task.project == project)
-        .where(Task.docstatus < 2)
-        .where(Task.is_milestone == 0)
-        .orderby(Task.parent_task)
-        .orderby(Task.exp_start_date)
-        .orderby(Task.exp_end_date)
-    )
-    tasks = tasks_query.run(as_dict=True)
+        return (
+            frappe.qb.from_(Task)
+            .select(*fields)
+            .where(Task.project == project)
+            .where(Task.docstatus < 2)
+            .where(Task.is_milestone == 0)
+            .orderby(Task.parent_task)
+            .orderby(Task.exp_start_date)
+            .orderby(Task.exp_end_date)
+        )
+
+    try:
+        tasks = _tasks_query(include_linked_issue=True).run(as_dict=True)
+    except Exception as exc:
+        # TEMPORARY crutch: gantt Custom Field missing on PWA-only CI.
+        # Remove when CI installs gantt or PWA owns the field.
+        if "custom_linked_issue" not in str(exc) and "1054" not in str(exc):
+            raise
+        tasks = _tasks_query(include_linked_issue=False).run(as_dict=True)
+        for task in tasks:
+            task["custom_linked_issue"] = None
 
     for task in tasks:
         task["indent"] = 0

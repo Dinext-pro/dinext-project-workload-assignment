@@ -12,6 +12,7 @@ import {
     deltaPeriodClassRules,
     planPeriodClassRules,
 } from "./period-markers.js";
+import { normalizeDeltaMode, resolveDeltaValue } from "./delta-mode.js";
 
 /** Legacy period group width (StickyDataTable getter: 200 − 65 per hidden subcol). */
 const LEGACY_PERIOD_GROUP_WIDTH = 200;
@@ -48,6 +49,24 @@ function formatDelta(params) {
     if (n == null) return "";
     if (n === 0) return "0";
     return `${n.toFixed(1)}%`;
+}
+
+function isDeltaAbs(frm) {
+    return normalizeDeltaMode(frm?.delta_mode) === "abs";
+}
+
+function deltaFormatter(frm) {
+    return isDeltaAbs(frm) ? formatNumber : formatDelta;
+}
+
+function deltaLeafGetter(frm, planField, actualField, deltaField) {
+    return (params) =>
+        resolveDeltaValue({
+            plan: params.data?.[planField],
+            actual: params.data?.[actualField],
+            storedPct: params.data?.[deltaField],
+            mode: frm?.delta_mode,
+        });
 }
 
 function isZeroValue(params) {
@@ -161,10 +180,13 @@ function totalActualGetter(periods) {
     return (params) => sumPeriodField(params.data, periods, "actual");
 }
 
-function totalDeltaGetter(periods) {
+function totalDeltaGetter(periods, frm) {
     return (params) => {
         const plan = sumPeriodField(params.data, periods, "plan");
         const actual = sumPeriodField(params.data, periods, "actual");
+        if (isDeltaAbs(frm)) {
+            return actual - plan;
+        }
         if (!plan) return 0;
         return Math.round(((actual - plan) / plan) * 1000) / 10;
     };
@@ -292,7 +314,8 @@ function buildPeriodColumns(frm, periods) {
                     headerName: "Δ",
                     width: leafWidth,
                     hide: hideDelta,
-                    valueFormatter: formatDelta,
+                    valueGetter: deltaLeafGetter(frm, `plan_${key}`, `actual_${key}`, `delta_${key}`),
+                    valueFormatter: deltaFormatter(frm),
                     cellClassRules: deltaPeriodClassRules(frm, period),
                 }),
             ],
@@ -339,8 +362,8 @@ function buildTotalColumn(frm, periods) {
                 width: leafWidth,
                 hide: hideDelta,
                 pinned: "right",
-                valueGetter: totalDeltaGetter(periods),
-                valueFormatter: formatDelta,
+                valueGetter: totalDeltaGetter(periods, frm),
+                valueFormatter: deltaFormatter(frm),
             }),
         ],
     };
