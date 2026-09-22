@@ -142,7 +142,7 @@
 "User and date must be specified to open absence request","Для открытия заявки на отсутствие нужно указать пользователя и дату",""
 "User Holiday","Праздник пользователя",""
 "Weekly available hours","Доступные часы за неделю",""
-"All","Все",""
+"All","Все","workload worker type"
 "Clear All Filters","Сбросить все фильтры",""
 "Daily","Ежедневно",""
 "Employee","Сотрудник",""
