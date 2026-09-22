@@ -259,7 +259,7 @@ function get_chart_data(frm, selectedRole) {
 
 function get_we_chart_options( frm, data ) {
     return {
-            title: __("Plan / Actual / Forecast work efforts — by period and cumulative"),
+            title: __("Plan / Fact / Forecast work efforts — by period and cumulative"),
             data: data,
             colors: frm.hide_plan ? ['#1b3bff','#919ff5'] : ['#8F00FF','#c482f7','#1b3bff','#919ff5'],
             type: 'axis-mixed',

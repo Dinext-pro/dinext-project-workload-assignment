@@ -37,6 +37,8 @@ export const LINE_COLORS = {
 	capacityArea: "#243660",
 	teamCapacity: "#243660",
 	teamCapacityArea: "#243660",
+	teamCapacityNet: "#5b7c99",
+	teamCapacityNetArea: "#5b7c99",
 	projectPlan: "#91cc75",
 	utilizationPlan: "#5d4037",
 };
@@ -59,8 +61,8 @@ export const Z_PROJECT_PLAN = 10;
 
 export const Y_AXIS_GUTTER_PX = 50;
 export const DEFAULT_LABEL_GUTTER_PX = 220;
-export const LEGEND_BAND_PX = 36;
-export const CHART_DATA_HEIGHT_PX = 200;
+export const LEGEND_BAND_PX = 0;
+export const CHART_DATA_HEIGHT_PX = 180;
 export const CHART_PLOT_HEIGHT_PX = CHART_DATA_HEIGHT_PX;
 export const CHART_TOTAL_HEIGHT_PX = CHART_DATA_HEIGHT_PX + LEGEND_BAND_PX;
 export const CHART_HEIGHT = `${CHART_TOTAL_HEIGHT_PX}px`;

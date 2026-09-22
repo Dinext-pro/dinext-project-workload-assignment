@@ -11,10 +11,32 @@ export const PERIOD_OPTIONS = [
 ];
 
 export const WORKER_OPTIONS = [
-	{ value: "", label: __("All") },
+	{ value: "", label: __("All", null, "workload worker type") },
 	{ value: "Employee", label: __("Employee") },
 	{ value: "Supplier", label: __("Supplier") },
 ];
+
+const VIEW_TYPE_VALUES = new Set(["daily", "weekly", "monthly"]);
+const PERIOD_RANGE_VALUES = new Set(["quarter", "half_year", "year"]);
+
+function _bootChoice(bootKey, allowed, fallback) {
+	const raw = String(frappe?.boot?.[bootKey] || "").trim().toLowerCase();
+	if (allowed.has(raw)) {
+		return raw;
+	}
+	const fb = String(fallback || "").trim().toLowerCase();
+	return allowed.has(fb) ? fb : [...allowed][0];
+}
+
+/** site_config client_config.workload_default_view_type, else surface fallback. */
+export function getDefaultViewType(fallback = "weekly") {
+	return _bootChoice("workload_default_view_type", VIEW_TYPE_VALUES, fallback);
+}
+
+/** site_config client_config.workload_default_period_range, else quarter. */
+export function getDefaultPeriodRange(fallback = "quarter") {
+	return _bootChoice("workload_default_period_range", PERIOD_RANGE_VALUES, fallback);
+}
 
 const PERIOD_MONTHS = { quarter: 3, half_year: 6, year: 12 };
 
@@ -32,19 +54,21 @@ export const projectsDefaults = () => ({
 	worker_wtype: "",
 	project_role_filters: [],
 	load_actual: 0,
-	view_type: "weekly",
-	period_range: "quarter",
+	view_type: getDefaultViewType("weekly"),
+	period_range: getDefaultPeriodRange("quarter"),
 	period_anchor_date: _today(),
 })
 
 export const projectDefaults = () => {
 	const date_from = _today();
-	const period_range = "quarter";
+	const period_range = getDefaultPeriodRange("quarter");
 	return {
 		worker_wtype: "",
 		project_role_filters: [],
 		load_actual: 0,
-		view_type: "daily",
+		consider_limit: 1,
+		consider_virtuals: 0,
+		view_type: getDefaultViewType("weekly"),
 		period_range,
 		date_from,
 		date_to: _dateTo(date_from, period_range),

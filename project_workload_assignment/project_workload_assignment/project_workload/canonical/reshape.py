@@ -136,6 +136,12 @@ def copy_row_meta(legacy_row: dict) -> dict:
 		meta["actual_total"] = legacy_row["actual_total"]
 	if legacy_row.get("expandable") is not None:
 		meta["expandable"] = bool(legacy_row["expandable"])
+	if legacy_row.get("workload_limit") is not None:
+		meta["workload_limit"] = legacy_row["workload_limit"]
+	if legacy_row.get("workload_limit_approx"):
+		meta["workload_limit_approx"] = True
+	if legacy_row.get("workload_limit_segments"):
+		meta["workload_limit_segments"] = legacy_row["workload_limit_segments"]
 	return meta
 
 
@@ -411,6 +417,27 @@ def _stamp_project_tree_holidays(rows: list[dict], message: dict) -> None:
 		walk(row)
 
 
+def _stamp_project_tree_capacity(rows: list[dict], message: dict) -> None:
+	"""Attach daily hours + absences so project-tab % uses the real fund."""
+	meta = message.get("metadata") if isinstance(message.get("metadata"), dict) else {}
+	hours_map = meta.get("user_daily_hours") if isinstance(meta.get("user_daily_hours"), dict) else {}
+	absences_map = meta.get("user_absences") if isinstance(meta.get("user_absences"), dict) else {}
+
+	def walk(row: dict) -> None:
+		email = row.get("email") or ""
+		hours = hours_map.get(email)
+		if hours:
+			row["workingHours"] = hours
+		absences = absences_map.get(email)
+		if absences:
+			row["absences"] = absences
+		for child in row.get("children") or []:
+			walk(child)
+
+	for row in rows:
+		walk(row)
+
+
 def _project_meta(msg: dict) -> dict:
 	meta: dict[str, Any] = {
 		"users_count": msg.get("users_count") or 0,
@@ -432,6 +459,7 @@ def reshape_project_tree(message: Any) -> dict:
 	tree = msg.get("tree_data") if isinstance(msg.get("tree_data"), list) else []
 	rows = nest_by_indent(tree, periods)
 	_stamp_project_tree_holidays(rows, msg)
+	_stamp_project_tree_capacity(rows, msg)
 	return {"periods": periods, "rows": rows, "meta": _project_meta(msg)}
 
 

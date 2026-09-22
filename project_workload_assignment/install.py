@@ -45,6 +45,10 @@ def ensure_report_indexes():
 
 OWNED_PROJECT_TEAM_FIELDS = (
 	"notifications_on_limits",
+	"workload_limit",
+	"virtual_holiday_list",
+	"virtual_working_hours_on_date",
+	"virtual_hours_on_date",
 )
 
 
@@ -67,3 +71,4 @@ def after_install():
 
 def after_migrate():
 	ensure_report_indexes()
+	frappe.clear_cache(doctype="Project Team Details")

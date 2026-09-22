@@ -1,4 +1,4 @@
-import { MERGE_GROUP } from "./constants.js";
+import { MERGE_GROUP, TABLE_MAX_HEIGHT } from "./constants.js";
 import { initState } from "./state.js";
 import { loadGridData, reloadTable } from "./data.js";
 import { applyPlanDeltaVisibility, getColumns, refreshColumns } from "./columns.js";
@@ -79,6 +79,7 @@ function buildTableOptions(frm, state) {
         columns: getColumns(frm, state.periods),
         summaryRows: buildSummaryRows(frm, state.periods, state.summaryRows),
         summary: { pin: "bottom", edit: false, clipboard: false, selection: false },
+        layout: { height: "auto", maxHeight: TABLE_MAX_HEIGHT },
         expandedIds: getExpandedIds(frm),
         edit: false,
         selection: { enabled: true },
@@ -141,9 +142,7 @@ export async function initTable(frm) {
             applyRuntime(frm, table);
             syncPlFromWe(frm);
             project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm);
-            if (typeof render_work_efforts_percentage_chart === "function") {
-                render_work_efforts_percentage_chart(frm);
-            }
+            project_workload_assignment.work_efforts.load_work_efforts_progress?.(frm);
             return table;
         } finally {
             state._initPromise = null;
@@ -156,9 +155,7 @@ export async function initTable(frm) {
 function afterWeDataReady(frm) {
     syncPlFromWe(frm);
     project_workload_assignment.work_efforts.render_work_efforts_chart?.(frm, false);
-    if (typeof render_work_efforts_percentage_chart === "function") {
-        render_work_efforts_percentage_chart(frm);
-    }
+    project_workload_assignment.work_efforts.load_work_efforts_progress?.(frm);
 }
 
 export async function refreshRuntime(frm) {

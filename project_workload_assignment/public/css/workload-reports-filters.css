@@ -31,7 +31,8 @@
 }
 
 /* Equal square icon buttons (match refresh visual size). */
-.wr-filters-actions .wr-filters-icon-btn {
+.wr-filters-actions .wr-filters-icon-btn,
+.wr-table-toolbar .wr-filters-icon-btn {
 	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
@@ -164,6 +165,36 @@
 	font-weight: normal;
 }
 
+.wr-table-toolbar {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	min-width: 0;
+}
+
+.dinext-table-toolbar-custom.wr-table-toolbar--nav,
+.wr-table-toolbar--nav {
+	flex-wrap: nowrap;
+	gap: 4px;
+	margin-left: auto;
+}
+
+.wr-filter-select[data-fieldname="stack_by"] {
+	min-width: 138px;
+	max-width: none;
+}
+
+.wr-filter-select[data-fieldname="stack_by"] select {
+	min-width: 138px;
+	max-width: none;
+	width: auto;
+}
+
+.wr-table-toolbar .wr-filter-checkbox {
+	margin-left: 2px;
+}
+
 .wr-filter-period-nav {
 	display: inline-flex;
 	align-items: center;
@@ -171,7 +202,8 @@
 	flex-shrink: 0;
 }
 
-.wr-filters-actions .wr-filter-period-nav .btn {
+.wr-filters-actions .wr-filter-period-nav .btn,
+.wr-table-toolbar .wr-filter-period-nav .btn {
 	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;

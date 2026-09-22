@@ -294,6 +294,40 @@ class TestWeGridParity(FrappeTestCase):
 		self.assertFalse(mismatches, f"has_own_pwe != PWE: {mismatches[:10]}")
 		self.assertTrue(rollup_only, "Ожидали хотя бы одну rollup-only роль без своего PWE")
 
+	def test_plan_rollup_same_when_calc_plan_false(self):
+		"""include_plan/hide_plan must not drop child plan hours from totals."""
+		tasks = [
+			{
+				"value": "ROOT",
+				"parent_task": None,
+				"role_data": [
+					{"role": "Консультант", "plan_2026_3": 30.0, "forecast_2026_3": 30.0},
+				],
+			},
+			{
+				"value": "CHILD",
+				"parent_task": "ROOT",
+				"role_data": [
+					{"role": "Консультант", "plan_2026_3": 10.0, "forecast_2026_3": 10.0, "plan_2026_4": 10.0, "forecast_2026_4": 10.0},
+					{"role": "Разработчик", "plan_2026_3": 10.0, "forecast_2026_3": 10.0},
+				],
+			},
+		]
+		roles = ["Консультант", "Разработчик"]
+		march = {"year": 2026, "month": 3, "key": "2026_3", "is_past": False}
+		april = {"year": 2026, "month": 4, "key": "2026_4", "is_past": False}
+
+		plan_on, actual_on = calc_we_column_total(tasks, roles, march, "forecast_only", True)
+		plan_off, actual_off = calc_we_column_total(tasks, roles, march, "forecast_only", False)
+		self.assertAlmostEqual(plan_on, 40.0)
+		self.assertAlmostEqual(actual_on, 40.0)
+		self.assertAlmostEqual(plan_off, 40.0)
+		self.assertAlmostEqual(actual_off, 40.0)
+
+		apr_plan, apr_actual = calc_we_column_total(tasks, roles, april, "forecast_only", False)
+		self.assertAlmostEqual(apr_plan, 10.0)
+		self.assertAlmostEqual(apr_actual, 10.0)
+
 	def test_flatten_copies_has_own_pwe_flag(self):
 		"""Rollup-only parent: has_own_pwe=False. Leaf with PWE: True."""
 		tasks = [

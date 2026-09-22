@@ -9,7 +9,7 @@ const FIELD = "projects_workload_report";
 const MOUNT_MAX_ATTEMPTS = 60;
 const MOUNT_RETRY_MS = 50;
 /** Bump only when Form layout contract changes (forces one remount). */
-const MOUNT_VERSION = "form-filters-in-root-2026-07-16e";
+const MOUNT_VERSION = "form-fill-breadcrumbs-2026-09-21";
 
 const _dbg = (event, data) =>
 	project_workload_assignment.workloadReports?.common?.wrDebug?.("form", event, data);
@@ -146,6 +146,7 @@ function _reloadNow(frm) {
 			hydrateExpanded: state.expand.hydrateExpanded,
 			onLoadMore: ({ offset, limit }) =>
 				common.getProjectsData(_projectsArgs({ offset, limit })),
+			toolbar: state.toolbar,
 		}
 	);
 	const chartsDone = common.scheduleChartsReload(state.zones.charts);
@@ -261,17 +262,22 @@ function mount(frm, attempt = 0) {
 			getFilters: () => frm._wrForm.getArgs(),
 			fetchUserProjects: (args) => common.getUserProjects(args),
 		});
-		const getArgs = common.mountProjectsFiltersFromForm(frm, zones.filters, () => {
+		const session = common.mountProjectsFiltersFromForm(frm, zones.filters, () => {
 			_reload(frm);
+		});
+		const toolbar = common.buildPeriodToolbar(session, "workload-reports-form", {
+			getChartsState: () => zones.charts._wrCharts,
+			onUtilizationChange: () => common.scheduleChartsReload(zones.charts),
+			onStackByChange: () => common.remountChartsFromCache(zones.charts),
 		});
 		common.mountCharts(zones.charts, {
 			surface: "report",
 			getArgs: () => frm._wrForm.getArgs(),
 			getTableApi: () => zones.table._wrTable?.table?.api ?? null,
 		});
-		common.mountChartVisibilityToggle(zones.filters, zones.charts);
+		common.mountChartVisibilityToggle(zones.filters, zones.charts, { append: true });
 
-		frm._wrForm = { zones, getArgs, expand, version: MOUNT_VERSION };
+		frm._wrForm = { zones, getArgs: session.getArgs, expand, toolbar, version: MOUNT_VERSION };
 	}
 
 	_applyFormLayout(frm);

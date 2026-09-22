@@ -7,6 +7,7 @@ import {
 	VIEW_OPTION_FORECAST_ONLY,
 	normalizeViewMode,
 } from "../constants.js";
+import { normalizeDeltaMode } from "../delta-mode.js";
 
 /**
  * @param {WorkEffortsForm} frm
@@ -101,6 +102,54 @@ function addViewOptionsControl(frm, controls) {
  * @param {JQuery} host
  * @param {{ fieldname: string, label: string, value: number|boolean, onchange: Function }} opts
  */
+function syncDeltaModeSegment(host, frm) {
+	const hidden = !!frm.hide_delta;
+	const mode = normalizeDeltaMode(frm.delta_mode);
+	const $slot = host.find(".we-delta-mode-slot");
+	const $mode = host.find(".we-delta-mode");
+	if (!$slot.data("ready")) {
+		$slot.addClass("no-anim");
+	}
+	$slot.toggleClass("is-open", !hidden);
+	$slot.attr("aria-hidden", hidden ? "true" : "false");
+	$mode.find(".we-delta-mode-btn").each(function () {
+		const btn = $(this);
+		const active = btn.attr("data-mode") === mode;
+		btn.prop("disabled", hidden);
+		btn.toggleClass("is-active", active);
+		btn.attr("aria-pressed", active ? "true" : "false");
+	});
+	if (!$slot.data("ready")) {
+		requestAnimationFrame(() => {
+			$slot.removeClass("no-anim");
+			$slot.data("ready", true);
+		});
+	}
+}
+
+function addDeltaModeSegment($parent, frm, $syncRoot) {
+	const $slot = $(`
+		<div class="we-delta-mode-slot" aria-hidden="true">
+			<div class="we-delta-mode-slot-inner">
+				<div class="we-delta-mode" role="group" aria-label="${__("Delta format")}">
+					<button type="button" class="we-delta-mode-btn" data-mode="pct" aria-pressed="false">%</button>
+					<button type="button" class="we-delta-mode-btn" data-mode="abs" aria-pressed="false">${__("abs")}</button>
+				</div>
+			</div>
+		</div>
+	`);
+	$slot.on("click", ".we-delta-mode-btn", function () {
+		if (!$slot.hasClass("is-open") || this.disabled) {
+			return;
+		}
+		frm.delta_mode = normalizeDeltaMode(this.getAttribute("data-mode"));
+		syncDeltaModeSegment($syncRoot, frm);
+		window.WorkEfforts.onTogglePlanOrDelta(frm);
+	});
+	$slot.appendTo($parent);
+	return $slot;
+}
+
 function addToolbarCheckbox(host, opts) {
 	const wrapper = $('<div class="we-toolbar-checkbox-wrapper"></div>').appendTo(host);
 	const control = frappe.ui.form.make_control({
@@ -132,12 +181,13 @@ function set_plan_checkbox(show) {
 
 /**
  * Mount former shell controls into DinextTable toolbar custom host (once).
- * Order: view mode → Check → Save plan → Plan → Δ → Assignments.
+ * Order: view mode → Check → Save plan → Plan → Δ [%|абс] → Assignments.
  * @param {WorkEffortsForm} frm
  * @param {JQuery} host
  */
 function mount_toolbar_controls(frm, host) {
 	if (host.data("we-controls-mounted")) {
+		syncDeltaModeSegment(host, frm);
 		return;
 	}
 	host.data("we-controls-mounted", true);
@@ -181,16 +231,20 @@ function mount_toolbar_controls(frm, host) {
 		},
 	});
 
-	addToolbarCheckbox(host, {
+	const $delta = $('<div class="we-delta-group"></div>').appendTo(host);
+	addToolbarCheckbox($delta, {
 		fieldname: "show_delta",
 		label: __("Δ"),
 		value: !frm.hide_delta,
 		onchange: function () {
 			frm.hide_delta = !this.get_value();
+			syncDeltaModeSegment(host, frm);
 			project_workload_assignment.work_efforts.updateTable(frm, periodType, unit);
 			window.WorkEfforts.onTogglePlanOrDelta(frm);
 		},
 	});
+	addDeltaModeSegment($delta, frm, host);
+	syncDeltaModeSegment(host, frm);
 
 	addToolbarCheckbox(host, {
 		fieldname: "show_assignments",

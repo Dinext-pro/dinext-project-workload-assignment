@@ -36,6 +36,9 @@ fixtures = [
 ]
 ''''''
 
+# Expose site client_config workload defaults to Desk
+extend_bootinfo = ["project_workload_assignment.boot.extend_bootinfo"]
+
 # Includes in <head>
 # ------------------
 
@@ -44,6 +47,7 @@ app_include_css = [
 	"/assets/project_workload_assignment/css/assignment_styles.css",
 	"/assets/project_workload_assignment/css/tab-loading.css",
 	"/assets/project_workload_assignment/css/workload-reports-shell.css",
+	"/assets/project_workload_assignment/css/project-dashboard.css",
 ]
 # Projects Workload Report is custom DocType → FormMeta.add_code() skipped
 # (no doctype_js). Form UI boots via report-form/entry.js (app_include, route-gated).
@@ -87,6 +91,7 @@ doctype_js = {
                 ,"Project":[
                     "public/js/core/form-tab.js",
                     "public/js/project/dashboard.js",
+                    "public/js/project/team_limit_guard.js",
                     "public/js/assignment/dialog.js",
                     "public/js/work_efforts/entry.js",
                     "public/js/forecast/pl-from-we.js",
@@ -216,6 +221,12 @@ doc_events = {
 	},
 	"Issue": {
 		"on_update": f"{_pwa_dates}.issue_sync.sync_issue_dates_to_pwa",
+	},
+	"Project": {
+		"validate": (
+			"project_workload_assignment.project_workload_assignment.project_workload"
+			".core.team_limits.validate_project_team_limit_sum"
+		),
 	},
 }
 

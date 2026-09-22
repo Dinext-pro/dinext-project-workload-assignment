@@ -522,14 +522,33 @@ function clearHighlights( row ) {
     role.parent.parent().attr('tooltip', "" ); 
 }
 
+function showForecastColumn() {
+    return Boolean(frappe.boot && frappe.boot.dinext_timesheet_show_forecast);
+}
+
 function get_pwe_fields() {
-    return [
+    const showForecast = showForecastColumn();
+    const fields = [
             { label: __('Role'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
             { label: __("Plan"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+        ];
+    if (showForecast) {
+        fields.push({
+            label: __("Forecast"),
+            fieldname: 'forecast_hours',
+            fieldtype: 'Float',
+            precision: 1,
+            read_only: 1,
+            in_list_view: 1,
+            columns: 1,
+        });
+    }
+    fields.push(
             { label: __("Actual"), fieldname: 'total_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
             { label: __("%"), fieldname: 'completion_percentage', fieldtype: 'Percent', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
-            { label: __("Work efforts accounted from"), fieldname: 'users', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 4 }
-        ];
+            { label: __("Work efforts accounted from"), fieldname: 'users', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: showForecast ? 3 : 4 }
+        );
+    return fields;
 }
 
 async function submit_pwa_and_todo(rows) {

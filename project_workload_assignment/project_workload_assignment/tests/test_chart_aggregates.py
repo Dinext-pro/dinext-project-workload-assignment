@@ -13,9 +13,13 @@ from project_workload_assignment.api import (
 	pwr_run_project_workload_charts,
 	pwr_run_team_workload_charts,
 )
+from project_workload_assignment.project_workload_assignment.project_workload.core.workload_engine import (
+	WorkloadContext,
+)
 from project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates import (
 	_compute_workload_by_role,
 	_fetch_team_assignments,
+	_load_project_plan_series,
 	_normalize_worker_wtype_filter,
 	_zero_series,
 	_zero_wtype_series,
@@ -77,6 +81,76 @@ class TestChartAggregates(FrappeTestCase):
 		self.assertEqual(result["SA"][0], 5.0)
 		self.assertEqual(result[""][0], 1.0)
 		self.assertEqual(len(result["SA"]), len(periods))
+
+	def test_plan_series_zeros_holiday_when_title_differs_from_name(self):
+		periods = generate_periods_for_project_window("2026-09-01", "2026-09-07", "daily")
+		date_to_period_key = build_date_to_period_key(periods, "daily")
+		period_index = {period["key"]: i for i, period in enumerate(periods)}
+		ctx = WorkloadContext(
+			users_data={},
+			projects_data={
+				"PROJ-1": {
+					"effective_holiday_list": "HL-RF",
+					"holiday_list": None,
+				}
+			},
+			working_hours_overrides={},
+			holiday_date_sets={"HL-RF": {"2026-09-05": True, "2026-09-06": True}},
+			user_absences={},
+			monthly_plan_cache={},
+		)
+
+		class _Q:
+			def __eq__(self, other):
+				return self
+
+			def __gt__(self, other):
+				return self
+
+			def __getattr__(self, name):
+				return self
+
+			def as_(self, name):
+				return self
+
+		class _FakeQB:
+			def DocType(self, _name):
+				return _Q()
+
+			def from_(self, *_a, **_k):
+				return self
+
+			def inner_join(self, *_a, **_k):
+				return self
+
+			def on(self, *_a, **_k):
+				return self
+
+			def select(self, *_a, **_k):
+				return self
+
+			def where(self, *_a, **_k):
+				return self
+
+			def run(self, as_dict=True):
+				return [{"year": 2026, "month": 9, "plan_hours": 220}]
+
+		with patch(
+			"project_workload_assignment.project_workload_assignment.project_workload.team_report.chart_aggregates.frappe.qb",
+			_FakeQB(),
+		):
+			series = _load_project_plan_series(
+				"PROJ-1",
+				periods,
+				"daily",
+				date_to_period_key,
+				period_index,
+				ctx,
+			)
+
+		self.assertEqual(series[period_index[date_to_period_key["2026-09-05"]]], 0.0)
+		self.assertEqual(series[period_index[date_to_period_key["2026-09-06"]]], 0.0)
+		self.assertGreater(series[period_index[date_to_period_key["2026-09-01"]]], 0.0)
 
 	def test_zero_series_helpers(self):
 		self.assertEqual(_zero_series(3), [0.0, 0.0, 0.0])

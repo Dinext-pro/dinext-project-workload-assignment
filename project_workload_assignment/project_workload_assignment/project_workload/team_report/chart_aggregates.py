@@ -188,7 +188,13 @@ def _assignments_for_actual(
 	return [a for a in raw if a.get("user") in scope], users_data, wtypes_map
 
 
-def _build_workload_context(assignments: list[dict], users_list: list[str]):
+def _build_workload_context(
+	assignments: list[dict],
+	users_list: list[str],
+	extra_projects: list[str] | None = None,
+	extra_holiday_lists: set[str] | list[str] | None = None,
+	extra_working_hours_refs: set[str] | list[str] | None = None,
+):
 	from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
 		load_holiday_data,
 		load_monthly_plan_cache,
@@ -199,10 +205,17 @@ def _build_workload_context(assignments: list[dict], users_list: list[str]):
 	)
 
 	projects_set = {a["project_name"] for a in assignments if a.get("project_name")}
+	for name in extra_projects or []:
+		if name:
+			projects_set.add(name)
 	users_data = load_users_with_worker_context(users_list)
 	projects_data = load_projects(list(projects_set))
-	working_hours_overrides = load_working_hours_overrides(users_data)
-	holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
+	working_hours_overrides = load_working_hours_overrides(
+		users_data, projects_data, extra_refs=extra_working_hours_refs
+	)
+	holiday_lists_cache, holiday_date_sets = load_holiday_data(
+		users_data, projects_data, extra_lists=extra_holiday_lists
+	)
 	user_absences = load_user_absences(users_list)
 	monthly_plan_cache = load_monthly_plan_cache(assignments)
 
@@ -348,7 +361,6 @@ def _load_project_plan_series(
 	date_to_period_key: dict[str, str],
 	period_index: dict[str, int],
 	wl_ctx: WorkloadContext,
-	project_name: str,
 ) -> list[float]:
 	"""Суммарный план PWE по проекту, размазанный по рабочим дням месяца."""
 	series = _zero_series(len(periods))
@@ -382,7 +394,7 @@ def _load_project_plan_series(
 		current_date = month_start
 		while current_date <= month_end:
 			date_str = str(current_date)
-			if wl_ctx.is_working_day(date_str, "", project_name):
+			if wl_ctx.is_working_day(date_str, "", project):
 				working_days.append(date_str)
 			current_date = frappe.utils.add_days(current_date, 1)
 		if not working_days:
@@ -629,13 +641,8 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		project_role_filters = normalize_project_role_filters(fd.get("project_role_filters")) or None
 		load_actual = _parse_bool(fd.get("load_actual"))
 		load_utilization = _parse_bool(fd.get("load_utilization"))
+		consider_virtuals = _parse_bool(fd.get("consider_virtuals"))
 
-		project_row = frappe.db.get_value(
-			"Project",
-			project,
-			["name", "project_name"],
-			as_dict=True,
-		)
 		# Keep filter date_from/date_to as-is (same window as project tree table).
 		# Clamping to expected_end_date only in charts caused N_chart < N_table
 		# and bar/column pitch drift after period_range switches.
@@ -669,22 +676,50 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 			for a in assignments_raw
 		]
 
-		users_list = sorted({a["user"] for a in assignments if a.get("user")})
-		wl_ctx, users_data = _build_workload_context(assignments, users_list)
+		assignment_users = sorted({a["user"] for a in assignments if a.get("user")})
+		from project_workload_assignment.project_workload_assignment.project_workload.core.team_capacity import (
+			collect_virtual_calendar_refs,
+			compute_team_capacity_series,
+			load_team_capacity_rows,
+			real_team_emails,
+		)
+
+		team_rows = load_team_capacity_rows(project, getdate(date_from), getdate(date_to))
+		team_emails = real_team_emails(team_rows)
+		users_list = sorted(set(assignment_users) | set(team_emails))
+		virtual_holidays, virtual_whods = collect_virtual_calendar_refs(team_rows)
+		wl_ctx, users_data = _build_workload_context(
+			assignments,
+			users_list,
+			extra_projects=[project],
+			extra_holiday_lists=virtual_holidays,
+			extra_working_hours_refs=virtual_whods,
+		)
 		from project_workload_assignment.project_workload_assignment.project_workload.core.context_loaders import (
 			load_worker_wtypes,
 		)
 
 		wtypes_map = load_worker_wtypes(users_list)
 		users_in_scope = filter_users_by_wtype(
-			users_list, worker_wtype_filter, users_data, wtypes_map
+			assignment_users, worker_wtype_filter, users_data, wtypes_map
 		)
 		users_in_scope_set = set(users_in_scope)
 		assignments = [a for a in assignments if a.get("user") in users_in_scope_set]
 
-		project_display_name = (project_row or {}).get("project_name") or project
-		team_capacity = _compute_capacity_series(
-			wl_ctx, users_in_scope, periods, view_type, date_to_period_key, period_index
+		period_dates = _period_date_strings(periods, view_type)
+		wl_ctx.preload_user_base_hours(real_team_emails(team_rows), period_dates)
+		team_capacity, team_capacity_net = compute_team_capacity_series(
+			project,
+			team_rows,
+			wl_ctx,
+			date_to_period_key,
+			period_index,
+			consider_virtuals=consider_virtuals,
+			worker_wtype=worker_wtype_filter,
+			role_filters=project_role_filters,
+			users_data=users_data,
+			wtypes_map=wtypes_map,
+			period_count=len(periods),
 		)
 		project_plan = _load_project_plan_series(
 			project,
@@ -693,7 +728,6 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 			date_to_period_key,
 			period_index,
 			wl_ctx,
-			project_display_name,
 		)
 		workload_by_wtype = _compute_workload_by_wtype(
 			assignments,
@@ -800,6 +834,7 @@ def run_get_project_workload_charts(fd: ProjectChartFormDict | None) -> ChartRes
 		series = ChartSeries(
 			project_plan_hours=project_plan,
 			team_capacity_hours=team_capacity,
+			team_capacity_net_hours=team_capacity_net,
 			workload_forecast_hours_by_wtype=workload_by_wtype,
 			workload_forecast_hours_by_role=workload_by_role,
 		)
