@@ -173,20 +173,22 @@
 	min-width: 0;
 }
 
-.wr-table-toolbar .wr-chart-stack-mode {
-	width: auto;
-	min-width: 110px;
-	max-width: 160px;
+.dinext-table-toolbar-custom.wr-table-toolbar--nav,
+.wr-table-toolbar--nav {
+	flex-wrap: nowrap;
+	gap: 4px;
+	margin-left: auto;
 }
 
-.wr-table-toolbar .wr-chart-stack-mode select {
+.wr-filter-select[data-fieldname="stack_by"] {
+	min-width: 138px;
+	max-width: none;
+}
+
+.wr-filter-select[data-fieldname="stack_by"] select {
+	min-width: 138px;
+	max-width: none;
 	width: auto;
-	min-width: 110px;
-	max-width: 160px;
-	height: 28px;
-	padding: 0 6px;
-	font-size: 12px;
-	line-height: 26px;
 }
 
 .wr-table-toolbar .wr-filter-checkbox {

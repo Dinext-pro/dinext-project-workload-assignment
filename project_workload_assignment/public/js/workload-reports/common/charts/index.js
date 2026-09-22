@@ -3,6 +3,7 @@
  */
 
 import { getTeamCharts, getProjectCharts } from "../api.js";
+import { getDefaultViewType } from "../filters/periods.js";
 import {
 	buildReportChartOption,
 	buildProjectChartOption,
@@ -377,7 +378,7 @@ export async function reloadCharts(hostEl) {
 			...baseArgs,
 			load_utilization: state.utilization ? 1 : 0,
 		};
-		const viewType = args.view_type || (isProject ? "daily" : "weekly");
+		const viewType = args.view_type || getDefaultViewType(isProject ? "daily" : "weekly");
 
 		const data = isProject
 			? await getProjectCharts(args)
