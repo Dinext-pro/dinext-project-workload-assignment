@@ -27,8 +27,8 @@ def _resolve_choice(key: str, allowed: frozenset[str]) -> str | None:
 def resolve_default_view_type() -> str | None:
 	"""Read ``client_config.workload_default_view_type``.
 
-	Missing / empty / invalid → ``None``. Desk keeps surface defaults
-	(PWR weekly, project tab daily). Local site leaves the key unset.
+	Missing / empty / invalid → ``None``. Desk keeps weekly.
+	Local site leaves the key unset.
 	"""
 	return _resolve_choice(VIEW_TYPE_KEY, ALLOWED_VIEW_TYPES)
 

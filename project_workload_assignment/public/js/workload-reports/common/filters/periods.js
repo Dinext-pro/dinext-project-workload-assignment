@@ -68,7 +68,7 @@ export const projectDefaults = () => {
 		load_actual: 0,
 		consider_limit: 1,
 		consider_virtuals: 0,
-		view_type: getDefaultViewType("daily"),
+		view_type: getDefaultViewType("weekly"),
 		period_range,
 		date_from,
 		date_to: _dateTo(date_from, period_range),
