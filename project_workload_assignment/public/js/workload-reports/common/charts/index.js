@@ -378,7 +378,7 @@ export async function reloadCharts(hostEl) {
 			...baseArgs,
 			load_utilization: state.utilization ? 1 : 0,
 		};
-		const viewType = args.view_type || getDefaultViewType(isProject ? "daily" : "weekly");
+		const viewType = args.view_type || getDefaultViewType("weekly");
 
 		const data = isProject
 			? await getProjectCharts(args)
