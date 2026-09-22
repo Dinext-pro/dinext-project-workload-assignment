@@ -1,3 +1,5 @@
+import { getDefaultPeriodRange, getDefaultViewType } from "./periods.js";
+
 /**
  * Fetch MultiSelect options for PWR project-role filter.
  * @param {object} args — same shape as grid/chart args (+ optional project)
@@ -13,8 +15,8 @@ export function fetchProjectRoleOptions(args = {}, txt = "") {
 				user: args.user || "",
 				project_portfolio: args.project_portfolio || "",
 				user_group: args.user_group || "",
-				view_type: args.view_type || "weekly",
-				period_range: args.period_range || "quarter",
+				view_type: args.view_type || getDefaultViewType("weekly"),
+				period_range: args.period_range || getDefaultPeriodRange("quarter"),
 				period_anchor_date: args.period_anchor_date || frappe.datetime?.get_today?.() || "",
 				worker_wtype: args.worker_wtype || "",
 			},

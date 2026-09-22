@@ -36,6 +36,9 @@ fixtures = [
 ]
 ''''''
 
+# Expose site client_config workload defaults to Desk
+extend_bootinfo = ["project_workload_assignment.boot.extend_bootinfo"]
+
 # Includes in <head>
 # ------------------
 

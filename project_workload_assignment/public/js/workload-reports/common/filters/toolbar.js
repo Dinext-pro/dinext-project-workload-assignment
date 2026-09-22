@@ -1,9 +1,9 @@
 import { VIEW_OPTIONS, PERIOD_OPTIONS } from "./periods.js";
 import { addSelect, addCheckbox, addPeriodNav, addButton } from "./controls.js";
-import { mountChartToolbarControls } from "../charts/controls.js";
+import { mountChartToolbarControls, mountStackModeSelect } from "../charts/controls.js";
 
 /**
- * Period / fact / refresh chrome for DinextTable toolbar custom host.
+ * Period / fact / chart chrome for DinextTable toolbar custom host.
  * Mount once — host is reused across toolbar rerenders.
  * @param {HTMLElement} host
  * @param {ReturnType<import("./session.js").createFilterSession>} session
@@ -34,16 +34,9 @@ export function mountPeriodToolbar(host, session, chartOpts) {
 		},
 	});
 
-	addPeriodNav(host, {
-		onPrev: () => session.shiftPeriod(-1),
-		onNext: () => session.shiftPeriod(1),
-	});
-
-	addButton(host, {
-		title: __("Refresh Data"),
-		text: "↻",
-		onClick: () => session.reload(),
-	});
+	if (chartOpts) {
+		mountStackModeSelect(host, chartOpts);
+	}
 
 	addCheckbox(host, {
 		label: __("Fact"),
@@ -59,6 +52,28 @@ export function mountPeriodToolbar(host, session, chartOpts) {
 	}
 }
 
+/**
+ * Period arrows + refresh — right edge of custom toolbar zone (before fullscreen sep).
+ * @param {HTMLElement} host
+ * @param {ReturnType<import("./session.js").createFilterSession>} session
+ */
+export function mountPeriodNavToolbar(host, session) {
+	if (!host || host.dataset.wrNavMounted === "1") return;
+	host.dataset.wrNavMounted = "1";
+	host.classList.add("wr-table-toolbar", "wr-table-toolbar--nav");
+
+	addPeriodNav(host, {
+		onPrev: () => session.shiftPeriod(-1),
+		onNext: () => session.shiftPeriod(1),
+	});
+
+	addButton(host, {
+		title: __("Refresh Data"),
+		text: "↻",
+		onClick: () => session.reload(),
+	});
+}
+
 export function buildPeriodToolbarItems(session, chartOpts) {
 	return [
 		{
@@ -66,6 +81,13 @@ export function buildPeriodToolbarItems(session, chartOpts) {
 			type: "custom",
 			render: ({ host }) => {
 				mountPeriodToolbar(host, session, chartOpts);
+			},
+		},
+		{
+			id: "wr-period-nav",
+			type: "custom",
+			render: ({ host }) => {
+				mountPeriodNavToolbar(host, session);
 			},
 		},
 	];
