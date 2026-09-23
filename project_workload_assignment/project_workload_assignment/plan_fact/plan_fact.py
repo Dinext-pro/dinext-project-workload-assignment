@@ -89,30 +89,59 @@ class PlanFact:
 		role: str,
 		visited: set[str],
 	) -> tuple[float, str] | None:
-		# (часы, где собрались)
+		"""Своя ветка из памяти. Пустая ветка — подъём к родителю, как раньше."""
 		if node in visited:
 			return None
-		walked = visited | {node}
-
-		own = snapshot.own_plan(node, role)
-		if own > 0:
-			return (own, node)
-
-		child_total = 0.0
-		found_child = False
-		for child in snapshot.children(node):
-			child_plan = cls._plan(snapshot, child, role, walked)
-			if child_plan is None:
-				continue
-			found_child = True
-			child_total += child_plan[0]
-		if found_child:
-			return (child_total, node)
-
+		local = cls._local(snapshot, node, role)
+		if local is not None:
+			return local
 		parent = snapshot.parent(node)
 		if not parent:
 			return None
-		return cls._plan(snapshot, parent, role, walked)
+		return cls._plan(snapshot, parent, role, visited | {node})
+
+	@classmethod
+	def _local(
+		cls,
+		snapshot: Snapshot,
+		node: str,
+		role: str,
+		stack: set[str] | None = None,
+	) -> tuple[float, str] | None:
+		"""Своя клетка или сумма детей. Без подъёма. Один раз на снимок и роль."""
+		memo = cls._local_memo(snapshot)
+		key = (node, role)
+		if key in memo:
+			return memo[key]
+		if stack is None:
+			stack = set()
+		if node in stack:
+			return None
+		stack.add(node)
+		own = snapshot.own_plan(node, role)
+		if own > 0:
+			got: tuple[float, str] | None = (own, node)
+		else:
+			child_total = 0.0
+			found_child = False
+			for child in snapshot.children(node):
+				child_plan = cls._local(snapshot, child, role, stack)
+				if child_plan is None:
+					continue
+				found_child = True
+				child_total += child_plan[0]
+			got = (child_total, node) if found_child else None
+		stack.remove(node)
+		memo[key] = got
+		return got
+
+	@staticmethod
+	def _local_memo(snapshot: Snapshot) -> dict:
+		memo = getattr(snapshot, "_local_plan", None)
+		if memo is None:
+			memo = {}
+			object.__setattr__(snapshot, "_local_plan", memo)
+		return memo
 
 	@classmethod
 	def _consumers(
