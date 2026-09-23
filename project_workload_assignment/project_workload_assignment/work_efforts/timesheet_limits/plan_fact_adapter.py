@@ -44,7 +44,7 @@ class TimesheetPlanFactAdapter:
 		pairs: list[tuple[Snapshot, Result]] = []
 		for key in keys:
 			snap = snaps.get(key) or Snapshot.build(parent_of=parent_of, plan=[])
-			got = PlanFact.compute(snap, task, role)
+			got = cls._compute(bulk, snap, task, role)
 			if got:
 				pairs.append((snap, got))
 		result = PlanFact.fold((got for _snap, got in pairs), used=used)
@@ -84,7 +84,12 @@ class TimesheetPlanFactAdapter:
 		parent_of, snaps = cls.slices(bulk, project, hours_key=hours_key)
 		keys = [(year, month)] if year is not None and month is not None else sorted(snaps)
 		return PlanFact.fold(
-			PlanFact.compute(snaps.get(key) or Snapshot.build(parent_of=parent_of, plan=[]), task, role)
+			cls._compute(
+				bulk,
+				snaps.get(key) or Snapshot.build(parent_of=parent_of, plan=[]),
+				task,
+				role,
+			)
 			for key in keys
 		)
 
@@ -141,19 +146,37 @@ class TimesheetPlanFactAdapter:
 		)
 
 	@classmethod
+	def _compute(cls, bulk: TimesheetLimitsBulkData, snap: Snapshot, node: str, role: str) -> Result | None:
+		"""Повтор того же снимка в этом bulk не обходит дерево заново."""
+		sid = id(snap)
+		bulk._compute_snaps[sid] = snap
+		cache_key = (sid, node, role)
+		if cache_key in bulk._compute_cache:
+			return bulk._compute_cache[cache_key]
+		got = PlanFact.compute(snap, node, role)
+		bulk._compute_cache[cache_key] = got
+		return got
+
+	@classmethod
 	def slices(
 		cls,
 		bulk: TimesheetLimitsBulkData,
 		project: str,
 		hours_key: str = "plan",
 	) -> tuple[dict[str, str | None], dict[tuple[int, int], Snapshot]]:
-		"""Дерево и снимок каждого месяца. Один раз на запрос."""
+		"""Дерево и снимок каждого месяца. Один раз на этот bulk."""
+		cache_key = (project, hours_key)
+		cached = bulk._slice_cache.get(cache_key)
+		if cached is not None:
+			return cached
 		parent_of = cls._parent_of(bulk, project)
 		snaps = {
-			key: Snapshot.build(parent_of=parent_of, plan=entries)
-			for key, entries in cls._plan_by_month(bulk, project, hours_key).items()
+			month: Snapshot.build(parent_of=parent_of, plan=entries)
+			for month, entries in cls._plan_by_month(bulk, project, hours_key).items()
 		}
-		return parent_of, snaps
+		built = (parent_of, snaps)
+		bulk._slice_cache[cache_key] = built
+		return built
 
 	@classmethod
 	def sum_roots(
@@ -175,7 +198,7 @@ class TimesheetPlanFactAdapter:
 				continue
 			for task in cls.root_tasks(bulk):
 				for role in roles:
-					got = PlanFact.compute(snap, task, role)
+					got = cls._compute(bulk, snap, task, role)
 					if got:
 						total += got.plan_hours
 		return total
@@ -239,7 +262,7 @@ class TimesheetPlanFactAdapter:
 	) -> list[dict]:
 		rows: list[dict] = []
 		for child in snap.children(node):
-			child_got = PlanFact.compute(snap, child, role)
+			child_got = cls._compute(bulk, snap, child, role)
 			if child_got and child_got.assembled_at == child:
 				rows.append(cls._source_row(bulk, child, child_got.plan_hours))
 		return rows
