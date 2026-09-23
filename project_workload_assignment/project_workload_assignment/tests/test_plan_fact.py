@@ -168,3 +168,80 @@ class TestCoreEdges(unittest.TestCase):
 
 	def test_fold_none_is_none(self):
 		self.assertIsNone(PlanFact.fold([None, None]))
+
+	def test_wide_tree_memo_matches_pots(self):
+		"""20 веток × 30 листьев. Повторный compute того же снимка не меняет котёл."""
+		import time
+
+		parent_of = {"root": None}
+		plan = []
+		for branch in range(20):
+			branch_name = f"b{branch}"
+			parent_of[branch_name] = "root"
+			for leaf in range(30):
+				leaf_name = f"{branch_name}.{leaf}"
+				parent_of[leaf_name] = branch_name
+				if leaf % 2 == 0:
+					plan.append(Entry(leaf_name, ROLE, 1))
+		snap = Snapshot.build(parent_of=parent_of, plan=plan)
+		started = time.perf_counter()
+		root = PlanFact.compute(snap, "root", ROLE)
+		again = PlanFact.compute(snap, "root", ROLE)
+		empty = PlanFact.compute(snap, "b0.1", ROLE)
+		own = PlanFact.compute(snap, "b0.0", ROLE)
+		elapsed = time.perf_counter() - started
+		self.assertEqual(root.plan_hours, 300.0)
+		self.assertEqual(root.assembled_at, "root")
+		self.assertEqual(again.plan_hours, 300.0)
+		self.assertEqual(again.consumers, root.consumers)
+		self.assertEqual(empty.plan_hours, 15.0)
+		self.assertEqual(empty.assembled_at, "b0")
+		self.assertEqual(own.plan_hours, 1.0)
+		self.assertEqual(own.consumers, frozenset({"b0.0"}))
+		self.assertLess(elapsed, 2.0)
+
+	def test_memo_matches_fresh_walk(self):
+		"""Память узла даёт те же часы и место сборки, что обход без памяти."""
+
+		def walk(snapshot: Snapshot, node: str, role: str, visited: set[str]):
+			if node in visited:
+				return None
+			step = visited | {node}
+			own = snapshot.own_plan(node, role)
+			if own > 0:
+				return (own, node)
+			total = 0.0
+			found = False
+			for child in snapshot.children(node):
+				child_plan = walk(snapshot, child, role, step)
+				if child_plan is None:
+					continue
+				found = True
+				total += child_plan[0]
+			if found:
+				return (total, node)
+			parent = snapshot.parent(node)
+			if not parent:
+				return None
+			return walk(snapshot, parent, role, step)
+
+		parent_of = {"root": None, "a": "root", "b": "root", "a1": "a", "a2": "a"}
+		parent_of.update({f"c{i}": "b" for i in range(8)})
+		plan = [
+			Entry("a", ROLE, 10),
+			Entry("a1", ROLE, 4),
+			Entry("b", ROLE, 0),
+			Entry("c0", ROLE, 3),
+			Entry("c1", ROLE, 5),
+			Entry("root", "Other", 9),
+		]
+		snap = Snapshot.build(parent_of=parent_of, plan=plan)
+		for node in parent_of:
+			for role in (ROLE, "Other"):
+				fresh = walk(snap, node, role, set())
+				got = PlanFact.compute(snap, node, role)
+				if fresh is None:
+					self.assertIsNone(got, node)
+					continue
+				self.assertEqual(got.plan_hours, fresh[0], node)
+				self.assertEqual(got.assembled_at, fresh[1], node)

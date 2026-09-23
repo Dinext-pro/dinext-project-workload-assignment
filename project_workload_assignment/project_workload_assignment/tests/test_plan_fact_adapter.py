@@ -263,3 +263,67 @@ class TestAdapterRequestCache(unittest.TestCase):
 			TimesheetPlanFactAdapter.slices(first, PROJECT)[1],
 			TimesheetPlanFactAdapter.slices(second, PROJECT)[1],
 		)
+
+	def test_shared_tree_matches_separate_snapshots(self):
+		"""Общее дерево, свои часы месяца. Сверка с отдельным Snapshot.build."""
+		from project_workload_assignment.project_workload_assignment.plan_fact import (
+			PlanFact,
+			Snapshot,
+		)
+
+		bulk = _bulk()
+		parent_of, snaps = TimesheetPlanFactAdapter.slices(bulk, PROJECT)
+		jan = snaps[(2026, 1)]
+		feb = snaps[(2026, 2)]
+		self.assertIs(jan.children_of, feb.children_of)
+		self.assertIs(jan.parent_of, feb.parent_of)
+		self.assertIsNot(jan, feb)
+		self.assertIsNot(jan.plan, feb.plan)
+		self.assertEqual(jan.plan[("t1.1", ROLE)], 10.0)
+		self.assertNotIn(("t1.1", ROLE), feb.plan)
+
+		built = {
+			(2026, 1): Snapshot.build(
+				parent_of=parent_of,
+				plan=[
+					Entry("t1.1", ROLE, 10),
+					Entry("t1.1.1", ROLE, 5),
+					Entry("t1.1.2", ROLE, 5),
+				],
+			),
+			(2026, 2): Snapshot.build(
+				parent_of=parent_of,
+				plan=[Entry("t1.1.1", ROLE, 15), Entry("t1.1.2", ROLE, 20)],
+			),
+		}
+		for month, fresh in built.items():
+			for node in ("t1", "t1.1", "t1.1.1", "t1.1.2", "t1.1.3"):
+				got = PlanFact.compute(snaps[month], node, ROLE)
+				ref = PlanFact.compute(fresh, node, ROLE)
+				if ref is None:
+					self.assertIsNone(got, f"{month} {node}")
+					continue
+				self.assertEqual(got.plan_hours, ref.plan_hours, f"{month} {node}")
+				self.assertEqual(got.assembled_at, ref.assembled_at, f"{month} {node}")
+				self.assertEqual(got.consumers, ref.consumers, f"{month} {node}")
+
+		self.assertEqual(
+			TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1", ROLE, 2026, 1).plan_hours,
+			10.0,
+		)
+		self.assertEqual(
+			TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1", ROLE, 2026, 2).plan_hours,
+			35.0,
+		)
+		self.assertEqual(
+			TimesheetPlanFactAdapter.result(
+				bulk, PROJECT, "t1.1", ROLE, 2026, 1, hours_key="expected"
+			).plan_hours,
+			8.0,
+		)
+		self.assertEqual(
+			TimesheetPlanFactAdapter.result(
+				bulk, PROJECT, "t1.1", ROLE, 2026, 2, hours_key="expected"
+			).plan_hours,
+			30.0,
+		)

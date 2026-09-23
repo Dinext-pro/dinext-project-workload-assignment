@@ -39,11 +39,11 @@ class TimesheetPlanFactAdapter:
 		month: int | None,
 		used: list[Entry] | tuple[Entry, ...] = (),
 	) -> ScreenPlan | None:
-		parent_of, snaps = cls.slices(bulk, project)
+		_parent_of, snaps = cls.slices(bulk, project)
 		keys = [(year, month)] if year is not None and month is not None else sorted(snaps)
 		pairs: list[tuple[Snapshot, Result]] = []
 		for key in keys:
-			snap = snaps.get(key) or Snapshot.build(parent_of=parent_of, plan=[])
+			snap = snaps.get(key) or cls._skeleton(bulk, project)
 			got = cls._compute(bulk, snap, task, role)
 			if got:
 				pairs.append((snap, got))
@@ -81,12 +81,12 @@ class TimesheetPlanFactAdapter:
 		month: int | None = None,
 		hours_key: str = "plan",
 	) -> Result | None:
-		parent_of, snaps = cls.slices(bulk, project, hours_key=hours_key)
+		_parent_of, snaps = cls.slices(bulk, project, hours_key=hours_key)
 		keys = [(year, month)] if year is not None and month is not None else sorted(snaps)
 		return PlanFact.fold(
 			cls._compute(
 				bulk,
-				snaps.get(key) or Snapshot.build(parent_of=parent_of, plan=[]),
+				snaps.get(key) or cls._skeleton(bulk, project),
 				task,
 				role,
 			)
@@ -169,14 +169,41 @@ class TimesheetPlanFactAdapter:
 		cached = bulk._slice_cache.get(cache_key)
 		if cached is not None:
 			return cached
-		parent_of = cls._parent_of(bulk, project)
+		skeleton = cls._skeleton(bulk, project)
 		snaps = {
-			month: Snapshot.build(parent_of=parent_of, plan=entries)
+			month: cls._month_snapshot(skeleton, entries)
 			for month, entries in cls._plan_by_month(bulk, project, hours_key).items()
 		}
-		built = (parent_of, snaps)
+		built = (skeleton.parent_of, snaps)
 		bulk._slice_cache[cache_key] = built
 		return built
+
+	@classmethod
+	def _skeleton(cls, bulk: TimesheetLimitsBulkData, project: str) -> Snapshot:
+		"""Дерево проекта один раз. Часы месяца сюда не кладутся."""
+		cache_key = ("tree", project)
+		cached = bulk._slice_cache.get(cache_key)
+		if cached is not None:
+			return cached
+		skeleton = Snapshot.build(parent_of=cls._parent_of(bulk, project), plan=[])
+		bulk._slice_cache[cache_key] = skeleton
+		return skeleton
+
+	@staticmethod
+	def _month_snapshot(skeleton: Snapshot, entries: list[Entry]) -> Snapshot:
+		"""Те же родители и дети. Своя таблица часов, своя память обхода."""
+		plan_index: dict[tuple[str, str], float] = {}
+		for row in entries:
+			if row.hours <= 0:
+				continue
+			key = (row.node, row.role)
+			plan_index[key] = plan_index.get(key, 0.0) + float(row.hours)
+		return Snapshot(
+			parent_of=skeleton.parent_of,
+			children_of=skeleton.children_of,
+			plan=plan_index,
+			used=(),
+		)
 
 	@classmethod
 	def sum_roots(
