@@ -19,6 +19,10 @@ class TimesheetLimitsBulkData:
 	pwe_by_task_role: dict = field(default_factory=dict)
 	pwe_amounts: dict = field(default_factory=dict)
 	limit_rows_by_project: dict = field(default_factory=dict)
+	# Только этот run. Следующий запрос получает новый bulk и пустые словари.
+	_slice_cache: dict = field(default_factory=dict, compare=False, repr=False)
+	_compute_cache: dict = field(default_factory=dict, compare=False, repr=False)
+	_compute_snaps: dict = field(default_factory=dict, compare=False, repr=False)
 
 
 class TimesheetLimitsBulkLoader:
