@@ -216,3 +216,50 @@ class TestAdapterShared(unittest.TestCase):
 			TimesheetPlanFactAdapter.hours_by_role(bulk, PROJECT, "t1.1.1"),
 			{ROLE: 20.0},
 		)
+
+
+class TestAdapterRequestCache(unittest.TestCase):
+	"""Один bulk — один проход по срезам. Второй вызов и другая задача не смешиваются."""
+
+	def test_repeat_for_screen_same_plan_and_snapshots(self):
+		bulk = _bulk()
+		first = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1.3", ROLE, None, None)
+		second = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1.3", ROLE, None, None)
+		self.assertEqual(first, second)
+		self.assertEqual(first.plan_hours, 45.0)
+		self.assertEqual(first.consumers, BRANCH)
+		parent_a, snaps_a = TimesheetPlanFactAdapter.slices(bulk, PROJECT)
+		parent_b, snaps_b = TimesheetPlanFactAdapter.slices(bulk, PROJECT)
+		self.assertIs(parent_a, parent_b)
+		self.assertIs(snaps_a, snaps_b)
+
+	def test_two_tasks_on_one_bulk_keep_own_pots(self):
+		bulk = _bulk()
+		leaf = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1.1", ROLE, None, None)
+		branch = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1.3", ROLE, None, None)
+		forecast = TimesheetPlanFactAdapter.result(
+			bulk, PROJECT, "t1.1.3", ROLE, hours_key="expected"
+		)
+		self.assertEqual(leaf.plan_hours, 20.0)
+		self.assertEqual(leaf.consumers, frozenset({"t1.1.1"}))
+		self.assertEqual(branch.plan_hours, 45.0)
+		self.assertEqual(branch.consumers, BRANCH)
+		self.assertEqual(forecast.plan_hours, 38.0)
+		self.assertIsNot(
+			TimesheetPlanFactAdapter.slices(bulk, PROJECT, "plan")[1],
+			TimesheetPlanFactAdapter.slices(bulk, PROJECT, "expected")[1],
+		)
+
+	def test_second_bulk_does_not_reuse_first_cache(self):
+		first = _bulk()
+		second = _bulk()
+		second.pwe_amounts = {
+			"pwe-11": [{"year": 2026, "month": 1, "plan": 7.0, "expected": 1.0}],
+		}
+		TimesheetPlanFactAdapter.for_screen(first, PROJECT, "t1.1", ROLE, 2026, 1)
+		got = TimesheetPlanFactAdapter.for_screen(second, PROJECT, "t1.1", ROLE, 2026, 1)
+		self.assertEqual(got.plan_hours, 7.0)
+		self.assertIsNot(
+			TimesheetPlanFactAdapter.slices(first, PROJECT)[1],
+			TimesheetPlanFactAdapter.slices(second, PROJECT)[1],
+		)
