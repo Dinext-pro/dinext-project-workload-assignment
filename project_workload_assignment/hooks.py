@@ -3,7 +3,7 @@ app_title = "Dinext Project Workload"
 app_publisher = "Dinext"
 app_description = "Dinext Project Workload"
 app_email = "info@dinord.ru"
-app_license = "mit"
+app_license = "GNU General Public License (v3)"
 
 # Apps
 # ------------------
