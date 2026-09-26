@@ -267,7 +267,7 @@ bench --site <site_name> run-tests --app project_workload_assignment
 - Отдельные переменные окружения в репозитории не обнаружены.
 - Значимая часть логики хранится в fixtures, поэтому изменения через UI Frappe без последующего экспорта могут не попасть в git.
 - `Projects Workload Report` зависит от клиентского рендера и внешнего компонента `StickyDataTable`.
-- Лицензионный файл `license.txt` остаётся шаблонным и не заполнен фактическими значениями правообладателя.
+- Лицензия приложения — GNU GPL v3, полный текст в `license.txt`.
 - В `patches.txt` секции `pre_model_sync` и `post_model_sync` пока пустые.
 
 ## Структура репозитория
@@ -332,4 +332,4 @@ project_workload_assignment/
 
 ## Лицензия
 
-В `hooks.py` и `pyproject.toml` указана лицензия `MIT`, однако файл `license.txt` пока содержит стандартный шаблон и требует актуализации.
+В `hooks.py` указана лицензия GNU GPL v3. Полный текст — в [license.txt](license.txt).
