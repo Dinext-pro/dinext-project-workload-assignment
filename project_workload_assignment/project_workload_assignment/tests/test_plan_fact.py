@@ -245,3 +245,45 @@ class TestCoreEdges(unittest.TestCase):
 					continue
 				self.assertEqual(got.plan_hours, fresh[0], node)
 				self.assertEqual(got.assembled_at, fresh[1], node)
+
+
+class TestIssuePlanCeiling(unittest.TestCase):
+	"""«Обязательно для всех Запросов»: выше виртуальной задачи не поднимаемся."""
+
+	def _snap(self):
+		return Snapshot.build(
+			parent_of={"p": None, "v": "p", "a": "v", "b": "v", "leaf": "v"},
+			plan=[
+				Entry("p", ROLE, 40),
+				Entry("a", ROLE, 15),
+				Entry("b", ROLE, 20),
+			],
+			used=[Entry("p", ROLE, 9), Entry("a", ROLE, 3), Entry("leaf", ROLE, 1)],
+		)
+
+	def test_no_plan_under_ceiling_does_not_take_parent(self):
+		snap = Snapshot.build(
+			parent_of={"p": None, "v": "p", "leaf": "v"},
+			plan=[Entry("p", ROLE, 40)],
+			used=[Entry("p", ROLE, 9), Entry("leaf", ROLE, 1)],
+		)
+		self.assertIsNone(PlanFact.compute(snap, "leaf", ROLE, frozenset({"v"})))
+		open_got = PlanFact.compute(snap, "leaf", ROLE)
+		self.assertEqual(open_got.plan_hours, 40.0)
+		self.assertIn("p", open_got.consumers)
+
+	def test_virtual_task_keeps_children_sum(self):
+		got = PlanFact.compute(self._snap(), "v", ROLE, frozenset({"v"}))
+		self.assertEqual(got.plan_hours, 35.0)
+		self.assertNotIn("p", got.consumers)
+		self.assertIn("a", got.consumers)
+		self.assertEqual(got.fact_hours, 4.0)
+
+	def test_own_hours_on_virtual_task_ignore_parent(self):
+		snap = Snapshot.build(
+			parent_of={"p": None, "v": "p"},
+			plan=[Entry("p", ROLE, 100), Entry("v", ROLE, 16)],
+		)
+		got = PlanFact.compute(snap, "v", ROLE, frozenset({"v"}))
+		self.assertEqual(got.plan_hours, 16.0)
+		self.assertNotIn("p", got.consumers)

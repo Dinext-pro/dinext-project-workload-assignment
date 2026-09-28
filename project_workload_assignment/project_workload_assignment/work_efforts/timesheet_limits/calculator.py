@@ -17,6 +17,9 @@ from project_workload_assignment.project_workload_assignment.work_efforts.timesh
 	TimesheetLimitsBulkData,
 	TimesheetLimitsBulkLoader,
 )
+from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.fact_period import (
+	fill as fill_fact_period,
+)
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.hours_aggregator import (
 	TimesheetHoursAggregator,
 )
@@ -44,6 +47,8 @@ class TimesheetLimitsCalculator:
 		session_limits_override = cls._session_limits_override(form_dict)
 
 		bulk = TimesheetLimitsBulkLoader.load(positions)
+		if _needs_pot_fact(positions):
+			fill_fact_period(bulk, positions, timesheet_name)
 		state = _CalculatorState(bulk=bulk)
 
 		results: TimesheetLimitsResponse = []
@@ -106,16 +111,21 @@ class TimesheetLimitsCalculator:
 			)
 			consumers = list(screen.consumers) if screen else [doc]
 
-			total_hours = TimesheetHoursAggregator.aggregate(
-				consumers,
-				project_role,
-				timesheet_name,
-				status,
-				positions,
-				year=year,
-				month=month,
-				cache=state.total_hours_cache,
-			)
+			if year is not None and month is not None:
+				total_hours = TimesheetHoursAggregator.aggregate(
+					consumers,
+					project_role,
+					timesheet_name,
+					status,
+					positions,
+					year=year,
+					month=month,
+					cache=state.total_hours_cache,
+				)
+			else:
+				total_hours = TimesheetPlanFactAdapter.hours_data(
+					bulk, proj or "", doc, project_role, year, month
+				)
 
 			pct = int((total_hours.get("total", 0) / planned) * 100) if planned > 0 else 0
 			limits = cls._project_limits(proj, session_limits_override, bulk)
@@ -206,6 +216,14 @@ class TimesheetLimitsCalculator:
 		if limits.get("message") and pct > limits["message"]:
 			return "message", limits["message"]
 		return "normal", 0
+
+
+def _needs_pot_fact(positions: list[TimesheetPositionInput]) -> bool:
+	"""Таймшит без года и месяца. Клетка трудозатрат считает факт по сетке."""
+	for pos in positions or []:
+		if LimitsParsing.as_int(pos.get("year")) is None or LimitsParsing.as_int(pos.get("month")) is None:
+			return True
+	return False
 
 
 class _CalculatorState:
