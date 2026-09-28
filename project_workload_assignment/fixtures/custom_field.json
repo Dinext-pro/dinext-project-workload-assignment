@@ -314,7 +314,7 @@
   "insert_after": "custom_ts_details",
   "is_system_generated": 0,
   "is_virtual": 0,
-  "label": "Утилизация",
+  "label": "Utilization",
   "length": 0,
   "link_filters": null,
   "mandatory_depends_on": null,
