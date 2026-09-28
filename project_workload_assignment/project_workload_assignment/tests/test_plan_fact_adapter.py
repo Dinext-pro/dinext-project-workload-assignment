@@ -327,3 +327,169 @@ class TestAdapterRequestCache(unittest.TestCase):
 			).plan_hours,
 			30.0,
 		)
+
+
+class TestFactFollowsMonthPot(unittest.TestCase):
+	"""Январь на родителе, февраль на ребёнке. Факт февраля соседа в строку A не входит."""
+
+	def _bulk(self):
+		from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.fact_period import (
+			add_fact,
+		)
+
+		bulk = TimesheetLimitsBulkData(
+			task_meta={
+				"p": {"subject": "Родитель", "parent_task": None},
+				"a": {"subject": "Ребёнок A", "parent_task": "p"},
+				"b": {"subject": "Ребёнок B", "parent_task": "p"},
+			},
+			children_map={
+				(PROJECT, "p"): ["a", "b"],
+				(PROJECT, "a"): [],
+				(PROJECT, "b"): [],
+			},
+			pwe_by_task_role={
+				(PROJECT, "p", ROLE): ["pwe-p"],
+				(PROJECT, "a", ROLE): ["pwe-a"],
+			},
+			pwe_amounts={
+				"pwe-p": [
+					{"year": 2026, "month": 1, "plan": 10.0},
+					{"year": 2026, "month": 2, "plan": 7.0},
+				],
+				"pwe-a": [{"year": 2026, "month": 2, "plan": 5.0}],
+			},
+		)
+		add_fact(bulk, 2026, 1, "p", ROLE, 8, "Согласовано", "Иван")
+		add_fact(bulk, 2026, 1, "b", ROLE, 3, "Согласовано", "Иван")
+		add_fact(bulk, 2026, 1, "a", ROLE, 1, "Редактирование", "Иван")
+		add_fact(bulk, 2026, 2, "a", ROLE, 4, "Согласовано", "Иван")
+		add_fact(bulk, 2026, 2, "b", ROLE, 100, "Согласовано", "Пётр")
+		add_fact(bulk, 2026, 2, "p", ROLE, 50, "Согласовано", "Иван")
+		return bulk
+
+	def test_child_fact_is_sum_of_month_pots(self):
+		bulk = self._bulk()
+		screen = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "a", ROLE, None, None)
+		data = TimesheetPlanFactAdapter.hours_data(bulk, PROJECT, "a", ROLE, None, None)
+		self.assertEqual(screen.plan_hours, 15.0)
+		self.assertEqual(screen.fact_hours, 16.0)
+		self.assertEqual(data["total"], 16.0)
+		self.assertEqual(data["Согласовано"], 15.0)
+		self.assertEqual(data["Редактирование"], 1.0)
+		self.assertEqual(data["users"], {"Иван"})
+
+	def test_february_sibling_stays_in_february(self):
+		bulk = self._bulk()
+		feb = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "a", ROLE, 2026, 2)
+		jan = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "a", ROLE, 2026, 1)
+		self.assertEqual(feb.plan_hours, 5.0)
+		self.assertEqual(feb.fact_hours, 4.0)
+		self.assertEqual(jan.fact_hours, 12.0)
+		_parent, snaps = TimesheetPlanFactAdapter.slices(bulk, PROJECT)
+		self.assertIsNot(snaps[(2026, 1)].used, snaps[(2026, 2)].used)
+
+	def test_open_timesheet_details_split_by_date(self):
+		from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.fact_period import (
+			absorb_positions,
+		)
+
+		bulk = self._bulk()
+		absorb_positions(
+			bulk,
+			[
+				{
+					"document_name": "a",
+					"project_role": ROLE,
+					"status": "Редактирование",
+					"custom_username": "Иван",
+					"details": [
+						{"date": "2026-01-31", "hours": 2},
+						{"date": "2026-02-01", "hours": 6},
+					],
+				},
+				{
+					"document_name": "a",
+					"project_role": ROLE,
+					"year": 2026,
+					"month": 2,
+					"all_hours": 99,
+					"details": [{"date": "2026-02-01", "hours": 7}],
+				},
+			],
+		)
+		data = TimesheetPlanFactAdapter.hours_data(bulk, PROJECT, "a", ROLE, None, None)
+		self.assertEqual(data["total"], 16.0 + 2.0 + 6.0)
+
+
+REQUESTS = "Обязательно для всех Запросов"
+OPTIONAL = "Опционально"
+
+
+def _ceiling_bulk(mode: str) -> TimesheetLimitsBulkData:
+	return TimesheetLimitsBulkData(
+		task_meta={
+			"p": {"subject": "ЗНО", "parent_task": None, "project": PROJECT},
+			"v": {
+				"subject": "Запрос",
+				"parent_task": "p",
+				"project": PROJECT,
+				"custom_linked_issue": True,
+			},
+			"a": {"subject": "Часы", "parent_task": "v", "project": PROJECT},
+		},
+		children_map={
+			(PROJECT, "p"): ["v"],
+			(PROJECT, "v"): ["a"],
+			(PROJECT, "a"): [],
+		},
+		pwe_by_task_role={
+			(PROJECT, "p", ROLE): ["pwe-p"],
+			(PROJECT, "a", ROLE): ["pwe-a"],
+		},
+		pwe_amounts={
+			"pwe-p": [{"year": 2026, "month": 1, "plan": 40.0, "expected": 50.0}],
+			"pwe-a": [{"year": 2026, "month": 2, "plan": 15.0, "expected": 12.0}],
+		},
+		plan_requirement_by_project={PROJECT: mode},
+	)
+
+
+class TestIssueCeilingOnAdapter(unittest.TestCase):
+	def test_optional_still_climbs_to_parent(self):
+		bulk = _ceiling_bulk(OPTIONAL)
+		screen = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "v", ROLE, None, None)
+		self.assertEqual(screen.plan_hours, 55.0)
+		self.assertIn("p", screen.consumers)
+		forecast = TimesheetPlanFactAdapter.result(
+			bulk, PROJECT, "v", ROLE, hours_key="expected"
+		)
+		self.assertEqual(forecast.plan_hours, 62.0)
+
+	def test_requests_mode_stops_above_virtual_task(self):
+		bulk = _ceiling_bulk(REQUESTS)
+		screen = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "v", ROLE, None, None)
+		self.assertEqual(screen.plan_hours, 15.0)
+		self.assertNotIn("p", screen.consumers)
+		self.assertIn("a", screen.consumers)
+		forecast = TimesheetPlanFactAdapter.result(
+			bulk, PROJECT, "v", ROLE, hours_key="expected"
+		)
+		self.assertEqual(forecast.plan_hours, 12.0)
+		self.assertNotIn("p", forecast.consumers)
+
+	def test_leaf_under_issue_does_not_take_parent_month(self):
+		bulk = _ceiling_bulk(REQUESTS)
+		screen = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "a", ROLE, None, None)
+		self.assertEqual(screen.plan_hours, 15.0)
+		self.assertNotIn("p", screen.consumers)
+
+	def test_ivan_pot_stays_when_branch_is_the_issue(self):
+		bulk = _bulk()
+		bulk.task_meta["t1.1"]["custom_linked_issue"] = True
+		bulk.task_meta["t1.1"]["project"] = PROJECT
+		bulk.plan_requirement_by_project[PROJECT] = REQUESTS
+		screen = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1", ROLE, None, None)
+		self.assertEqual(screen.plan_hours, 45.0)
+		leaf = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1.3", ROLE, None, None)
+		self.assertEqual(leaf.plan_hours, 45.0)
