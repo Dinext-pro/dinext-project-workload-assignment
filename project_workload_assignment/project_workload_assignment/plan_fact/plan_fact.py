@@ -6,6 +6,7 @@
   1) своя клетка > 0 → её, детей не суммируем;
   2) своей нет → сумма того же правила по детям;
   3) нет ни своего, ни детей с планом → то же у родителя.
+     Узел из stop_nodes — потолок: выше него не идём.
 
 Факт: сумма списаний у едоков.
 Едоки = поддерево узла, где собрался план, плюс предки
@@ -29,13 +30,19 @@ from project_workload_assignment.project_workload_assignment.plan_fact.models im
 
 class PlanFact:
 	@classmethod
-	def compute(cls, snapshot: Snapshot, node: str, role: str) -> Result | None:
+	def compute(
+		cls,
+		snapshot: Snapshot,
+		node: str,
+		role: str,
+		stop_nodes: frozenset[str] = frozenset(),
+	) -> Result | None:
 		"""План, факт и едоки для одного среза. Нет плана → None."""
-		walked = cls._plan(snapshot, node, role, visited=set())
+		walked = cls._plan(snapshot, node, role, visited=set(), stop_nodes=stop_nodes)
 		if walked is None:
 			return None
 		hours, assembled_at = walked
-		consumers = cls._consumers(snapshot, assembled_at, role, hours)
+		consumers = cls._consumers(snapshot, assembled_at, role, hours, stop_nodes)
 		return Result(
 			node=node,
 			role=role,
@@ -88,6 +95,7 @@ class PlanFact:
 		node: str,
 		role: str,
 		visited: set[str],
+		stop_nodes: frozenset[str] = frozenset(),
 	) -> tuple[float, str] | None:
 		"""Своя ветка из памяти. Пустая ветка — подъём к родителю, как раньше."""
 		if node in visited:
@@ -95,10 +103,12 @@ class PlanFact:
 		local = cls._local(snapshot, node, role)
 		if local is not None:
 			return local
+		if node in stop_nodes:
+			return None
 		parent = snapshot.parent(node)
 		if not parent:
 			return None
-		return cls._plan(snapshot, parent, role, visited | {node})
+		return cls._plan(snapshot, parent, role, visited | {node}, stop_nodes)
 
 	@classmethod
 	def _local(
@@ -150,16 +160,19 @@ class PlanFact:
 		assembled_at: str,
 		role: str,
 		hours: float,
+		stop_nodes: frozenset[str] = frozenset(),
 	) -> frozenset[str]:
 		"""От узла сборки вверх, пока у предка нет своей клетки и план тот же."""
 		root = assembled_at
 		guard: set[str] = set()
 		current = snapshot.parent(assembled_at)
 		while current and current not in guard:
+			if root in stop_nodes:
+				break
 			guard.add(current)
 			if snapshot.own_plan(current, role) > 0:
 				break
-			parent_plan = cls._plan(snapshot, current, role, visited=set())
+			parent_plan = cls._plan(snapshot, current, role, visited=set(), stop_nodes=stop_nodes)
 			if parent_plan is None or parent_plan[0] != hours:
 				break
 			root = current
