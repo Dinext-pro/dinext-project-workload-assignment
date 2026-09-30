@@ -19,6 +19,10 @@ class TimesheetLimitsBulkData:
 	pwe_by_task_role: dict = field(default_factory=dict)
 	pwe_amounts: dict = field(default_factory=dict)
 	limit_rows_by_project: dict = field(default_factory=dict)
+	# Проект → «Опционально» / «Обязательно для всех Задач» / «Обязательно для всех Запросов».
+	plan_requirement_by_project: dict = field(default_factory=dict)
+	# (год, месяц, роль) → {(задача, статус, сотрудник): часы}. Пусто — факт среза 0.
+	fact_by_period: dict = field(default_factory=dict)
 	# Только этот run. Следующий запрос получает новый bulk и пустые словари.
 	_slice_cache: dict = field(default_factory=dict, compare=False, repr=False)
 	_compute_cache: dict = field(default_factory=dict, compare=False, repr=False)
@@ -58,12 +62,13 @@ class TimesheetLimitsBulkLoader:
 				fields=["name", "parent_task", "subject", "project"],
 			)
 		for t in raw_tasks:
+			proj = t.project or ""
 			task_meta[t.name] = {
 				"subject": t.subject or t.name,
 				"parent_task": t.parent_task or None,
 				"custom_linked_issue": bool(getattr(t, "custom_linked_issue", None)),
+				"project": proj,
 			}
-			proj = t.project or ""
 			children_map.setdefault((proj, t.name), [])
 			if t.parent_task:
 				children_map.setdefault((proj, t.parent_task), [])
@@ -116,10 +121,27 @@ class TimesheetLimitsBulkLoader:
 		for r in raw_limits:
 			limit_rows.setdefault(r.parent, []).append({"type": r.type, "limit": r.limit})
 
+		plan_requirement: dict = {}
+		try:
+			project_rows = frappe.db.get_all(
+				"Project",
+				filters={"name": ["in", project_list]},
+				fields=["name", "custom_обязательность_плановых_трудозатрат"],
+			)
+		except Exception as exc:
+			if "1054" not in str(exc):
+				raise
+			project_rows = []
+		for row in project_rows:
+			plan_requirement[row.name] = (
+				getattr(row, "custom_обязательность_плановых_трудозатрат", None) or "Опционально"
+			)
+
 		return TimesheetLimitsBulkData(
 			task_meta=task_meta,
 			children_map=children_map,
 			pwe_by_task_role=pwe_by_task_role,
 			pwe_amounts=pwe_amounts,
 			limit_rows_by_project=limit_rows,
+			plan_requirement_by_project=plan_requirement,
 		)
