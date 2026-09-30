@@ -33,6 +33,18 @@ fixtures = [
             ["module", "in", ["Project Workload Assignment"]]
         ]
     },
+    {
+        "doctype": "Client Script",
+        "filters": [
+            ["module", "in", ["Project Workload Assignment"]],
+        ]
+    },
+    {
+        "doctype": "Server Script",
+        "filters": [
+            ["module", "in", ["Project Workload Assignment"]],
+        ]
+    },
 ]
 ''''''
 

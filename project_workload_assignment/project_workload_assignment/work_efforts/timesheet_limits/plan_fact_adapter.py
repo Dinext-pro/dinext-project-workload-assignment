@@ -14,6 +14,10 @@ from project_workload_assignment.project_workload_assignment.plan_fact import (
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.bulk_loader import (
 	TimesheetLimitsBulkData,
 )
+from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.fact_period import (
+	accumulate_fact,
+	used_entries,
+)
 
 
 @dataclass(frozen=True)
@@ -140,6 +144,23 @@ class TimesheetPlanFactAdapter:
 		return got.assembled_at if got else None
 
 	@staticmethod
+	def _stop_nodes(bulk: TimesheetLimitsBulkData) -> frozenset[str]:
+		"""Виртуальные задачи запроса. Выше них план не поднимается."""
+		projects = {
+			name
+			for name, mode in bulk.plan_requirement_by_project.items()
+			if mode == "Обязательно для всех Запросов"
+		}
+		if not projects:
+			return frozenset()
+		return frozenset(
+			task
+			for task, meta in bulk.task_meta.items()
+			if meta.get("custom_linked_issue")
+			and (not meta.get("project") or meta.get("project") in projects)
+		)
+
+	@staticmethod
 	def _roles(bulk: TimesheetLimitsBulkData, project: str) -> list[str]:
 		return sorted(
 			{role for (proj, _task, role) in bulk.pwe_by_task_role if proj == project}
@@ -150,10 +171,11 @@ class TimesheetPlanFactAdapter:
 		"""Повтор того же снимка в этом bulk не обходит дерево заново."""
 		sid = id(snap)
 		bulk._compute_snaps[sid] = snap
-		cache_key = (sid, node, role)
+		stops = cls._stop_nodes(bulk)
+		cache_key = (sid, node, role, stops)
 		if cache_key in bulk._compute_cache:
 			return bulk._compute_cache[cache_key]
-		got = PlanFact.compute(snap, node, role)
+		got = PlanFact.compute(snap, node, role, stops)
 		bulk._compute_cache[cache_key] = got
 		return got
 
@@ -171,7 +193,11 @@ class TimesheetPlanFactAdapter:
 			return cached
 		skeleton = cls._skeleton(bulk, project)
 		snaps = {
-			month: cls._month_snapshot(skeleton, entries)
+			month: cls._month_snapshot(
+				skeleton,
+				entries,
+				used_entries(bulk, month[0], month[1]),
+			)
 			for month, entries in cls._plan_by_month(bulk, project, hours_key).items()
 		}
 		built = (skeleton.parent_of, snaps)
@@ -189,8 +215,34 @@ class TimesheetPlanFactAdapter:
 		bulk._slice_cache[cache_key] = skeleton
 		return skeleton
 
+	@classmethod
+	def hours_data(
+		cls,
+		bulk: TimesheetLimitsBulkData,
+		project: str,
+		task: str,
+		role: str,
+		year: int | None,
+		month: int | None,
+	) -> dict:
+		"""Факт теми же срезами, что и план. Часы месяца не перетекают в соседний."""
+		_parent_of, snaps = cls.slices(bulk, project)
+		keys = [(year, month)] if year is not None and month is not None else sorted(snaps)
+		data: dict = {"total": 0.0, "users": set(), "user_hours": {}}
+		for key in keys:
+			snap = snaps.get(key) or cls._skeleton(bulk, project)
+			got = cls._compute(bulk, snap, task, role)
+			if not got:
+				continue
+			accumulate_fact(data, bulk, key[0], key[1], got.consumers, role)
+		return data
+
 	@staticmethod
-	def _month_snapshot(skeleton: Snapshot, entries: list[Entry]) -> Snapshot:
+	def _month_snapshot(
+		skeleton: Snapshot,
+		entries: list[Entry],
+		used: tuple[Entry, ...] = (),
+	) -> Snapshot:
 		"""Те же родители и дети. Своя таблица часов, своя память обхода."""
 		plan_index: dict[tuple[str, str], float] = {}
 		for row in entries:
@@ -202,7 +254,7 @@ class TimesheetPlanFactAdapter:
 			parent_of=skeleton.parent_of,
 			children_of=skeleton.children_of,
 			plan=plan_index,
-			used=(),
+			used=used,
 		)
 
 	@classmethod
