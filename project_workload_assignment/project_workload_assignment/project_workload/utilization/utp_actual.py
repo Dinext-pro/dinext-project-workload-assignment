@@ -9,12 +9,12 @@ import frappe
 from frappe.query_builder.functions import IfNull, Sum
 from frappe.utils import flt, getdate
 
+from dinext_timesheets.timesheet_status import APPROVED_POSITION_STATUSES
 from project_workload_assignment.project_workload_assignment.project_workload.core.periods import (
 	PWRPeriod,
 	build_date_to_period_key,
 )
 
-UTP_STATUS_APPROVED = "Согласовано"
 WORKER_WTYPES = ("Employee", "Supplier")
 
 
@@ -54,7 +54,7 @@ def query_utp_daily_rows(
 		)
 		.where(utp.project.isin(list(projects)))
 		.where(utp.user.isin(list(users)))
-		.where(utp.status == UTP_STATUS_APPROVED)
+		.where(utp.status.isin(APPROVED_POSITION_STATUSES))
 		.where(IfNull(utp.document_type, "") == "Task")
 		.where(detail.date.between(date_from, date_to))
 		.groupby(utp.user, utp.project, utp.document_name, utp.project_role, detail.date)
@@ -188,7 +188,7 @@ def _users_with_utp_on_project(project: str, date_from: str, date_to: str) -> li
 		.select(utp.user)
 		.distinct()
 		.where(utp.project == project)
-		.where(utp.status == UTP_STATUS_APPROVED)
+		.where(utp.status.isin(APPROVED_POSITION_STATUSES))
 		.where(IfNull(utp.document_type, "") == "Task")
 	).run(as_dict=True)
 	return sorted({row["user"] for row in rows if row.get("user")})

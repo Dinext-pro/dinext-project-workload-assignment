@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import frappe
 
+from dinext_timesheets.timesheet_status import APPROVED_POSITION_STATUSES
 from project_workload_assignment.project_workload_assignment.work_efforts.models import (
     ConsolidatedDataFormInput,
     ConsolidatedDataResponse,
@@ -228,7 +229,7 @@ def build_aggregated_work_efforts_tasks(project: str) -> ConsolidatedDataRespons
             UTP.name,
         )
         .where(UTP.project == project)
-        .where(UTP.status == "Согласовано")
+        .where(UTP.status.isin(APPROVED_POSITION_STATUSES))
         .where(UTP.document_type == "Task")
     )
     ts_raw_data = ts_query.run(as_dict=True)

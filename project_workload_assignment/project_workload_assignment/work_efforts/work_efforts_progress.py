@@ -25,6 +25,7 @@ from project_workload_assignment.project_workload_assignment.work_efforts.summar
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.bulk_loader import (
 	TimesheetLimitsBulkLoader,
 )
+from dinext_timesheets.timesheet_status import APPROVED_POSITION_STATUSES
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.plan_fact_adapter import (
 	TimesheetPlanFactAdapter,
 )
@@ -65,7 +66,7 @@ def _sum_fact_hours(project: str, roles: list[str], periods: list[dict]) -> floa
 		frappe.qb.from_(UTP)
 		.select(Coalesce(Sum(UTP.all_hours), 0).as_("total"))
 		.where(UTP.project == project)
-		.where(UTP.status == "Согласовано")
+		.where(UTP.status.isin(APPROVED_POSITION_STATUSES))
 		.where(UTP.document_type == "Task")
 		.where(UTP.project_role.isin(roles))
 		.where(period_criterion)
