@@ -1,124 +1,126 @@
+[Русский](README.ru.md)
+
 # project_workload_assignment
 
-`project_workload_assignment` — Frappe-приложение для управления и визуализации загрузки участников по проектам и задачам. Приложение добавляет собственный DocType назначения загрузки, расширяет формы `Task` и `Issue`, а также предоставляет отдельный экран отчёта `Projects Workload Report`.
+`project_workload_assignment` is a Frappe application for managing and visualizing participant workload across projects and tasks. It adds a dedicated workload assignment DocType, extends the `Task` and `Issue` forms, and provides a separate `Projects Workload Report` screen.
 
-Канонический владелец плановых трудозатрат и утилизации: `Project Work Efforts` / `Project Work Efforts Amount`, `Limit Control`, `Worker Utilization Table`, `Project Utilization Table` и связанные Project Custom Fields. Зависит от `dinext_projects`, `dinext_projects_pl` и `dinext_timesheets` (`Worker`).
+The canonical owner of planned work effort and utilization: `Project Work Efforts` / `Project Work Efforts Amount`, `Limit Control`, `Worker Utilization Table`, `Project Utilization Table` and related Project Custom Fields. Depends on `dinext_projects`, `dinext_projects_pl` and `dinext_timesheets` (`Worker`).
 
-Ключевая особенность репозитория: заметная часть бизнес-логики реализована не в Python-контроллерах, а в `hooks.py`, клиентских скриптах и экспортированных `Server Script` / `Client Script` fixtures. Для сопровождения и доработки приложения именно эти файлы являются основным источником правды.
+A key characteristic of the repository is that a substantial portion of its business logic is implemented in `hooks.py`, client scripts and exported `Server Script` / `Client Script` fixtures, rather than Python controllers. These files are the main source of truth for application maintenance and development.
 
-## Что делает приложение
+## What the application does
 
-- Создаёт сущность `Project Workload Assignment` для хранения назначения загрузки по связке `Task -> Project Role -> User`.
-- Позволяет задавать загрузку в трёх режимах:
-  - в рабочих часах;
-  - в процентах от фонда рабочих часов;
-  - в процентах от трудоёмкости задачи.
-- Встраивает интерфейс назначения загрузки в формы `Task` и `Issue`.
-- Позволяет массово назначать исполнителей проекта и синхронизировать эти назначения с `ToDo`.
-- Предоставляет отдельный экран `Projects Workload Report` с фильтрами по участнику, проекту и группе пользователей.
-- Рассчитывает нагрузку с учётом календарей, доступных часов, отсутствий, рабочих часов по шаблонам и плановых трудозатрат по ролям.
+- Creates the `Project Workload Assignment` entity to store workload assignments for the `Task -> Project Role -> User` relationship.
+- Supports three ways of specifying workload:
+  - working hours;
+  - a percentage of available working hours;
+  - a percentage of task effort.
+- Embeds the workload assignment interface in the `Task` and `Issue` forms.
+- Supports bulk assignment of project team members and synchronizes these assignments with `ToDo`.
+- Provides a separate `Projects Workload Report` screen with filters by participant, project and user group.
+- Calculates workload accounting for calendars, available hours, leave, template-based working hours and planned effort by role.
 
-## Основные сущности
+## Core entities
 
 ### `Project Workload Assignment`
 
-Основной пользовательский DocType приложения. Хранит:
+The application's main user-facing DocType. Stores:
 
-- задачу `Task`;
-- роль проекта `Project Role`;
-- пользователя `User`;
-- диапазон дат;
-- тип расчёта загрузки;
-- числовое значение загрузки;
-- флаг отдельного учёта.
+- the `Task`;
+- the `Project Role`;
+- the `User`;
+- the date range;
+- the workload calculation type;
+- the numeric workload value;
+- the separate accounting flag.
 
-Права в текущей схеме:
+Permissions in the current schema:
 
-- `System Manager`: чтение, создание, изменение, удаление, экспорт, печать, отчёты;
-- `Dinext_User`: чтение и изменение существующих записей, экспорт, печать, отчёты.
+- `System Manager`: read, create, update, delete, export, print, reports;
+- `Dinext_User`: read and update existing records, export, print, reports.
 
 ### `Projects Workload Report`
 
-Single DocType-оболочка для пользовательского экрана отчёта. Сам документ хранит только фильтры и контейнер для рендера таблицы:
+A Single DocType wrapper for the custom report screen. The document itself stores only filters and a container for rendering the table:
 
 - `user`;
 - `project`;
 - `user_group`;
-- служебное поле контейнера `projects_workload_report`.
+- the internal `projects_workload_report` container field.
 
-Права в текущей схеме:
+Permissions in the current schema:
 
-- `System Manager`: чтение, создание, изменение, удаление.
+- `System Manager`: read, create, update, delete.
 
-## Как это работает
+## How it works
 
-### 1. Работа из `Task` и `Issue`
+### 1. Working from `Task` and `Issue`
 
-Приложение подключает `project_workload_assignment/public/js/assignment/form.js` как `doctype_js` для `Task` и `Issue`.
+The application includes `project_workload_assignment/public/js/assignment/form.js` as `doctype_js` for `Task` and `Issue`.
 
-- Для `Task` диалог назначения загрузки открывается прямо из формы.
-- Для `Issue` сначала ищется связанная задача по полю `custom_linked_issue`, после чего открывается тот же диалог.
-- Если форма изменена, перед открытием диалога пользователю предлагается сохранить документ.
+- For `Task`, the workload assignment dialog opens directly from the form.
+- For `Issue`, the related task is first found through `custom_linked_issue`, then the same dialog opens.
+- If the form has unsaved changes, the user is prompted to save the document before opening the dialog.
 
-### 2. Диалог назначения загрузки
+### 2. Workload assignment dialog
 
-Глобальный сценарий диалога реализован в `project_workload_assignment/public/js/assignment/dialog.js`.
+The global dialog workflow is implemented in `project_workload_assignment/public/js/assignment/dialog.js`.
 
-При открытии диалога система:
+When the dialog opens, the system:
 
-- получает существующие записи `Project Workload Assignment` по задаче;
-- запрашивает ограничения по трудозатратам через `calculate_timesheet_limits`;
-- подтягивает текущие `ToDo` по задаче;
-- предлагает добавить недостающих исполнителей;
-- позволяет назначить одного пользователя или всю команду проекта;
-- ограничивает список ролей ролями пользователя в команде проекта;
-- валидирует и подсвечивает строки с потенциально проблемной загрузкой;
-- при сохранении отправляет все изменения через API `bulk_process_pwa`.
+- retrieves existing `Project Workload Assignment` records for the task;
+- requests effort limits through `calculate_timesheet_limits`;
+- loads the task's current `ToDo` records;
+- offers to add missing assignees;
+- lets you assign one user or the entire project team;
+- restricts the role list to the user's roles in the project team;
+- validates and highlights rows with potentially problematic workload;
+- sends all changes through the `bulk_process_pwa` API when saving.
 
-`bulk_process_pwa` на стороне сервера:
+On the server, `bulk_process_pwa`:
 
-- создаёт новые записи `Project Workload Assignment`;
-- обновляет существующие;
-- удаляет помеченные записи;
-- после этого синхронизирует `ToDo` назначения задачи с итоговым составом исполнителей.
+- creates new `Project Workload Assignment` records;
+- updates existing ones;
+- deletes records marked for deletion;
+- then synchronizes the task's `ToDo` assignments with the final set of assignees.
 
-### 3. Автообновление дат
+### 3. Automatic date updates
 
-В экспортированных `Server Script` fixtures есть обработчики `After Save` для `Task` и `Issue`.
+The exported `Server Script` fixtures contain `After Save` handlers for `Task` and `Issue`.
 
-- Если у назначения включён флаг `task_dates`, даты `date_from` / `date_to` автоматически обновляются при изменении дат задачи.
-- Для `Issue` обновление работает через связанную задачу.
+- If an assignment has `task_dates` enabled, its `date_from` / `date_to` dates update automatically when the task dates change.
+- For `Issue`, the update operates through the related task.
 
-### 4. Отчёт по загрузке
+### 4. Workload report
 
-Экран отчёта строится клиентским скриптом `Projects Workload Report_V3` из `project_workload_assignment/fixtures/client_script.json`.
+The report screen is built by the `Projects Workload Report_V3` client script from `project_workload_assignment/fixtures/client_script.json`.
 
-Отчёт:
+The report:
 
-- рендерится как пользовательская таблица на базе `StickyDataTable`;
-- поддерживает представления `daily`, `weekly`, `monthly`;
-- поддерживает диапазоны `quarter`, `half_year`, `year`;
-- позволяет фильтровать данные по пользователю, проекту и группе пользователей;
-- добавляет отдельные строки отсутствий;
-- показывает человеко-часы, процент загрузки и визуальное состояние ячейки;
-- по двойному клику умеет открывать загрузку проекта или заявку на отсутствие.
+- renders as a custom table based on `StickyDataTable`;
+- supports `daily`, `weekly`, `monthly` views;
+- supports `quarter`, `half_year`, `year` ranges;
+- lets you filter data by user, project and user group;
+- adds separate leave rows;
+- displays person-hours, workload percentage and the visual state of each cell;
+- can open project workload or a leave application on double-click.
 
-Серверная агрегация выполняется API `get_projects_workload_data` из `project_workload_assignment/fixtures/server_script.json`.
+Server-side aggregation is performed by the `get_projects_workload_data` API from `project_workload_assignment/fixtures/server_script.json`.
 
-Расчёт учитывает:
+The calculation accounts for:
 
-- назначения из `Project Workload Assignment`;
-- проектные календари и пользовательские holiday lists;
-- отсутствия из `Application For Leave`;
-- рабочие часы пользователя и переопределения по датам;
-- плановые трудозатраты из `Project Work Efforts` / `Project Work Efforts Amount`;
-- состав проектной команды и роли участников.
+- assignments from `Project Workload Assignment`;
+- project calendars and user holiday lists;
+- leave from `Application For Leave`;
+- user working hours and date-specific overrides;
+- planned effort from `Project Work Efforts` / `Project Work Efforts Amount`;
+- project team membership and participant roles.
 
-## Архитектура
+## Architecture
 
 ```mermaid
 flowchart LR
-  TaskIssue[Task и Issue] --> PwaForm[pwa_form.js]
+  TaskIssue[Task and Issue] --> PwaForm[pwa_form.js]
   PwaForm --> PwaDialog[pwa_dialog.js]
   PwaDialog --> PwaApi[bulk_process_pwa]
   PwaDialog --> RolesApi[get_project_user_roles]
@@ -126,34 +128,34 @@ flowchart LR
   PwaApi --> PwaDoc[Project Workload Assignment]
   TaskIssue --> DateSync[Server Script After Save]
   DateSync --> PwaDoc
-  ReportForm[Projects Workload Report] --> ReportClient[Client Script отчёта]
+  ReportForm[Projects Workload Report] --> ReportClient[Report Client Script]
   ReportClient --> ReportApi[get_projects_workload_data]
   ReportApi --> PwaDoc
-  ReportApi --> ExternalData[Календари, отсутствия, Project Work Efforts]
+  ReportApi --> ExternalData[Calendars, leave, Project Work Efforts]
 ```
 
-## Точки расширения Frappe
+## Frappe extension points
 
-Ключевые интеграции объявлены в `project_workload_assignment/hooks.py`:
+Key integrations are declared in `project_workload_assignment/hooks.py`:
 
-- модуль Desk: `Project Workload Assignment` (`modules.txt`);
-- глобальный CSS: `/assets/project_workload_assignment/css/assignment_styles.css`;
-- глобальный JS: `/assets/project_workload_assignment/js/assignment/dialog.js` (+ `workload-reports/report-form/entry.js`);
-- `doctype_js` для `Task` и `Issue`: `public/js/assignment/form.js`;
+- Desk module: `Project Workload Assignment` (`modules.txt`);
+- global CSS: `/assets/project_workload_assignment/css/assignment_styles.css`;
+- global JS: `/assets/project_workload_assignment/js/assignment/dialog.js` (+ `workload-reports/report-form/entry.js`);
+- `doctype_js` for `Task` and `Issue`: `public/js/assignment/form.js`;
 - fixtures:
-  - `Server Script` для модуля `Project Workload Assignment`;
-  - `Client Script` для модуля `Project Workload Assignment`.
+  - `Server Script` for the `Project Workload Assignment` module;
+  - `Client Script` for the `Project Workload Assignment` module.
 
-Это означает, что после изменений в fixtures или клиентских ресурсах важно проверять не только Python-код, но и экспортированные сценарии в JSON и JS-файлах.
+This means that after fixture or client asset changes, it is important to check the exported workflows in JSON and JS files as well as the Python code.
 
-## Требования
+## Requirements
 
-Подтверждённые требования из репозитория и кода:
+Requirements confirmed by the repository and code:
 
 - Python `>= 3.10`;
-- Frappe / Bench-окружение;
-- установленный сайт, на который можно поставить приложение;
-- доступность стандартных и кастомных DocType, используемых в логике:
+- a Frappe / Bench environment;
+- an existing site where the application can be installed;
+- availability of the standard and custom DocTypes used by the logic:
   - `Task`;
   - `Issue`;
   - `ToDo`;
@@ -169,17 +171,17 @@ flowchart LR
   - `Timesheet Template`;
   - `Working Hours On Date`.
 
-Также код ожидает наличие внешних зависимостей на стороне основного ERP-окружения:
+The code also expects external dependencies in the main ERP environment:
 
-- фронтенд-ресурс `/assets/dinext_common/js/sticky-datatable.js`;
-- серверный метод `calculate_timesheet_limits`;
-- utility-метод `dinord_erpnext_customization.dinord_erpnext_customization.utils.user.get_users_with_role`.
+- the frontend asset `/assets/dinext_common/js/sticky-datatable.js`;
+- the `calculate_timesheet_limits` server method;
+- the utility method `dinord_erpnext_customization.dinord_erpnext_customization.utils.user.get_users_with_role`.
 
-Если этих зависимостей нет в стенде, часть сценариев интерфейса и отчёта работать не будет.
+If these dependencies are missing in the environment, some interface and report scenarios will not work.
 
-## Установка
+## Installation
 
-Установка выполняется через `bench`:
+Installation uses `bench`:
 
 ```bash
 cd $PATH_TO_YOUR_BENCH
@@ -188,7 +190,7 @@ bench --site <site_name> install-app project_workload_assignment
 bench --site <site_name> migrate
 ```
 
-Если приложение уже добавлено в bench как локальный app, достаточно:
+If the application is already added to bench as a local app, the following is sufficient:
 
 ```bash
 cd $PATH_TO_YOUR_BENCH
@@ -196,26 +198,26 @@ bench --site <site_name> install-app project_workload_assignment
 bench --site <site_name> migrate
 ```
 
-Для локальной разработки обычно также используют:
+For local development, the following is also commonly used:
 
 ```bash
 bench start
 ```
 
-## Быстрый сценарий использования
+## Quick usage scenario
 
-### Для пользователя
+### For a user
 
-1. Откройте `Task` или `Issue`, связанные с проектом.
-2. Запустите диалог назначения загрузки через блок назначений на форме.
-3. Добавьте одного исполнителя или назначьте всю команду проекта.
-4. Для каждой строки задайте роль, период и тип загрузки.
-5. Сохраните изменения, чтобы обновить `Project Workload Assignment` и синхронизировать `ToDo`.
-6. Откройте `Projects Workload Report` для просмотра суммарной загрузки по участникам и проектам.
+1. Open a `Task` or `Issue` associated with a project.
+2. Launch the workload assignment dialog from the form's assignments block.
+3. Add one assignee or assign the entire project team.
+4. Specify a role, period and workload type for each row.
+5. Save the changes to update `Project Workload Assignment` and synchronize `ToDo`.
+6. Open `Projects Workload Report` to view total workload by participant and project.
 
-### Для разработчика или внедрения
+### For a developer or implementation team
 
-При разборе поведения приложения начинать стоит в таком порядке:
+When investigating the application's behavior, start in this order:
 
 1. `project_workload_assignment/hooks.py`
 2. `project_workload_assignment/public/js/assignment/form.js`
@@ -224,53 +226,53 @@ bench start
 5. `project_workload_assignment/fixtures/client_script.json`
 6. `project_workload_assignment/project_workload_assignment/doctype/*/*.json`
 
-Python-контроллеры и тесты сейчас в основном каркасные, поэтому основное поведение находится именно в перечисленных выше файлах.
+The Python controllers and tests are currently mostly scaffolding, so the main behavior is in the files listed above.
 
-## Разработка
+## Development
 
-### Подготовка репозитория
+### Repository setup
 
-В репозитории настроен `pre-commit`:
+The repository is configured with `pre-commit`:
 
 ```bash
 cd apps/project_workload_assignment
 pre-commit install
 ```
 
-Проверки и форматирование:
+Checks and formatting:
 
-- `ruff` и сортировка импортов;
+- `ruff` and import sorting;
 - `ruff-format`;
 - `eslint`;
 - `prettier`;
-- базовые `pre-commit-hooks`.
+- basic `pre-commit-hooks`.
 
-Запуск вручную:
+Run manually:
 
 ```bash
 cd apps/project_workload_assignment
 pre-commit run --all-files
 ```
 
-### Тесты
+### Tests
 
-В репозитории присутствуют Frappe test stubs для обоих DocType. Базовая команда запуска:
+The repository contains Frappe test stubs for both DocTypes. The basic command to run them is:
 
 ```bash
 bench --site <site_name> run-tests --app project_workload_assignment
 ```
 
-На текущий момент тестовые классы существуют, но содержат только каркас без фактических сценариев.
+At present, the test classes exist but contain only scaffolding, without actual scenarios.
 
-## Конфигурация и ограничения
+## Configuration and limitations
 
-- Отдельные переменные окружения в репозитории не обнаружены.
-- Значимая часть логики хранится в fixtures, поэтому изменения через UI Frappe без последующего экспорта могут не попасть в git.
-- `Projects Workload Report` зависит от клиентского рендера и внешнего компонента `StickyDataTable`.
-- Лицензия приложения — GNU GPL v3, полный текст в `license.txt`.
-- В `patches.txt` секции `pre_model_sync` и `post_model_sync` пока пустые.
+- No separate environment variables were found in the repository.
+- A significant portion of the logic is stored in fixtures, so changes made through the Frappe UI may not reach git without a subsequent export.
+- `Projects Workload Report` depends on client-side rendering and the external `StickyDataTable` component.
+- The application is licensed under GNU GPL v3; the full text is in `license.txt`.
+- The `pre_model_sync` and `post_model_sync` sections in `patches.txt` are currently empty.
 
-## Структура репозитория
+## Repository structure
 
 ```text
 project_workload_assignment/
@@ -308,28 +310,28 @@ project_workload_assignment/
                 └── test_projects_workload_report.py
 ```
 
-Краткое назначение каталогов:
+Directory purposes in brief:
 
-- `project_workload_assignment/hooks.py` — регистрация интеграций приложения в Frappe.
-- `project_workload_assignment/fixtures/` — экспортированные серверные и клиентские сценарии, содержащие значительную часть бизнес-логики.
-- `project_workload_assignment/public/js/` — прикладной фронтенд для формы назначения загрузки и пользовательских сценариев.
-- `project_workload_assignment/public/css/` — стили для диалогов назначения и связанных элементов.
-- `project_workload_assignment/project_workload_assignment/doctype/` — схемы кастомных DocType, их Python-контроллеры и тестовые заготовки.
+- `project_workload_assignment/hooks.py` — registration of the application's Frappe integrations.
+- `project_workload_assignment/fixtures/` — exported server and client workflows containing a significant portion of the business logic.
+- `project_workload_assignment/public/js/` — application frontend for the workload assignment form and user scenarios.
+- `project_workload_assignment/public/css/` — styles for assignment dialogs and related elements.
+- `project_workload_assignment/project_workload_assignment/doctype/` — custom DocType schemas, their Python controllers and test scaffolding.
 
-## Где искать изменения по типам задач
+## Where to make changes by task type
 
-- Нужно изменить поведение открытия диалога из `Task` / `Issue`:
+- To change how the dialog opens from `Task` / `Issue`:
   - `project_workload_assignment/public/js/assignment/form.js`
-- Нужно изменить UI или валидацию назначения загрузки:
+- To change the workload assignment UI or validation:
   - `project_workload_assignment/public/js/assignment/dialog.js`
   - `project_workload_assignment/public/css/assignment_styles.css`
-- Нужно изменить серверную обработку сохранения, расчёта или синхронизации:
+- To change server-side saving, calculation or synchronization:
   - `project_workload_assignment/fixtures/server_script.json`
-- Нужно изменить интерфейс отчёта:
+- To change the report interface:
   - `project_workload_assignment/fixtures/client_script.json`
-- Нужно изменить поля, права или структуру документов:
+- To change document fields, permissions or structure:
   - `project_workload_assignment/project_workload_assignment/doctype/.../*.json`
 
-## Лицензия
+## License
 
-В `hooks.py` указана лицензия GNU GPL v3. Полный текст — в [license.txt](license.txt).
+`hooks.py` specifies the GNU GPL v3 license. See [license.txt](license.txt) for the full text.
