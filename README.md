@@ -1,5 +1,25 @@
 [Русский](README.ru.md)
 
+<!-- dinext-presentation:start -->
+<p align="center">
+  <a href="https://dinext.ru"><img src="docs/assets/readme/dinext-logo.png" alt="Dinext" width="128"></a>
+</p>
+<h1 align="center">Dinext Project Workload Assignment</h1>
+
+<hr>
+
+<p align="center">Assign project effort, balance team workload and compare planned utilization with available capacity.</p>
+
+<p align="center">
+  <img src="docs/assets/readme/overview.png" alt="Team capacity and workload planning with demonstration accounts." width="960">
+</p>
+<p align="center"><sub>Team capacity and workload planning with demonstration accounts.</sub></p>
+
+<p align="center">
+  <a href="https://dinext.ru">Website</a> · <a href="https://docs.dinext.ru">Documentation</a>
+</p>
+<!-- dinext-presentation:end -->
+
 # project_workload_assignment
 
 `project_workload_assignment` is a Frappe application for managing and visualizing participant workload across projects and tasks. It adds a dedicated workload assignment DocType, extends the `Task` and `Issue` forms, and provides a separate `Projects Workload Report` screen.

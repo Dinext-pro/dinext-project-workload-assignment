@@ -1,5 +1,25 @@
 [English](README.md)
 
+<!-- dinext-presentation:start -->
+<p align="center">
+  <a href="https://dinext.ru"><img src="docs/assets/readme/dinext-logo.png" alt="Dinext" width="128"></a>
+</p>
+<h1 align="center">Dinext Project Workload Assignment</h1>
+
+<hr>
+
+<p align="center">Назначение трудозатрат, балансировка загрузки команды и сравнение плановой занятости с доступной ёмкостью.</p>
+
+<p align="center">
+  <img src="docs/assets/readme/overview.png" alt="Планирование загрузки и ёмкости команды с учебными учётными записями." width="960">
+</p>
+<p align="center"><sub>Планирование загрузки и ёмкости команды с учебными учётными записями.</sub></p>
+
+<p align="center">
+  <a href="https://dinext.ru">Сайт</a> · <a href="https://docs.dinext.ru">Документация</a>
+</p>
+<!-- dinext-presentation:end -->
+
 # project_workload_assignment
 
 `project_workload_assignment` — Frappe-приложение для управления и визуализации загрузки участников по проектам и задачам. Приложение добавляет собственный DocType назначения загрузки, расширяет формы `Task` и `Issue`, а также предоставляет отдельный экран отчёта `Projects Workload Report`.
