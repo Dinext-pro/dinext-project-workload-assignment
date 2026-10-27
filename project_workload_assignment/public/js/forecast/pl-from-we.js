@@ -128,6 +128,28 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 					}
 				});
 
+				// ISS-2026-03985: PWE без PWA — задача может быть в API, но ещё не в aggregatedTasks
+				if (tasksWithData.size === 0) {
+					tasks.forEach(task => {
+						if (!(task.total_forecast > 0 || task.total_assigned > 0)) {
+							return;
+						}
+						tasksWithData.add(task.task);
+						if (!allTasks.find(t => t.value === task.task)) {
+							allTasks.push({
+								value: task.task,
+								subject: task.task_subject || task.task,
+								parent_task: null,
+							});
+						}
+					});
+				}
+
+				if (tasksWithData.size === 0) {
+					frappe.msgprint(__("No tasks with forecast work efforts or workload"));
+					return;
+				}
+
 				let tasksToShow = new Set(tasksWithData);
 				tasksWithData.forEach(taskId => {
 					let current = allTasks.find(t => t.value === taskId);

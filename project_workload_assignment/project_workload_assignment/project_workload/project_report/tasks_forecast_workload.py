@@ -252,29 +252,15 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
     assignments = assignments_query.run(as_dict=True)
     debug_log(f"Assignments found: {len(assignments)}")
 
-    
-    if not assignments:
-        debug_log("No assignments found")
+    # ISS-2026-03985: без PWA (все virtual) всё равно отдаём задачи с PWE —
+    # иначе UI «Add forecast from WE» показывает пустой список.
+    if not assignments and not forecast_cache:
+        debug_log("No assignments and no forecast data")
         return {
             'tasks': [],
             'tasks_details': {}
         }
 
-    
-    # ========== 4. КОНТЕКСТ РАСЧЁТА (WorkloadContext) ==========
-    debug_log("=== STEP 5: LOAD WORKLOAD CONTEXT ===")
-
-    
-    users_list = list({a.get('user') for a in assignments if a.get('user')})
-    users_data = load_users_with_worker_context(users_list)
-    projects_data = load_projects([project])
-    working_hours_overrides = load_working_hours_overrides(users_data)
-    holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
-    user_absences = load_user_absences(users_list, min_end_date=getdate(min_date))
-    monthly_plan_cache = load_monthly_plan_cache(assignments)
-    monthly_plan_cache.update(plan_cache)
-
-    
     period_set = set()
     period_dates = set()
     for p in periods:
@@ -286,30 +272,42 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
             period_dates.add(str(current))
             current = frappe.utils.add_days(current, 1)
 
-    
-    wl_ctx = WorkloadContext(
-        users_data=users_data,
-        projects_data=projects_data,
-        working_hours_overrides=working_hours_overrides,
-        holiday_date_sets=holiday_date_sets,
-        user_absences=user_absences,
-        monthly_plan_cache=monthly_plan_cache,
-        holiday_lists_cache=holiday_lists_cache,
-    )
-    wl_ctx.preload_user_base_hours(users_list, period_dates)
+    # ========== 4. КОНТЕКСТ РАСЧЁТА (WorkloadContext) — только если есть PWA ==========
+    wl_ctx = None
+    monthly_plan_cache = dict(plan_cache)
+    if assignments:
+        debug_log("=== STEP 5: LOAD WORKLOAD CONTEXT ===")
 
-    
+        users_list = list({a.get('user') for a in assignments if a.get('user')})
+        users_data = load_users_with_worker_context(users_list)
+        projects_data = load_projects([project])
+        working_hours_overrides = load_working_hours_overrides(users_data)
+        holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
+        user_absences = load_user_absences(users_list, min_end_date=getdate(min_date))
+        monthly_plan_cache = load_monthly_plan_cache(assignments)
+        monthly_plan_cache.update(plan_cache)
+
+        wl_ctx = WorkloadContext(
+            users_data=users_data,
+            projects_data=projects_data,
+            working_hours_overrides=working_hours_overrides,
+            holiday_date_sets=holiday_date_sets,
+            user_absences=user_absences,
+            monthly_plan_cache=monthly_plan_cache,
+            holiday_lists_cache=holiday_lists_cache,
+        )
+        wl_ctx.preload_user_base_hours(users_list, period_dates)
+    else:
+        debug_log("=== STEP 5: SKIP WORKLOAD CONTEXT (no PWA, PWE-only) ===")
+
     # ========== 5. СБОР ВСЕХ ДАННЫХ ПО ЗАДАЧАМ ==========
     debug_log("=== STEP 6: COLLECT TASKS DATA ===")
 
-    
     tasks_map = {}
     tasks_details = {}
 
-    
     debug_log("  Collecting forecasts from PWE...")
 
-    
     for key, forecast_hours in forecast_cache.items():
         parts = key.split('_')
         if len(parts) >= 4:
@@ -318,14 +316,11 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
             year = int(parts[-2])
             month = int(parts[-1])
 
-            
             if (year, month) not in period_set:
                 continue
 
-            
             plan_hours = plan_cache.get(key, 0)
 
-            
             if task not in tasks_map:
                 tasks_map[task] = {
                     'task': task,
@@ -335,7 +330,6 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
                 }
             tasks_map[task]['total_forecast'] = tasks_map[task]['total_forecast'] + forecast_hours
 
-            
             if task not in tasks_details:
                 tasks_details[task] = {}
             if role not in tasks_details[task]:
@@ -347,25 +341,33 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
                 'users': {}
             }
 
-            
             debug_log(f"    Added forecast for {task}/{role}/{period_key}: +{forecast_hours}, plan={plan_hours}")
 
-    
     task_subjects = {}
     for a in assignments:
         if a.get('task') and a.get('task_subject'):
             task_subjects[a['task']] = a['task_subject']
 
-    
+    # Без PWA subjects не из assignments — догружаем из Task
+    missing_subject_ids = [
+        task_id for task_id, task_data in tasks_map.items()
+        if task_data['task_subject'] == task_id and task_id not in task_subjects
+    ]
+    if missing_subject_ids:
+        for row in frappe.get_all(
+            "Task",
+            filters={"name": ["in", missing_subject_ids]},
+            fields=["name", "subject"],
+        ):
+            task_subjects[row["name"]] = row["subject"] or row["name"]
+
     for task_id, task_data in tasks_map.items():
         if task_data['task_subject'] == task_id and task_id in task_subjects:
             task_data['task_subject'] = task_subjects[task_id]
 
-    
     debug_log("  Collecting workload from PWA via WorkloadContext...")
     checked_counter = 0
 
-    
     for assignment in assignments:
         checked_counter += 1
         task = assignment.get('task')
