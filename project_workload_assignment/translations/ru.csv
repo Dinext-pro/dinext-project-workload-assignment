@@ -69,6 +69,7 @@
 "No tasks selected","Не выбрано ни одной задачи",""
 "No tasks with forecast work efforts or workload","Нет задач с прогнозными трудозатратами или загрузкой",""
 "No tasks with work efforts in project","Нет задач с трудозатратами в проекте",""
+"No assigned workload for task ""{0}"", role ""{1}"", period {2}. The entire forecast ({3}h) will be calculated from the virtual team member when calculating {4}. Continue?","Нет назначенной загрузки по задаче ""{0}"", роли ""{1}"", периоду {2}. Весь прогноз ({3}ч) будет рассчитан по виртуальному участнику при расчёте {4}. Продолжить?",""
 "No virtual team member found for role ""{0}"". Cannot distribute remaining forecast hours ({1}h).","Для роли ""{0}"" не найден виртуальный участник в команде проекта. Невозможно распределить остаток прогнозных часов ({1}ч).",""
 "No work effort data","Нет данных о трудозатратах",""
 "Operation cancelled","Операция отменена",""
