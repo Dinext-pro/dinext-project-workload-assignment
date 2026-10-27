@@ -213,12 +213,15 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 			else:
 				parent_values.add(value)
 
-	# Для revenue также добавляем pt_category виртуальных участников
-	if forecast_type == "revenue":
-		for vtd in virtual_team_details:
+	# ISS-2026-03985 п.1: ставки virtual нужны и для cost (не только revenue),
+	# иначе при отсутствии реальных участников rates пустой и запись в бюджет = 0.
+	for vtd in virtual_team_details:
+		if rate_source_field == "pt_category":
 			value = vtd.get("pt_category")
-			if value:
-				parent_values.add(value)
+		else:
+			value = vtd.get("pt_cost_level")
+		if value:
+			parent_values.add(value)
 
 	_debug_log(f"  parent_values: {parent_values}")
 
@@ -358,9 +361,13 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 						# Для revenue не фильтруем по worker type
 						matching_users.append((td_user, td))
 
+			# ISS-2026-03985 п.1: без реальных участников роли не skip —
+			# если есть virtual, underload-путь запишет прогноз целиком на него.
 			if not matching_users:
-				_debug_log(f"    No valid users found for role {role}, skipping")
-				continue
+				_debug_log(
+					f"    No valid real users for role {role}; "
+					f"virtual={'yes' if virtual_team_map.get(role) else 'no'}"
+				)
 
 			for period_key, hours_data in periods.items():
 				forecast_hours = hours_data.get('forecast_hours', 0)
@@ -544,10 +551,15 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if not confirm_recalc:
 						type_label = frappe._("cost") if forecast_type == "cost" else frappe._("revenue")
-						return {
-							'success': False,
-							'needs_confirmation': True,
-							'message': frappe._(
+						# ISS-2026-03985 п.1: отдельный текст, если реальной загрузки нет вовсе
+						if total_pwa_hours <= 0:
+							confirm_message = frappe._(
+								'No assigned workload for task "{0}", role "{1}", period {2}. '
+								'The entire forecast ({3}h) will be calculated from the virtual team member '
+								'when calculating {4}. Continue?'
+							).format(task, role, period_key, forecast_hours, type_label)
+						else:
+							confirm_message = frappe._(
 								'Underload detected: forecast work efforts ({0}h) exceed assigned workload ({1}h) '
 								'for task "{2}", role "{3}", period {4}. '
 								'A virtual team member will cover the remainder ({5}h) when calculating {6}. Continue?'
@@ -559,7 +571,11 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 								period_key,
 								round(forecast_hours - total_pwa_hours, 2),
 								type_label,
-							),
+							)
+						return {
+							'success': False,
+							'needs_confirmation': True,
+							'message': confirm_message,
 							'task': task,
 							'role': role,
 							'period': period_key,
