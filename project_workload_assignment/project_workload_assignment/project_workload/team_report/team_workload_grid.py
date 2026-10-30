@@ -79,6 +79,10 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		period_range = fd.get('period_range', 'quarter')
 		period_anchor_date = fd.get('period_anchor_date')
 		load_actual = _parse_bool_form_value(fd.get('load_actual'), default=False)
+		from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+			hours_source_from_form,
+		)
+		hours_source = hours_source_from_form(fd, project)
 		worker_wtype_filter = None
 		from project_workload_assignment.project_workload_assignment.project_workload.core.worker_wtype_helpers import (
 			filter_users_by_wtype,
@@ -358,7 +362,7 @@ def run_get_projects_workload_data_v2(fd: TeamWorkloadFormDict | None) -> TeamWo
 		working_hours_overrides = load_working_hours_overrides(users_data)
 		holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
 		user_absences = load_user_absences(users_list)
-		monthly_plan_cache = load_monthly_plan_cache(assignments)
+		monthly_plan_cache = load_monthly_plan_cache(assignments, hours_source=hours_source)
 		perf_end(
 		    "Load workload context",
 		    perf_section_start,

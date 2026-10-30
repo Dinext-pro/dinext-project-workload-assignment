@@ -3,6 +3,8 @@
  * Chart API: { periods, series, meta }.
  */
 
+import { WORKLOAD_BASE_BY_PROJECT, WORKLOAD_BASE_PLAN } from "./filters/periods.js";
+
 const _path = "project_workload_assignment.api.";
 
 const PROJECTS_GRID = _path + "pwr_run_team_workload_grid_canonical";
@@ -16,6 +18,13 @@ const _asGrid = (message) => ({
 	meta: message?.meta || {},
 });
 
+const _roleFilters = (args) =>
+	Array.isArray(args.project_role_filters)
+		? args.project_role_filters
+		: args.project_role_filters
+			? [args.project_role_filters]
+			: [];
+
 const _projectsArgs = (args = {}) => ({
 	user: args.user || "",
 	project: args.project || "",
@@ -25,12 +34,9 @@ const _projectsArgs = (args = {}) => ({
 	period_range: args.period_range,
 	period_anchor_date: args.period_anchor_date || frappe.datetime?.get_today?.(),
 	load_actual: args.load_actual ? 1 : 0,
+	workload_base: args.workload_base || WORKLOAD_BASE_BY_PROJECT,
 	worker_wtype: args.worker_wtype || "",
-	project_role_filters: Array.isArray(args.project_role_filters)
-		? args.project_role_filters
-		: args.project_role_filters
-			? [args.project_role_filters]
-			: [],
+	project_role_filters: _roleFilters(args),
 	mode: args.mode || "user_totals",
 	limit: args.limit,
 	offset: args.offset ?? 0,
@@ -43,12 +49,9 @@ const _projectArgs = (args = {}) => ({
 	date_from: args.date_from,
 	date_to: args.date_to,
 	load_actual: args.load_actual ? 1 : 0,
+	workload_base: args.workload_base || WORKLOAD_BASE_PLAN,
 	worker_wtype: args.worker_wtype || "",
-	project_role_filters: Array.isArray(args.project_role_filters)
-		? args.project_role_filters
-		: args.project_role_filters
-			? [args.project_role_filters]
-			: [],
+	project_role_filters: _roleFilters(args),
 });
 
 const _teamChartsArgs = (args = {}) => ({
@@ -60,13 +63,10 @@ const _teamChartsArgs = (args = {}) => ({
 	period_range: args.period_range,
 	period_anchor_date: args.period_anchor_date || frappe.datetime?.get_today?.(),
 	worker_wtype: args.worker_wtype || "",
-	project_role_filters: Array.isArray(args.project_role_filters)
-		? args.project_role_filters
-		: args.project_role_filters
-			? [args.project_role_filters]
-			: [],
+	project_role_filters: _roleFilters(args),
 	load_actual: args.load_actual ? 1 : 0,
 	load_utilization: args.load_utilization ? 1 : 0,
+	workload_base: args.workload_base || WORKLOAD_BASE_BY_PROJECT,
 });
 
 const _projectChartsArgs = (args = {}) => ({

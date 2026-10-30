@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8" />
+	<title>Workload base selector (ISS-2026-03483)</title>
+</head>
+<body>
+	<!-- Mirrors report vs project option sets from public/js/.../filters/periods.js -->
+	<label for="report-workload-base">Report workload base</label>
+	<select id="report-workload-base" data-fieldname="workload_base" data-surface="report">
+		<option value="По проекту">По проекту</option>
+		<option value="От плана">От плана</option>
+		<option value="От прогноза">От прогноза</option>
+	</select>
+
+	<label for="project-workload-base">Project workload base</label>
+	<select id="project-workload-base" data-fieldname="workload_base" data-surface="project">
+		<option value="От плана">От плана</option>
+		<option value="От прогноза">От прогноза</option>
+	</select>
+</body>
+</html>

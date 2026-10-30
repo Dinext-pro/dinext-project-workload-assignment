@@ -273,8 +273,10 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
             current = frappe.utils.add_days(current, 1)
 
     # ========== 4. КОНТЕКСТ РАСЧЁТА (WorkloadContext) — только если есть PWA ==========
+    # monthly_plan_cache — база для % от трудоёмкости (план/прогноз по hours_source).
+    # plan_cache отдельно — только display plan_hours в ответе (не мержить в engine-cache).
     wl_ctx = None
-    monthly_plan_cache = dict(plan_cache)
+    monthly_plan_cache: dict = {}
     if assignments:
         debug_log("=== STEP 5: LOAD WORKLOAD CONTEXT ===")
 
@@ -284,8 +286,12 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
         working_hours_overrides = load_working_hours_overrides(users_data)
         holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
         user_absences = load_user_absences(users_list, min_end_date=getdate(min_date))
-        monthly_plan_cache = load_monthly_plan_cache(assignments)
-        monthly_plan_cache.update(plan_cache)
+        from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+            hours_source_from_form,
+        )
+        monthly_plan_cache = load_monthly_plan_cache(
+            assignments, hours_source=hours_source_from_form(fd, project)
+        )
 
         wl_ctx = WorkloadContext(
             users_data=users_data,
@@ -402,7 +408,7 @@ def _tasks_forecast_impl(fd: frappe._dict | ForecastFormDict) -> TasksForecastRe
             period_key = f"{d.year}-{d.month}"
             forecast_key = f"{task}_{role}_{d.year}_{d.month}"
             forecast_hours = forecast_cache.get(forecast_key, 0)
-            plan_hours = plan_cache.get(forecast_key, 0) or monthly_plan_cache.get(forecast_key, 0)
+            plan_hours = plan_cache.get(forecast_key, 0)
 
             
             if task not in tasks_map:
