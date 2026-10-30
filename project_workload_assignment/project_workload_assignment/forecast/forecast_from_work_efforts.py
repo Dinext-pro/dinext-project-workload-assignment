@@ -37,6 +37,11 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	_debug_log(f"STEP 2: Getting project data (forecast_type={forecast_type})")
 
 	# ========== 1. ПОЛУЧАЕМ ДАННЫЕ ПРОЕКТА ==========
+	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+		WORKLOAD_BASE_FORECAST,
+		project_workload_base,
+	)
+
 	Project = frappe.qb.DocType('Project')
 	project_query = (
 		frappe.qb.from_(Project)
@@ -46,7 +51,8 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	)
 	project_result = project_query.run(as_dict=True)
 	payment_scheme = project_result[0].get('custom_payment_scheme') if project_result else None
-	_debug_log(f"  payment_scheme: {payment_scheme}")
+	_workload_base = project_workload_base(project)
+	_debug_log(f"  payment_scheme: {payment_scheme}, workload_base: {_workload_base}")
 
 	# ========== 2. ПОЛУЧАЕМ СТАТЬИ БЮДЖЕТА (только для cost) ==========
 	account_table = []
@@ -473,12 +479,22 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if workload_type == 'В % от трудоемкости задачи':
 						original_hours = assigned
-						if not original_hours and plan_hours and percentage:
-							original_hours = plan_hours * percentage / 100
+						# ISS-2026-03985 п.3 / 03483: fallback по Project.custom_workload_base
+						if not original_hours and percentage:
+							base_hours = (
+								forecast_hours
+								if _workload_base == WORKLOAD_BASE_FORECAST
+								else plan_hours
+							)
+							if base_hours:
+								original_hours = base_hours * percentage / 100
 					else:
 						original_hours = assigned
 
-					_debug_log(f"      User: {user}, type={workload_type}, hours={original_hours}, plan={plan_hours}")
+					_debug_log(
+						f"      User: {user}, type={workload_type}, hours={original_hours}, "
+						f"base={_workload_base}, forecast={forecast_hours}, plan={plan_hours}"
+					)
 
 					users_for_period.append({
 						'user': user,

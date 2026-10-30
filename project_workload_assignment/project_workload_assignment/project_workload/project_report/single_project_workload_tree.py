@@ -164,7 +164,11 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 
 		worker_wtype_filter = normalize_worker_wtype_filter(fd.get('worker_wtype'))
 		project_role_filters = normalize_project_role_filters(fd.get('project_role_filters'))
-		
+		from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+			hours_source_from_form,
+		)
+		hours_source = hours_source_from_form(fd, project)
+
 		logger(f"Project: {project}, View Type: {view_type}, Period: {date_from} to {date_to}")
 		
 		if not project:
@@ -515,7 +519,7 @@ def run_get_project_workload_data(fd: FormDict | None) -> ProjectWorkloadRespons
 							"project": project,
 						})
 
-		monthly_plan_cache = load_monthly_plan_cache(engine_assignments)
+		monthly_plan_cache = load_monthly_plan_cache(engine_assignments, hours_source=hours_source)
 		period_dates = _dates_in_periods(periods, view_type)
 
 		wl_ctx = WorkloadContext(

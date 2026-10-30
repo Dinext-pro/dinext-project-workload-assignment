@@ -133,6 +133,8 @@ function mount(frm) {
 			_reload(frm, el);
 		}, {
 			getProject: () => frm.doc.name,
+			workload_base: frm.doc.custom_workload_base || "От плана",
+			onWorkloadBaseChange: (v) => frm.set_value("custom_workload_base", v),
 		});
 		el._getArgs = session.getArgs;
 		el._wrToolbar = common.buildPeriodToolbar(session, "workload-reports-project", {

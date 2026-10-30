@@ -142,6 +142,18 @@
 	width: auto;
 }
 
+/* От плана / От прогноза / По проекту — Russian labels need room. */
+.wr-filter-select[data-fieldname="workload_base"] {
+	min-width: 140px;
+	max-width: none;
+}
+
+.wr-filter-select[data-fieldname="workload_base"] select {
+	min-width: 140px;
+	max-width: none;
+	width: auto;
+}
+
 .wr-filter-field .help-box,
 .wr-filter-field .clearfix,
 .wr-filter-field .control-label {

@@ -4,7 +4,14 @@
  * add toolbar extras (worker, fact, period, view) in the same row.
  */
 
-import { WORKER_OPTIONS, projectsDefaults, resetProjectsAnchor, shiftMonth } from "./periods.js";
+import {
+	WORKER_OPTIONS,
+	WORKLOAD_BASE_BY_PROJECT,
+	getReportWorkloadBaseOptions,
+	projectsDefaults,
+	resetProjectsAnchor,
+	shiftMonth,
+} from "./periods.js";
 import { mountRow, addSelect, addButton, addMultiSelectList } from "./controls.js";
 import { fetchProjectRoleOptions } from "./role-options.js";
 import { createFilterSession } from "./session.js";
@@ -212,6 +219,16 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 		},
 	});
 
+	session._workloadBaseSelect = addSelect(flow, {
+		fieldname: "workload_base",
+		options: getReportWorkloadBaseOptions(),
+		value: args.workload_base || WORKLOAD_BASE_BY_PROJECT,
+		onChange: (v) => {
+			args.workload_base = v || WORKLOAD_BASE_BY_PROJECT;
+			session.reload();
+		},
+	});
+
 	addButton(buttons, {
 		title: __("Clear All Filters"),
 		text: "✕",
@@ -224,6 +241,8 @@ export function mountProjectsFiltersFromForm(frm, el, onChange) {
 			roleSelect.values = [];
 			roleSelect._selected_values = [];
 			roleSelect.update_status?.();
+			args.workload_base = WORKLOAD_BASE_BY_PROJECT;
+			session._workloadBaseSelect?.set_value?.(WORKLOAD_BASE_BY_PROJECT);
 			for (const key of FORM_LINK_FIELDS) {
 				frm.set_value(key, "");
 				args[key] = "";
