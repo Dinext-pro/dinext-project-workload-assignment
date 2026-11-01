@@ -102,8 +102,11 @@ function show_tasks_selection_dialog(frm, forecastMode = "cost") {
 			project: frm.doc.name,
 			periods: periods,
 			view_options: frm.budget_view_options,
-			// ISS-2026-03985 п.3 / 03483: база % = Project.custom_workload_base (план|прогноз)
-			workload_base: frm.doc.custom_workload_base || "От плана",
+			// ISS-2026-03985 п.3 / 03483: база % = Project setting (empty → site default / plan)
+			workload_base:
+				frm.doc.custom_workload_base ||
+				frappe.boot?.workload_default_base ||
+				"От плана",
 		},
 		freeze: true,
 		freeze_message: __("Loading work effort data..."),

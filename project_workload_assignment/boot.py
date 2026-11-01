@@ -1,5 +1,5 @@
 # Copyright (c) 2026, Dinext and contributors
-"""Desk bootinfo: default workload view/period from site client_config."""
+"""Desk bootinfo: default workload view/period/base from site client_config."""
 
 from __future__ import annotations
 
@@ -41,6 +41,16 @@ def resolve_default_period_range() -> str | None:
 	return _resolve_choice(PERIOD_RANGE_KEY, ALLOWED_PERIOD_RANGES)
 
 
+def resolve_default_workload_base() -> str:
+	"""Read ``client_config.workload_default_base``; fallback «От плана»."""
+	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+		site_default_workload_base,
+	)
+
+	return site_default_workload_base()
+
+
 def extend_bootinfo(bootinfo) -> None:
 	bootinfo.workload_default_view_type = resolve_default_view_type()
 	bootinfo.workload_default_period_range = resolve_default_period_range()
+	bootinfo.workload_default_base = resolve_default_workload_base()

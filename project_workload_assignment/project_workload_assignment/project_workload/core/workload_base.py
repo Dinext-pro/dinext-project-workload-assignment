@@ -18,11 +18,44 @@ REPORT_WORKLOAD_BASE_OPTIONS = (
 	WORKLOAD_BASE_BY_PROJECT,
 )
 
+# site client_config key (common_site_config / site_config)
+WORKLOAD_DEFAULT_BASE_KEY = "workload_default_base"
+_ALIASES = {
+	"plan": WORKLOAD_BASE_PLAN,
+	"from plan": WORKLOAD_BASE_PLAN,
+	"от плана": WORKLOAD_BASE_PLAN,
+	"forecast": WORKLOAD_BASE_FORECAST,
+	"from forecast": WORKLOAD_BASE_FORECAST,
+	"от прогноза": WORKLOAD_BASE_FORECAST,
+}
+
+
+def _client_config() -> dict:
+	blob = frappe.conf.get("client_config")
+	return blob if isinstance(blob, dict) else {}
+
+
+def site_default_workload_base() -> str:
+	"""Default when Project.custom_workload_base пуст.
+
+	Читает ``client_config.workload_default_base``. Нет / пусто / мусор → «От плана».
+	"""
+	raw = str(_client_config().get(WORKLOAD_DEFAULT_BASE_KEY) or "").strip()
+	if not raw:
+		return WORKLOAD_BASE_PLAN
+	if raw in WORKLOAD_BASE_OPTIONS:
+		return raw
+	return _ALIASES.get(raw.lower(), WORKLOAD_BASE_PLAN)
+
 
 def normalize_workload_base(value) -> str:
-	"""Канон поля Project: «От плана» | «От прогноза»."""
+	"""Канон поля Project: «От плана» | «От прогноза». Пусто → site default."""
 	raw = str(value or "").strip()
-	return raw if raw in WORKLOAD_BASE_OPTIONS else WORKLOAD_BASE_PLAN
+	if raw in WORKLOAD_BASE_OPTIONS:
+		return raw
+	if not raw:
+		return site_default_workload_base()
+	return site_default_workload_base()
 
 
 def normalize_report_workload_base(value) -> str:
@@ -35,7 +68,7 @@ def normalize_report_workload_base(value) -> str:
 
 def project_workload_base(project: str | None) -> str:
 	if not project:
-		return WORKLOAD_BASE_PLAN
+		return site_default_workload_base()
 	val = frappe.db.get_value("Project", project, WORKLOAD_BASE_FIELD)
 	return normalize_workload_base(val)
 
@@ -50,7 +83,8 @@ def load_project_workload_bases(projects: list[str] | set[str]) -> dict[str, str
 		fields=["name", WORKLOAD_BASE_FIELD],
 		filters=[["name", "in", names]],
 	).run(as_dict=True)
-	out = {name: WORKLOAD_BASE_PLAN for name in names}
+	fallback = site_default_workload_base()
+	out = {name: fallback for name in names}
 	for row in rows:
 		out[row["name"]] = normalize_workload_base(row.get(WORKLOAD_BASE_FIELD))
 	return out

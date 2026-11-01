@@ -12,6 +12,8 @@ import {
 	parkFormLinkFields,
 	unveilFormLinkFields,
 	buildPeriodToolbar,
+	resolveProjectWorkloadBase,
+	getDefaultWorkloadBase,
 } from "./filters/index.js";
 import { loadTable, destroyTable, createProjectsExpandHandler, PAGE_SIZE } from "./table/index.js";
 import { consumeOpenWorkloadTab } from "./table/navigation.js";
@@ -70,6 +72,8 @@ project_workload_assignment.workloadReports.common = {
 	getFormFiltersSection,
 	parkFormLinkFields,
 	unveilFormLinkFields,
+	resolveProjectWorkloadBase,
+	getDefaultWorkloadBase,
 	getProjectsData,
 	getUserProjects,
 	getProjectData,

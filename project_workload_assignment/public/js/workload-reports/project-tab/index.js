@@ -129,14 +129,17 @@ function mount(frm) {
 			.removeClass("input-max-width")
 			.css({ maxWidth: "none", width: "100%", padding: 0 });
 		el._wr = common.mountLayout(el);
+		const { resolveProjectWorkloadBase } =
+			project_workload_assignment.workloadReports.common;
 		const session = common.mountProjectFilters(el._wr.filters, () => {
 			_reload(frm, el);
 		}, {
 			getProject: () => frm.doc.name,
-			workload_base: frm.doc.custom_workload_base || "От плана",
-			onWorkloadBaseChange: (v) => frm.set_value("custom_workload_base", v),
+			// filter init from Project setting (not persisted from filter)
+			workload_base: resolveProjectWorkloadBase?.(frm.doc.custom_workload_base),
 		});
 		el._getArgs = session.getArgs;
+		el._wrSession = session;
 		el._wrToolbar = common.buildPeriodToolbar(session, "workload-reports-project", {
 			getChartsState: () => el._wr.charts._wrCharts,
 			onUtilizationChange: () => common.scheduleChartsReload(el._wr.charts),
@@ -222,9 +225,14 @@ const _bindForm = () => {
 		},
 		after_save(frm) {
 			const el = frm.get_field(FIELD)?.$wrapper?.get?.(0);
-			if (_hostIsLive(el, frm.doc.name)) {
-				_reload(frm, el);
+			if (!_hostIsLive(el, frm.doc.name)) {
+				return;
 			}
+			const { resolveProjectWorkloadBase } =
+				project_workload_assignment.workloadReports.common;
+			const base = resolveProjectWorkloadBase?.(frm.doc.custom_workload_base);
+			el._wrSession?.setWorkloadBase?.(base);
+			_reload(frm, el);
 		},
 	});
 };

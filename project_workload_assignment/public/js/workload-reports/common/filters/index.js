@@ -6,3 +6,7 @@ export {
 	unveilFormLinkFields,
 } from "./projects-form.js";
 export { buildPeriodToolbar, buildPeriodToolbarItems } from "./toolbar.js";
+export {
+	getDefaultWorkloadBase,
+	resolveProjectWorkloadBase,
+} from "./periods.js";

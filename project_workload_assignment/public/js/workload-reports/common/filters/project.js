@@ -1,6 +1,6 @@
 import {
 	WORKER_OPTIONS,
-	WORKLOAD_BASE_PLAN,
+	getDefaultWorkloadBase,
 	getWorkloadBaseOptions,
 	projectDefaults,
 	resetProjectWindow,
@@ -11,9 +11,10 @@ import { fetchProjectRoleOptions } from "./role-options.js";
 import { createFilterSession } from "./session.js";
 
 /**
+ * Report filter only — does not persist Project.custom_workload_base.
  * @param {HTMLElement} el
  * @param {Function} onChange
- * @param {{ getProject?: () => string, workload_base?: string, onWorkloadBaseChange?: (v: string) => void }} [opts]
+ * @param {{ getProject?: () => string, workload_base?: string }} [opts]
  */
 export function mountProjectFilters(el, onChange, opts = {}) {
 	const args = projectDefaults();
@@ -56,14 +57,23 @@ export function mountProjectFilters(el, onChange, opts = {}) {
 	session._workloadBaseSelect = addSelect(flow, {
 		fieldname: "workload_base",
 		options: getWorkloadBaseOptions(),
-		value: args.workload_base || WORKLOAD_BASE_PLAN,
+		value: args.workload_base || getDefaultWorkloadBase(),
 		onChange: (v) => {
-			const next = v || WORKLOAD_BASE_PLAN;
+			const next = v || getDefaultWorkloadBase();
+			// mount set_value may fire change — ignore no-op
+			if (next === args.workload_base) {
+				return;
+			}
 			args.workload_base = next;
-			opts.onWorkloadBaseChange?.(next);
 			session.reload();
 		},
 	});
+
+	session.setWorkloadBase = (value) => {
+		const next = value || getDefaultWorkloadBase();
+		args.workload_base = next;
+		session._workloadBaseSelect?.set_value?.(next);
+	};
 
 	return session;
 }

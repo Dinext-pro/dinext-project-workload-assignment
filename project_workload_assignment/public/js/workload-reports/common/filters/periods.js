@@ -60,6 +60,34 @@ export function getDefaultPeriodRange(fallback = "quarter") {
 	return _bootChoice("workload_default_period_range", PERIOD_RANGE_VALUES, fallback);
 }
 
+/**
+ * Project setting / filter init: boot.workload_default_base, else «От плана».
+ * Accepts Russian options or plan/forecast aliases from client_config.
+ */
+export function getDefaultWorkloadBase(fallback = WORKLOAD_BASE_PLAN) {
+	const raw = String(frappe?.boot?.workload_default_base || "").trim();
+	if (raw === WORKLOAD_BASE_PLAN || raw === WORKLOAD_BASE_FORECAST) {
+		return raw;
+	}
+	const key = raw.toLowerCase();
+	if (key === "plan" || key === "from plan" || key === "от плана") {
+		return WORKLOAD_BASE_PLAN;
+	}
+	if (key === "forecast" || key === "from forecast" || key === "от прогноза") {
+		return WORKLOAD_BASE_FORECAST;
+	}
+	return fallback === WORKLOAD_BASE_FORECAST ? WORKLOAD_BASE_FORECAST : WORKLOAD_BASE_PLAN;
+}
+
+/** Resolve Project.custom_workload_base (empty → site default). */
+export function resolveProjectWorkloadBase(docValue) {
+	const raw = String(docValue || "").trim();
+	if (raw === WORKLOAD_BASE_PLAN || raw === WORKLOAD_BASE_FORECAST) {
+		return raw;
+	}
+	return getDefaultWorkloadBase();
+}
+
 const PERIOD_MONTHS = { quarter: 3, half_year: 6, year: 12 };
 
 const _today = () => frappe.datetime.get_today();
@@ -91,7 +119,7 @@ export const projectDefaults = () => {
 		load_actual: 0,
 		consider_limit: 1,
 		consider_virtuals: 0,
-		workload_base: WORKLOAD_BASE_PLAN,
+		workload_base: getDefaultWorkloadBase(),
 		view_type: getDefaultViewType("weekly"),
 		period_range,
 		date_from,
