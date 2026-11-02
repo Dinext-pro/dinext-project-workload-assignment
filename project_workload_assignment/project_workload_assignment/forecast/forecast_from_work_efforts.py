@@ -35,6 +35,7 @@ def _parse_inputs(fd):
 _SKIP_REASONS = {
 	"no_worker_type": "Skipped {0} / {1} / {2}: user {3} has no Worker type.",
 	"no_rate_source": "Skipped {0} / {1} / {2}: rate source is not set for {3}.",
+	"no_grade": "No cost grade found for user {3} for period {2}.",
 	"no_rates": "Skipped {0} / {1} / {2}: no rates found for {3}.",
 	"no_applicable_rate": "Skipped {0} / {1} / {2}: no applicable rate for {3} on period date.",
 	"no_account": "Skipped {0} / {1} / {2}: no cost account for worker type {3}.",
@@ -83,9 +84,24 @@ def _add_skip(skipped, *, task, role, period, reason, detail=""):
 	)
 
 
+def _skip_warnings(skipped):
+	return [s.get("message") for s in (skipped or []) if s.get("message")]
+
+
+def _error_payload(error, skipped=None):
+	"""Hard-fail payload; attach skipped[] so UI can show grade/rate reasons."""
+	skipped = skipped or []
+	payload = {"success": False, "error": error}
+	warnings = _skip_warnings(skipped)
+	if skipped:
+		payload["skipped"] = skipped
+		payload["warnings"] = warnings
+	return payload
+
+
 def _forecast_success_payload(results, updated_count, skipped):
 	"""success / partial / empty-with-skips for mass save (п.2)."""
-	warnings = [s.get("message") for s in skipped if s.get("message")]
+	warnings = _skip_warnings(skipped)
 	if updated_count == 0 and skipped:
 		return {
 			"success": False,
@@ -498,12 +514,8 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				year = int(parts[0])
 				month = int(parts[1])
 
-				# Месячный прогноз: as-of = конец месяца. Иначе грейд/ставка с mid-month
-				# (wl_valid_from / rt_valid_from не с 1-го) не находится на 1-е →
-				# участник silent-skip → ложный underload → «нет виртуала».
-				period_date = frappe.utils.get_last_day(
-					frappe.utils.getdate(f"{year}-{month:02d}-01")
-				)
+				# As-of = 1-е число периода (как раньше). Грейд не с 1-го → skip + явное сообщение.
+				period_date = frappe.utils.getdate(f"{year}-{month:02d}-01")
 
 				for skipped_user in users_without_wtype:
 					_add_skip(
@@ -525,6 +537,17 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 					# Определяем parent для ставки
 					if rate_source_field == "pt_category":
 						parent_value = team_detail.get("pt_category")
+						if not parent_value:
+							_debug_log(f"      No rate source for user {user}")
+							_add_skip(
+								skipped,
+								task=task,
+								role=role,
+								period=period_key,
+								reason="no_rate_source",
+								detail=user,
+							)
+							continue
 					else:
 						parent_value = team_detail.get("pt_cost_level")
 						if not parent_value:
@@ -537,18 +560,18 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 									break
 							if parent_value:
 								_debug_log(f"      Using base_cost_level from Worker Level: {parent_value}")
-
-					if not parent_value:
-						_debug_log(f"      No rate source for user {user}")
-						_add_skip(
-							skipped,
-							task=task,
-							role=role,
-							period=period_key,
-							reason="no_rate_source",
-							detail=user,
-						)
-						continue
+						if not parent_value:
+							# Нет грейда на 1-е периода (в т.ч. mid-month wl_valid_from)
+							_debug_log(f"      No cost grade for user {user} on {period_date}")
+							_add_skip(
+								skipped,
+								task=task,
+								role=role,
+								period=period_key,
+								reason="no_grade",
+								detail=user,
+							)
+							continue
 
 					parent_rates = rates.get(parent_value, [])
 					if not parent_rates:
@@ -701,13 +724,13 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if not virtual:
 						_debug_log(f"      ERROR: No virtual worker for role {role}")
-						return {
-							'success': False,
-							'error': frappe._(
+						return _error_payload(
+							frappe._(
 								'No virtual team member found for role "{0}". '
 								'Cannot distribute remaining forecast hours ({1}h).'
-							).format(role, round(forecast_hours - total_pwa_hours, 2))
-						}
+							).format(role, round(forecast_hours - total_pwa_hours, 2)),
+							skipped,
+						)
 
 					if not confirm_recalc:
 						type_label = frappe._("cost") if forecast_type == "cost" else frappe._("revenue")
@@ -754,12 +777,12 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 						if not parent_value:
 							_debug_log(f"      ERROR: No rate source for virtual worker role {role}")
-							return {
-								'success': False,
-								'error': frappe._(
+							return _error_payload(
+								frappe._(
 									'Rate is not set for virtual team member of role "{0}".'
-								).format(role)
-							}
+								).format(role),
+								skipped,
+							)
 
 						parent_rates = rates.get(parent_value, [])
 						if not parent_rates:

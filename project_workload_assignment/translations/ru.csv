@@ -38,6 +38,7 @@
 "Calculated {0} amounts. Updated {1} budget records. Skipped {2} item(s).","Рассчитано {0} сумм. Обновлено {1} записей в бюджете. Пропущено позиций: {2}.",""
 "Skipped {0} / {1} / {2}: user {3} has no Worker type.","Пропуск {0} / {1} / {2}: у пользователя {3} не указан тип Worker.",""
 "Skipped {0} / {1} / {2}: rate source is not set for {3}.","Пропуск {0} / {1} / {2}: не задан источник ставки для {3}.",""
+"No cost grade found for user {3} for period {2}.","Не найден грейд у пользователя {3} за период {2}.",""
 "Skipped {0} / {1} / {2}: no rates found for {3}.","Пропуск {0} / {1} / {2}: нет ставок для {3}.",""
 "Skipped {0} / {1} / {2}: no applicable rate for {3} on period date.","Пропуск {0} / {1} / {2}: нет подходящей ставки для {3} на дату периода.",""
 "Skipped {0} / {1} / {2}: no cost account for worker type {3}.","Пропуск {0} / {1} / {2}: нет статьи затрат для типа работника {3}.",""
