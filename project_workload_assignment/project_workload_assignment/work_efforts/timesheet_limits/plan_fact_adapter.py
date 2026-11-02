@@ -42,8 +42,9 @@ class TimesheetPlanFactAdapter:
 		year: int | None,
 		month: int | None,
 		used: list[Entry] | tuple[Entry, ...] = (),
+		hours_key: str = "plan",
 	) -> ScreenPlan | None:
-		_parent_of, snaps = cls.slices(bulk, project)
+		_parent_of, snaps = cls.slices(bulk, project, hours_key=hours_key)
 		keys = [(year, month)] if year is not None and month is not None else sorted(snaps)
 		pairs: list[tuple[Snapshot, Result]] = []
 		for key in keys:
@@ -224,9 +225,10 @@ class TimesheetPlanFactAdapter:
 		role: str,
 		year: int | None,
 		month: int | None,
+		hours_key: str = "plan",
 	) -> dict:
-		"""Факт теми же срезами, что и план. Часы месяца не перетекают в соседний."""
-		_parent_of, snaps = cls.slices(bulk, project)
+		"""Факт теми же срезами, что и план/прогноз-база. Часы месяца не перетекают в соседний."""
+		_parent_of, snaps = cls.slices(bulk, project, hours_key=hours_key)
 		keys = [(year, month)] if year is not None and month is not None else sorted(snaps)
 		data: dict = {"total": 0.0, "users": set(), "user_hours": {}}
 		for key in keys:

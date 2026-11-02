@@ -104,6 +104,7 @@ doctype_js = {
                     "public/js/core/form-tab.js",
                     "public/js/project/dashboard.js",
                     "public/js/project/team_limit_guard.js",
+                    "public/js/project/base_defaults.js",
                     "public/js/assignment/dialog.js",
                     "public/js/work_efforts/entry.js",
                     "public/js/forecast/pl-from-we.js",

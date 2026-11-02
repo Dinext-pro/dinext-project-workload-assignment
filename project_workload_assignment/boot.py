@@ -50,7 +50,17 @@ def resolve_default_workload_base() -> str:
 	return site_default_workload_base()
 
 
+def resolve_default_limits_base() -> str:
+	"""Read ``client_config.limits_default_base``; fallback «От плана»."""
+	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+		site_default_limits_base,
+	)
+
+	return site_default_limits_base()
+
+
 def extend_bootinfo(bootinfo) -> None:
 	bootinfo.workload_default_view_type = resolve_default_view_type()
 	bootinfo.workload_default_period_range = resolve_default_period_range()
 	bootinfo.workload_default_base = resolve_default_workload_base()
+	bootinfo.limits_default_base = resolve_default_limits_base()

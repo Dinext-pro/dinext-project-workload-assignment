@@ -101,9 +101,16 @@ class TimesheetLimitsCalculator:
 		doc_subject = bulk.task_meta.get(doc, {}).get("subject", doc)
 		rows: TimesheetLimitsResponse = []
 
+		hours_key = cls._hours_key(proj, bulk)
 		for project_role in project_roles:
 			screen = TimesheetPlanFactAdapter.for_screen(
-				bulk, proj or "", doc, project_role, year, month
+				bulk,
+				proj or "",
+				doc,
+				project_role,
+				year,
+				month,
+				hours_key=hours_key,
 			)
 			planned = screen.plan_hours if screen else 0.0
 			forecast = cls._forecast_hours(
@@ -124,7 +131,13 @@ class TimesheetLimitsCalculator:
 				)
 			else:
 				total_hours = TimesheetPlanFactAdapter.hours_data(
-					bulk, proj or "", doc, project_role, year, month
+					bulk,
+					proj or "",
+					doc,
+					project_role,
+					year,
+					month,
+					hours_key=hours_key,
 				)
 
 			pct = int((total_hours.get("total", 0) / planned) * 100) if planned > 0 else 0
@@ -176,6 +189,19 @@ class TimesheetLimitsCalculator:
 			bulk, project, task, role, year, month, hours_key="expected"
 		)
 		return float(got.plan_hours) if got else 0.0
+
+	@classmethod
+	def _hours_key(cls, project: str | None, bulk: TimesheetLimitsBulkData) -> str:
+		"""PlanFact key from Project.custom_limits_base (bulk cache)."""
+		from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+			hours_key_from_limits_base,
+			site_default_limits_base,
+		)
+
+		raw = bulk.limits_base_by_project.get(project or "") if project else None
+		if raw is None:
+			raw = site_default_limits_base()
+		return hours_key_from_limits_base(raw)
 
 	@classmethod
 	def _project_roles(

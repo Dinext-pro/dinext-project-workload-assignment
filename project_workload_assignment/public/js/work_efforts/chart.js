@@ -20,6 +20,31 @@ frappe.ui.form.on("Limit Control", {
     }  
 });
 
+frappe.ui.form.on("Project", "custom_limits_base", function (frm) {
+	project_workload_assignment.work_efforts.render_work_efforts_chart(frm, false);
+});
+
+/** Field prefix for Limit Control band base: plan | forecast (ISS-2026-03483). */
+function resolve_limits_base_prefix(frm) {
+	const PLAN = "От плана";
+	const FORECAST = "От прогноза";
+	let raw = String(frm.doc?.custom_limits_base || "").trim();
+	if (!raw) {
+		raw = String(frappe.boot?.limits_default_base || "").trim();
+	}
+	if (raw === FORECAST) {
+		return "forecast";
+	}
+	const key = raw.toLowerCase();
+	if (key === "forecast" || key === "from forecast" || key === "от прогноза") {
+		return "forecast";
+	}
+	if (raw === PLAN || key === "plan" || key === "from plan" || key === "от плана") {
+		return "plan";
+	}
+	return "plan";
+}
+
 /* добавление контролла выбора роли для фильтра графика */
 function add_role_filter_control(frm, controls) {
     frappe.ui.form.make_control({
@@ -93,12 +118,14 @@ function build_chart_data(frm, selectedRole) {
         return `${prefix}_${period.key || `${period.year}_${period.month}`}`;
     }
 
-    // Вспомогательная рекурсивная функция: возвращает { plan, actual } для заданной задачи и роли за период
-    function sumForTaskByPeriod(taskId, period, roleFilter, planRoles, actualRoles) {
-        let task = aggregatedTasks[taskId];
-        if (!task) return { plan: 0, actual: 0 };
+    const limitsBasePrefix = resolve_limits_base_prefix(frm);
 
-        let plan = 0, actual = 0;
+    // { plan, actual, limits_base } — plan всегда pwea_plan; limits_base — план или прогноз по настройке
+    function sumForTaskByPeriod(taskId, period, roleFilter, planRoles, actualRoles, limitsRoles) {
+        let task = aggregatedTasks[taskId];
+        if (!task) return { plan: 0, actual: 0, limits_base: 0 };
+
+        let plan = 0, actual = 0, limits_base = 0;
         let e = (task.role_data || []);
 
         if (roleFilter) {
@@ -110,6 +137,7 @@ function build_chart_data(frm, selectedRole) {
             e.forEach(r => {
                 const planIndex = planRoles.indexOf(r.role);
                 const actualIndex = actualRoles.indexOf(r.role);
+                const limitsIndex = limitsRoles.indexOf(r.role);
                 
                 if (planIndex > -1) {
                     let curr_plan = parseFloat(r[periodField("plan", period)]) || 0;
@@ -117,6 +145,14 @@ function build_chart_data(frm, selectedRole) {
                     if ( curr_plan ) {
                         plan += curr_plan;
                         planRoles.splice(planIndex, 1);
+                    }
+                }
+
+                if (limitsIndex > -1) {
+                    let curr_limits = parseFloat(r[periodField(limitsBasePrefix, period)]) || 0;
+                    if (curr_limits) {
+                        limits_base += curr_limits;
+                        limitsRoles.splice(limitsIndex, 1);
                     }
                 }
                 
@@ -143,17 +179,27 @@ function build_chart_data(frm, selectedRole) {
         childTasks.forEach(child => {
             let childPlanRoles = [...planRoles];
             let childActualRoles = [...actualRoles];
-            if ( !planRoles.length && !actualRoles.length ) return;
-            let r = sumForTaskByPeriod(child.value, period, roleFilter, childPlanRoles, childActualRoles);
+            let childLimitsRoles = [...limitsRoles];
+            if ( !planRoles.length && !actualRoles.length && !limitsRoles.length ) return;
+            let r = sumForTaskByPeriod(
+                child.value,
+                period,
+                roleFilter,
+                childPlanRoles,
+                childActualRoles,
+                childLimitsRoles
+            );
             plan += r.plan;
             actual += r.actual;
+            limits_base += r.limits_base;
         });
-        return { plan: plan, actual: actual};
+        return { plan: plan, actual: actual, limits_base: limits_base };
     }
 
     // Для каждого периода суммируем по всем корням
     let plan_per_period = [];
     let actual_per_period = [];
+    let limits_base_per_period = [];
     
     let all_roles = project_workload_assignment.work_efforts.get_project_roles(frm).filter(r => r );
     let rootTasks = Object.values(aggregatedTasks).filter(t => !t.parent_task);
@@ -162,27 +208,41 @@ function build_chart_data(frm, selectedRole) {
         periods.forEach(period => {
             let total_plan = 0;
             let total_actual = 0;
+            let total_limits = 0;
             rootTasks.forEach(root => {
                 let planRoles = [...all_roles];
                 let actualRoles = [...all_roles];
-                let res = sumForTaskByPeriod(root.value, period, selectedRole || "", planRoles, actualRoles);
+                let limitsRoles = [...all_roles];
+                let res = sumForTaskByPeriod(
+                    root.value,
+                    period,
+                    selectedRole || "",
+                    planRoles,
+                    actualRoles,
+                    limitsRoles
+                );
                 total_plan += res.plan;
                 total_actual += res.actual;
+                total_limits += res.limits_base;
             });
             plan_per_period.push(total_plan);
             actual_per_period.push(total_actual);
+            limits_base_per_period.push(total_limits);
         });
     }
 
     // Накопительные (cumulative) серии
     let cumulative_plan = [];
     let cumulative_actual = [];
-    let cumP = 0, cumA = 0;
+    let cumulative_limits_base = [];
+    let cumP = 0, cumA = 0, cumL = 0;
     for (let i = 0; i < plan_per_period.length; i++) {
         cumP += plan_per_period[i];
         cumA += actual_per_period[i];
+        cumL += limits_base_per_period[i];
         cumulative_plan.push(parseFloat(cumP.toFixed(2)));
         cumulative_actual.push(parseFloat(cumA.toFixed(2)));
+        cumulative_limits_base.push(parseFloat(cumL.toFixed(2)));
     }
 
     return {
@@ -192,6 +252,8 @@ function build_chart_data(frm, selectedRole) {
         cumulative_plan: cumulative_plan,
         cumulative_actual_forecast: cumulative_actual,
         plan_by_period: plan_per_period,
+        limits_base_by_period: limits_base_per_period,
+        cumulative_limits_base: cumulative_limits_base,
         periods: periods
     };
 }
@@ -212,15 +274,20 @@ function get_limits( frm ) {
 
 function get_chart_data(frm, selectedRole) {
     let dataObj = project_workload_assignment.work_efforts.build_chart_data(frm, selectedRole);
-    
-    let finalCumulativePlan = dataObj.cumulative_plan.length ? dataObj.cumulative_plan[dataObj.cumulative_plan.length - 1] : Math.max(...(dataObj.plan_by_period.concat([1])));
+
+    // Limit Control bands: 100% = cumulative plan или forecast (custom_limits_base)
+    const limitsCum = dataObj.cumulative_limits_base || dataObj.cumulative_plan;
+    const limitsByPeriod = dataObj.limits_base_by_period || dataObj.plan_by_period;
+    let finalLimitsBase = limitsCum.length
+        ? limitsCum[limitsCum.length - 1]
+        : Math.max(...(limitsByPeriod.concat([1])));
     let finalCumulativeActual = dataObj.cumulative_actual_forecast.length ? dataObj.cumulative_actual_forecast[dataObj.cumulative_actual_forecast.length - 1] : Math.max(...(dataObj.actual_forecast.concat([1])));
-    if (!finalCumulativePlan) {
-        finalCumulativePlan = Math.max(...(dataObj.plan_by_period.concat([1])));
+    if (!finalLimitsBase) {
+        finalLimitsBase = Math.max(...(limitsByPeriod.concat([1])));
     }
     let limits = get_limits( frm );
-    let green_end = finalCumulativePlan * limits.yellow;
-    let yellow_end = limits.red ? finalCumulativePlan * limits.red : Math.max( green_end * 1.3, green_end + 1, finalCumulativeActual );
+    let green_end = finalLimitsBase * limits.yellow;
+    let yellow_end = limits.red ? finalLimitsBase * limits.red : Math.max( green_end * 1.3, green_end + 1, finalCumulativeActual );
     let red_end = limits.red ? Math.max(yellow_end * 1.3, yellow_end + 1, finalCumulativeActual) : null;
 
     let yRegions = [

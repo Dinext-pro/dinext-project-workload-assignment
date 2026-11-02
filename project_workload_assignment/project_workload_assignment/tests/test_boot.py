@@ -44,7 +44,11 @@ class TestWorkloadDefaultViewType(unittest.TestCase):
 		boot = SimpleNamespace()
 		with patch("project_workload_assignment.boot.frappe") as mock_frappe:
 			mock_frappe.conf.get.return_value = {"workload_default_view_type": "weekly"}
-			extend_bootinfo(boot)
+			with patch(
+				"project_workload_assignment.project_workload_assignment.project_workload.core.workload_base._client_config",
+				return_value={},
+			):
+				extend_bootinfo(boot)
 		self.assertEqual(boot.workload_default_view_type, "weekly")
 		self.assertIsNone(boot.workload_default_period_range)
 
@@ -52,9 +56,15 @@ class TestWorkloadDefaultViewType(unittest.TestCase):
 		boot = SimpleNamespace()
 		with patch("project_workload_assignment.boot.frappe") as mock_frappe:
 			mock_frappe.conf.get.return_value = None
-			extend_bootinfo(boot)
+			with patch(
+				"project_workload_assignment.project_workload_assignment.project_workload.core.workload_base._client_config",
+				return_value={},
+			):
+				extend_bootinfo(boot)
 		self.assertIsNone(boot.workload_default_view_type)
 		self.assertIsNone(boot.workload_default_period_range)
+		self.assertEqual(boot.workload_default_base, "От плана")
+		self.assertEqual(boot.limits_default_base, "От плана")
 
 
 class TestWorkloadDefaultPeriodRange(unittest.TestCase):
@@ -85,6 +95,11 @@ class TestWorkloadDefaultPeriodRange(unittest.TestCase):
 				"workload_default_view_type": "monthly",
 				"workload_default_period_range": "half_year",
 			}
-			extend_bootinfo(boot)
+			with patch(
+				"project_workload_assignment.project_workload_assignment.project_workload.core.workload_base._client_config",
+				return_value={"limits_default_base": "От прогноза"},
+			):
+				extend_bootinfo(boot)
 		self.assertEqual(boot.workload_default_view_type, "monthly")
 		self.assertEqual(boot.workload_default_period_range, "half_year")
+		self.assertEqual(boot.limits_default_base, "От прогноза")

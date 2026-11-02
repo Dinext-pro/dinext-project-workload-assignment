@@ -199,6 +199,27 @@ class TestCalculatorForecastHours(unittest.TestCase):
 		self.assertEqual(hours, 0.0)
 
 
+class TestCalculatorLimitsBase(unittest.TestCase):
+	def test_hours_key_from_bulk_forecast(self):
+		bulk = _bulk()
+		bulk.limits_base_by_project = {PROJECT: "От прогноза"}
+		self.assertEqual(
+			TimesheetLimitsCalculator._hours_key(PROJECT, bulk), "expected"
+		)
+
+	def test_hours_key_default_plan(self):
+		bulk = _bulk()
+		bulk.limits_base_by_project = {PROJECT: "От плана"}
+		self.assertEqual(TimesheetLimitsCalculator._hours_key(PROJECT, bulk), "plan")
+
+	def test_for_screen_uses_expected_when_limits_forecast(self):
+		bulk = _bulk()
+		got = TimesheetPlanFactAdapter.for_screen(
+			bulk, PROJECT, "t1.1", ROLE, 2026, 1, hours_key="expected"
+		)
+		self.assertEqual(got.plan_hours, 8.0)
+
+
 class TestAdapterShared(unittest.TestCase):
 	def test_hours_by_role_and_consumers(self):
 		bulk = _bulk()

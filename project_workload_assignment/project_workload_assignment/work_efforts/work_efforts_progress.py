@@ -49,8 +49,16 @@ def _calc_percent(plan: float, fact: float) -> float:
 
 
 def _sum_plan_hours(project: str, roles: list[str], periods: list[dict]) -> float:
+	"""Знаменатель progress bar: PlanFact по Project.custom_limits_base (ISS-2026-03483)."""
+	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+		hours_key_from_limits_base,
+	)
+
 	bulk = TimesheetLimitsBulkLoader.load([{"project": project}])
-	return TimesheetPlanFactAdapter.sum_roots(bulk, project, roles, periods)
+	hours_key = hours_key_from_limits_base(bulk.limits_base_by_project.get(project))
+	return TimesheetPlanFactAdapter.sum_roots(
+		bulk, project, roles, periods, hours_key=hours_key
+	)
 
 
 def _sum_fact_hours(project: str, roles: list[str], periods: list[dict]) -> float:

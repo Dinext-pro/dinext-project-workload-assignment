@@ -21,6 +21,8 @@ class TimesheetLimitsBulkData:
 	limit_rows_by_project: dict = field(default_factory=dict)
 	# Проект → «Опционально» / «Обязательно для всех Задач» / «Обязательно для всех Запросов».
 	plan_requirement_by_project: dict = field(default_factory=dict)
+	# Проект → «От плана» | «От прогноза» (база % лимитов таймшита).
+	limits_base_by_project: dict = field(default_factory=dict)
 	# (год, месяц, роль) → {(задача, статус, сотрудник): часы}. Пусто — факт среза 0.
 	fact_by_period: dict = field(default_factory=dict)
 	# Только этот run. Следующий запрос получает новый bulk и пустые словари.
@@ -122,20 +124,47 @@ class TimesheetLimitsBulkLoader:
 			limit_rows.setdefault(r.parent, []).append({"type": r.type, "limit": r.limit})
 
 		plan_requirement: dict = {}
+		limits_base: dict = {}
+		from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+			LIMITS_BASE_FIELD,
+			normalize_limits_base,
+			site_default_limits_base,
+		)
+
+		fallback_limits = site_default_limits_base()
 		try:
 			project_rows = frappe.db.get_all(
 				"Project",
 				filters={"name": ["in", project_list]},
-				fields=["name", "custom_обязательность_плановых_трудозатрат"],
+				fields=[
+					"name",
+					"custom_обязательность_плановых_трудозатрат",
+					LIMITS_BASE_FIELD,
+				],
 			)
 		except Exception as exc:
 			if "1054" not in str(exc):
 				raise
-			project_rows = []
+			# CF ещё не на сайте / partial schema — без limits_base.
+			try:
+				project_rows = frappe.db.get_all(
+					"Project",
+					filters={"name": ["in", project_list]},
+					fields=["name", "custom_обязательность_плановых_трудозатрат"],
+				)
+			except Exception as exc2:
+				if "1054" not in str(exc2):
+					raise
+				project_rows = []
 		for row in project_rows:
 			plan_requirement[row.name] = (
 				getattr(row, "custom_обязательность_плановых_трудозатрат", None) or "Опционально"
 			)
+			limits_base[row.name] = normalize_limits_base(
+				getattr(row, LIMITS_BASE_FIELD, None)
+			)
+		for name in project_list:
+			limits_base.setdefault(name, fallback_limits)
 
 		return TimesheetLimitsBulkData(
 			task_meta=task_meta,
@@ -144,4 +173,5 @@ class TimesheetLimitsBulkLoader:
 			pwe_amounts=pwe_amounts,
 			limit_rows_by_project=limit_rows,
 			plan_requirement_by_project=plan_requirement,
+			limits_base_by_project=limits_base,
 		)

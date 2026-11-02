@@ -233,13 +233,22 @@ def resolve_plan_node(project: str | None = None, task: str | None = None, role:
 		TimesheetPlanFactAdapter,
 	)
 
+	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+		hours_key_from_limits_base,
+	)
+
 	project = project or frappe.form_dict.get("project")
 	task = task or frappe.form_dict.get("task")
 	role = role or frappe.form_dict.get("role") or ""
 	if not project or not task:
 		return None
 	bulk = TimesheetLimitsBulkLoader.load([{"project": project}])
-	return TimesheetPlanFactAdapter.assembled_node(bulk, project, task, role)
+	hours_key = hours_key_from_limits_base(
+		bulk.limits_base_by_project.get(project)
+	)
+	return TimesheetPlanFactAdapter.assembled_node(
+		bulk, project, task, role, hours_key=hours_key
+	)
 
 
 @frappe.whitelist()
