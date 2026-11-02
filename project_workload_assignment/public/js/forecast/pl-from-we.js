@@ -441,11 +441,32 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 		freeze: true,
 		freeze_message: __("Adding forecast to budget..."),
 		callback: function(r) {
+			function show_forecast_skip_warnings(payload) {
+				const warnings = (payload && (payload.warnings || [])).filter(Boolean);
+				if (!warnings.length) {
+					return;
+				}
+				const maxShow = 8;
+				const lines = warnings.slice(0, maxShow).map((w) => `<li>${escape_html(w)}</li>`);
+				const more = warnings.length > maxShow
+					? `<p class="text-muted">${__("…and {0} more", [warnings.length - maxShow])}</p>`
+					: "";
+				frappe.msgprint({
+					title: __("Forecast saved with warnings"),
+					indicator: "orange",
+					message: `<p>${__("Some roles or periods were skipped:")}</p><ul>${lines.join("")}</ul>${more}`,
+				});
+			}
+
 			if (r.message && r.message.success) {
+				const partial = Boolean(r.message.partial) || (r.message.skipped && r.message.skipped.length);
 				frappe.show_alert({
-					message: __("Forecast added successfully. Updated {0} records.", [r.message.updated_count || 0]),
-					indicator: 'green'
-				}, 5);
+					message: partial
+						? (r.message.message || __("Forecast added with warnings. Updated {0} records.", [r.message.updated_count || 0]))
+						: __("Forecast added successfully. Updated {0} records.", [r.message.updated_count || 0]),
+					indicator: partial ? 'orange' : 'green'
+				}, 8);
+				show_forecast_skip_warnings(r.message);
 
 				const canAdjustParents =
 					window.ProjectBudget?.buildParentAdjustments &&
@@ -524,7 +545,21 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 				);
 			} else if (r.message && r.message.error) {
 				frappe.dom.unfreeze();
-				frappe.msgprint(__("Error: {0}", [r.message.error]));
+				const warnings = (r.message.warnings || []).filter(Boolean);
+				if (warnings.length) {
+					const maxShow = 8;
+					const lines = warnings.slice(0, maxShow).map((w) => `<li>${escape_html(w)}</li>`);
+					const more = warnings.length > maxShow
+						? `<p class="text-muted">${__("…and {0} more", [warnings.length - maxShow])}</p>`
+						: "";
+					frappe.msgprint({
+						title: __("Forecast was not saved"),
+						indicator: "red",
+						message: `<p>${escape_html(r.message.error)}</p><ul>${lines.join("")}</ul>${more}`,
+					});
+				} else {
+					frappe.msgprint(__("Error: {0}", [r.message.error]));
+				}
 			} else {
 				frappe.dom.unfreeze();
 				frappe.msgprint(__("Unknown error"));
