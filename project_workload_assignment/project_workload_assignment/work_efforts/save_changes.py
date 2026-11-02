@@ -43,7 +43,7 @@ def _load_grid_rows(project: str, view_mode: str = VIEW_MODE_FORECAST_AND_FACT) 
 
 def _get_forecast(rows: list, task_id: str, role: str | None, period_key: str) -> float:
     for row in rows:
-        if row.get("task_id") == task_id and row.get("role") == role:
+        if row.get("task_id") == task_id and _normalize_role(row.get("role")) == role:
             return _to_float(row.get(f"forecast_{period_key}"))
     return 0.0
 
@@ -83,7 +83,11 @@ def _get_parent_forecast_limit(
 ) -> float | None:
     excluded = excluded or []
     row = next(
-        (r for r in rows if r.get("task_id") == task_id and r.get("role") == role),
+        (
+            r
+            for r in rows
+            if r.get("task_id") == task_id and _normalize_role(r.get("role")) == role
+        ),
         None,
     )
     if not row:
@@ -100,11 +104,29 @@ def _get_parent_forecast_limit(
     return _get_parent_forecast_limit(rows, parent_id, role, period_key, excluded + [task_id])
 
 
+def _normalize_role(role: object) -> str | None:
+    if role and str(role).strip():
+        return str(role)
+    return None
+
+
+def _apply_change_to_rows(rows: list, change: WeSaveForecastChange) -> None:
+    """Patch in-memory forecast so later batch items see prior edits."""
+    task_id = change.get("task_id") or ""
+    role = _normalize_role(change.get("role"))
+    period_key = change.get("period_key") or ""
+    if not task_id or not period_key:
+        return
+    value = _to_float(change.get("value"))
+    for row in rows:
+        if row.get("task_id") == task_id and _normalize_role(row.get("role")) == role:
+            row[f"forecast_{period_key}"] = value
+            return
+
+
 def _validate_change(rows: list, change: WeSaveForecastChange) -> str | None:
     task_id = change.get("task_id") or ""
-    role = change.get("role") or None
-    if role and not str(role).strip():
-        role = None
+    role = _normalize_role(change.get("role"))
     period_key = change.get("period_key") or ""
     value = _to_float(change.get("value"))
 
@@ -124,9 +146,13 @@ def _validate_change(rows: list, change: WeSaveForecastChange) -> str | None:
     return None
 
 
-def _normalize_role(role: object) -> str | None:
-    if role and str(role).strip():
-        return str(role)
+def _validate_changes(rows: list, changes: list[WeSaveForecastChange]) -> str | None:
+    """Validate batch sequentially; each change updates the working forecast snapshot."""
+    for change in changes or []:
+        error = _validate_change(rows, change)
+        if error:
+            return error
+        _apply_change_to_rows(rows, change)
     return None
 
 
@@ -224,13 +250,12 @@ def run_save_forecast_changes(form_dict: WeSaveForecastFormInput) -> dict:
         return {"saved": 0}
 
     rows = _load_grid_rows(project)
+    error = _validate_changes(rows, changes)
+    if error:
+        frappe.throw(error)
 
     groups: dict[tuple[str, str | None], list[WeSaveForecastChange]] = {}
     for change in changes:
-        error = _validate_change(rows, change)
-        if error:
-            frappe.throw(error)
-
         task_id = change.get("task_id") or ""
         if not task_id:
             continue
