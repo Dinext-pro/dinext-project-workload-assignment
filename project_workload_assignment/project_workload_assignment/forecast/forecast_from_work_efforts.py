@@ -31,6 +31,90 @@ def _parse_inputs(fd):
 	return project, selected_tasks, forecast_details, confirm_recalc, forecast_type, income_account
 
 
+# ISS-2026-03985 п.2: частые silent-skip → явные skipped[] для UI
+_SKIP_REASONS = {
+	"no_worker_type": "Skipped {0} / {1} / {2}: user {3} has no Worker type.",
+	"no_rate_source": "Skipped {0} / {1} / {2}: rate source is not set for {3}.",
+	"no_rates": "Skipped {0} / {1} / {2}: no rates found for {3}.",
+	"no_applicable_rate": "Skipped {0} / {1} / {2}: no applicable rate for {3} on period date.",
+	"no_account": "Skipped {0} / {1} / {2}: no cost account for worker type {3}.",
+	"virtual_no_rates": "Skipped {0} / {1} / {2}: no rates for virtual team member ({3}).",
+	"virtual_no_applicable_rate": "Skipped {0} / {1} / {2}: no applicable rate for virtual team member ({3}).",
+	"virtual_no_account": "Skipped {0} / {1} / {2}: no cost account for virtual worker type {3}.",
+	"empty_account_table": "Skipped cost forecast: project has no Account Table rows for employee types.",
+}
+
+
+def _skip_message(reason, task, role, period, detail=""):
+	template = _SKIP_REASONS.get(reason)
+	if not template:
+		return frappe._("Skipped {0} / {1} / {2}: {3}.").format(
+			task or "—", role or "—", period or "—", reason
+		)
+	return frappe._(template).format(
+		task or "—",
+		role or "—",
+		period or "—",
+		detail or "—",
+	)
+
+
+def _add_skip(skipped, *, task, role, period, reason, detail=""):
+	"""Append unique skip row (same task/role/period/reason/detail once)."""
+	key = (task, role, period or "", reason, detail or "")
+	for row in skipped:
+		if (
+			row.get("task") == key[0]
+			and row.get("role") == key[1]
+			and row.get("period") == key[2]
+			and row.get("reason") == key[3]
+			and (row.get("detail") or "") == key[4]
+		):
+			return
+	skipped.append(
+		{
+			"task": task,
+			"role": role,
+			"period": period or "",
+			"reason": reason,
+			"detail": detail or "",
+			"message": _skip_message(reason, task, role, period, detail),
+		}
+	)
+
+
+def _forecast_success_payload(results, updated_count, skipped):
+	"""success / partial / empty-with-skips for mass save (п.2)."""
+	warnings = [s.get("message") for s in skipped if s.get("message")]
+	if updated_count == 0 and skipped:
+		return {
+			"success": False,
+			"error": frappe._(
+				"No budget records were updated. Issues: {0}"
+			).format("; ".join(warnings[:8]) + ("…" if len(warnings) > 8 else "")),
+			"skipped": skipped,
+			"warnings": warnings,
+			"results": results,
+			"updated_count": 0,
+		}
+	payload = {
+		"success": True,
+		"message": frappe._(
+			"Calculated {0} amounts. Updated {1} budget records."
+		).format(len(results), updated_count),
+		"results": results,
+		"updated_count": updated_count,
+	}
+	if skipped:
+		payload["skipped"] = skipped
+		payload["warnings"] = warnings
+		payload["partial"] = True
+		payload["message"] = frappe._(
+			"Calculated {0} amounts. Updated {1} budget records. Skipped {2} item(s)."
+		).format(len(results), updated_count, len(skipped))
+	return payload
+
+
 def _process_single_forecast_type(project, selected_tasks, forecast_details, confirm_recalc,
 								   forecast_type, income_account):
 	"""Process one forecast type: 'cost' or 'revenue'."""
@@ -343,6 +427,17 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	results = []
 	updated_count = 0
 	should_stop = False
+	skipped = []
+
+	if forecast_type == "cost" and not account_table:
+		_add_skip(
+			skipped,
+			task="",
+			role="",
+			period="",
+			reason="empty_account_table",
+			detail="",
+		)
 
 	for task in selected_tasks:
 		_debug_log(f"STEP 8.1: Processing task: {task}")
@@ -355,6 +450,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 			# Находим пользователя с этой ролью
 			matching_users = []
+			users_without_wtype = []
 			for (td_role, td_user), td in team_details_map.items():
 				if td_role == role:
 					if forecast_type == "cost":
@@ -363,6 +459,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 							matching_users.append((td_user, td))
 						else:
 							_debug_log(f"    Skipping user {td_user} - no valid worker type")
+							users_without_wtype.append(td_user)
 					else:
 						# Для revenue не фильтруем по worker type
 						matching_users.append((td_user, td))
@@ -401,7 +498,22 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				year = int(parts[0])
 				month = int(parts[1])
 
-				period_date = frappe.utils.getdate(f"{year}-{month:02d}-01")
+				# Месячный прогноз: as-of = конец месяца. Иначе грейд/ставка с mid-month
+				# (wl_valid_from / rt_valid_from не с 1-го) не находится на 1-е →
+				# участник silent-skip → ложный underload → «нет виртуала».
+				period_date = frappe.utils.get_last_day(
+					frappe.utils.getdate(f"{year}-{month:02d}-01")
+				)
+
+				for skipped_user in users_without_wtype:
+					_add_skip(
+						skipped,
+						task=task,
+						role=role,
+						period=period_key,
+						reason="no_worker_type",
+						detail=skipped_user,
+					)
 
 				users_forecast_data = {}
 				for user_email, user_info in users_data.items():
@@ -428,11 +540,27 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if not parent_value:
 						_debug_log(f"      No rate source for user {user}")
+						_add_skip(
+							skipped,
+							task=task,
+							role=role,
+							period=period_key,
+							reason="no_rate_source",
+							detail=user,
+						)
 						continue
 
 					parent_rates = rates.get(parent_value, [])
 					if not parent_rates:
 						_debug_log(f"      No rates found for parent={parent_value}")
+						_add_skip(
+							skipped,
+							task=task,
+							role=role,
+							period=period_key,
+							reason="no_rates",
+							detail=parent_value,
+						)
 						continue
 
 					applicable_rate = None
@@ -448,6 +576,14 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if not applicable_rate:
 						_debug_log(f"      No applicable rate for user {user}")
+						_add_skip(
+							skipped,
+							task=task,
+							role=role,
+							period=period_key,
+							reason="no_applicable_rate",
+							detail=user,
+						)
 						continue
 
 					# Определяем счёт и измерение
@@ -468,6 +604,14 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 						if not applicable_account:
 							_debug_log(f"      No account found for user_type={user_type}")
+							_add_skip(
+								skipped,
+								task=task,
+								role=role,
+								period=period_key,
+								reason="no_account",
+								detail=user_type or "",
+							)
 							continue
 
 						has_task_dimension = applicable_account in accounts_with_task_dimension
@@ -620,6 +764,14 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 						parent_rates = rates.get(parent_value, [])
 						if not parent_rates:
 							_debug_log(f"      No rates found for parent={parent_value}")
+							_add_skip(
+								skipped,
+								task=task,
+								role=role,
+								period=period_key,
+								reason="virtual_no_rates",
+								detail=parent_value,
+							)
 							continue
 
 						applicable_rate = None
@@ -635,6 +787,14 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 						if not applicable_rate:
 							_debug_log(f"      No applicable rate for virtual worker role {role}")
+							_add_skip(
+								skipped,
+								task=task,
+								role=role,
+								period=period_key,
+								reason="virtual_no_applicable_rate",
+								detail=parent_value,
+							)
 							continue
 
 						if forecast_type == "revenue":
@@ -656,6 +816,14 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 							if not applicable_account:
 								_debug_log(f"      No account found for user_type={user_type}")
+								_add_skip(
+									skipped,
+									task=task,
+									role=role,
+									period=period_key,
+									reason="virtual_no_account",
+									detail=user_type or "",
+								)
 								continue
 
 							has_task_dimension = applicable_account in accounts_with_task_dimension
@@ -828,17 +996,11 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 		_debug_log("STEP 9: Calculations completed")
 		_debug_log(f"  Total results: {len(results)}")
 		_debug_log(f"  Budget records updated: {updated_count}")
+		_debug_log(f"  Skipped items: {len(skipped)}")
 
 		frappe.log(f"Forecast ({forecast_type}) added: {updated_count} budget records updated")
 
-	return {
-		'success': True,
-		'message': frappe._(
-			'Calculated {0} amounts. Updated {1} budget records.'
-		).format(len(results), updated_count),
-		'results': results,
-		'updated_count': updated_count
-	}
+	return _forecast_success_payload(results, updated_count, skipped)
 
 
 def run_add_forecast_from_work_efforts(fd):
