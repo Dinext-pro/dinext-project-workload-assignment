@@ -4,6 +4,7 @@
 import json
 
 import frappe
+from frappe.utils import cint, flt
 
 ENABLE_DETAILED_LOG = False
 
@@ -982,22 +983,35 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				doc.insert()
 				_debug_log(f"      Created new Project Budget: {doc.name}")
 
-			# Обновляем прогноз для периода
+			# Обновляем прогноз для периода.
+			# After PL clear (expected=0, has_expected=0) must reuse the same amount row
+			# and restore has_expected — do not append a duplicate month line.
+			has_expected_col = frappe.db.has_column(
+				"Project Budget Amount", "pba_has_expected"
+			)
 			amount_exists = False
 			for amount_row in doc.project_budget_amount:
-				if int(amount_row.pba_year) == int(year) and int(amount_row.pba_month) == int(month):
+				if cint(amount_row.pba_year) == cint(year) and cint(amount_row.pba_month) == cint(month):
 					old_value = amount_row.pba_expected
-					amount_row.pba_expected = amount_row.pba_expected + total_amount if amount_exists else total_amount
+					amount_row.pba_expected = flt(amount_row.pba_expected) + flt(total_amount)
+					if has_expected_col:
+						amount_row.pba_has_expected = 1
 					amount_exists = True
-					_debug_log(f"      >>> UPDATED amount for {year}-{month}: {old_value} -> {amount_row.pba_expected}")
+					_debug_log(
+						f"      >>> UPDATED amount for {year}-{month}: "
+						f"{old_value} -> {amount_row.pba_expected}"
+					)
 					break
 
 			if not amount_exists:
-				doc.append("project_budget_amount", {
+				new_amount = {
 					"pba_year": year,
 					"pba_month": month,
-					"pba_expected": total_amount
-				})
+					"pba_expected": total_amount,
+				}
+				if has_expected_col:
+					new_amount["pba_has_expected"] = 1
+				doc.append("project_budget_amount", new_amount)
 				_debug_log(f"      Added NEW amount for {year}-{month}: {total_amount}")
 
 			doc.save()
