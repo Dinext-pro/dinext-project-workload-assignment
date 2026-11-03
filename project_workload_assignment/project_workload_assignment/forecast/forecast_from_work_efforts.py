@@ -47,6 +47,38 @@ _SKIP_REASONS = {
 }
 
 
+def apply_we_period_forecast(
+	doc,
+	year,
+	month,
+	total_amount,
+	has_expected_col: bool = True,
+) -> float:
+	"""ADD WE forecast into one Project Budget amount period.
+
+	Base semantics stay additive. After PL clear (expected=0, has_expected=0)
+	reuse the same month row and restore has_expected — do not append a duplicate.
+	"""
+	year_i, month_i = cint(year), cint(month)
+	amount = flt(total_amount)
+	for amount_row in doc.project_budget_amount or []:
+		if cint(amount_row.pba_year) == year_i and cint(amount_row.pba_month) == month_i:
+			amount_row.pba_expected = flt(amount_row.pba_expected) + amount
+			if has_expected_col:
+				amount_row.pba_has_expected = 1
+			return flt(amount_row.pba_expected)
+
+	new_amount = {
+		"pba_year": year_i,
+		"pba_month": month_i,
+		"pba_expected": amount,
+	}
+	if has_expected_col:
+		new_amount["pba_has_expected"] = 1
+	doc.append("project_budget_amount", new_amount)
+	return amount
+
+
 def _skip_message(reason, task, role, period, detail=""):
 	template = _SKIP_REASONS.get(reason)
 	if not template:
@@ -983,36 +1015,30 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				doc.insert()
 				_debug_log(f"      Created new Project Budget: {doc.name}")
 
-			# Обновляем прогноз для периода.
-			# After PL clear (expected=0, has_expected=0) must reuse the same amount row
-			# and restore has_expected — do not append a duplicate month line.
+			# ADD into period row. After PL clear reuse same row + restore has_expected.
 			has_expected_col = frappe.db.has_column(
 				"Project Budget Amount", "pba_has_expected"
 			)
-			amount_exists = False
-			for amount_row in doc.project_budget_amount:
-				if cint(amount_row.pba_year) == cint(year) and cint(amount_row.pba_month) == cint(month):
+			old_value = None
+			for amount_row in doc.project_budget_amount or []:
+				if cint(amount_row.pba_year) == cint(year) and cint(amount_row.pba_month) == cint(
+					month
+				):
 					old_value = amount_row.pba_expected
-					amount_row.pba_expected = flt(amount_row.pba_expected) + flt(total_amount)
-					if has_expected_col:
-						amount_row.pba_has_expected = 1
-					amount_exists = True
-					_debug_log(
-						f"      >>> UPDATED amount for {year}-{month}: "
-						f"{old_value} -> {amount_row.pba_expected}"
-					)
 					break
-
-			if not amount_exists:
-				new_amount = {
-					"pba_year": year,
-					"pba_month": month,
-					"pba_expected": total_amount,
-				}
-				if has_expected_col:
-					new_amount["pba_has_expected"] = 1
-				doc.append("project_budget_amount", new_amount)
-				_debug_log(f"      Added NEW amount for {year}-{month}: {total_amount}")
+			new_value = apply_we_period_forecast(
+				doc,
+				year,
+				month,
+				total_amount,
+				has_expected_col=has_expected_col,
+			)
+			if old_value is None:
+				_debug_log(f"      Added NEW amount for {year}-{month}: {new_value}")
+			else:
+				_debug_log(
+					f"      >>> UPDATED amount for {year}-{month}: {old_value} -> {new_value}"
+				)
 
 			doc.save()
 			updated_count += 1
