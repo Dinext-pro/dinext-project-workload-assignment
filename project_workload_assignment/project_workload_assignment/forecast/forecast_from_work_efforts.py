@@ -53,17 +53,21 @@ def apply_we_period_forecast(
 	month,
 	total_amount,
 	has_expected_col: bool = True,
+	replace: bool = True,
 ) -> float:
-	"""ADD WE forecast into one Project Budget amount period.
+	"""Write WE forecast into one Project Budget amount period.
 
-	Base semantics stay additive. After PL clear (expected=0, has_expected=0)
-	reuse the same month row and restore has_expected — do not append a duplicate.
+	replace=True overwrites the month (repeat Add forecast keeps the same sum).
+	replace=False adds onto the value already written in this run, when several
+	tasks share one Project Budget. After PL clear, reuse the same month row
+	and restore has_expected — do not append a duplicate.
 	"""
 	year_i, month_i = cint(year), cint(month)
 	amount = flt(total_amount)
 	for amount_row in doc.project_budget_amount or []:
 		if cint(amount_row.pba_year) == year_i and cint(amount_row.pba_month) == month_i:
-			amount_row.pba_expected = flt(amount_row.pba_expected) + amount
+			current = flt(amount_row.pba_expected)
+			amount_row.pba_expected = amount if replace else current + amount
 			if has_expected_col:
 				amount_row.pba_has_expected = 1
 			return flt(amount_row.pba_expected)
@@ -477,6 +481,9 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	updated_count = 0
 	should_stop = False
 	skipped = []
+	# First write of a period in this run replaces the stored sum.
+	# A later write of the same period (several tasks, one PB) adds on top.
+	replaced_periods = set()
 
 	if forecast_type == "cost" and not account_table:
 		_add_skip(
@@ -1015,10 +1022,12 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				doc.insert()
 				_debug_log(f"      Created new Project Budget: {doc.name}")
 
-			# ADD into period row. After PL clear reuse same row + restore has_expected.
+			# Replace the month. A second task in this run that hits the same PB adds.
 			has_expected_col = frappe.db.has_column(
 				"Project Budget Amount", "pba_has_expected"
 			)
+			period_id = (doc.name, cint(year), cint(month))
+			replace = period_id not in replaced_periods
 			old_value = None
 			for amount_row in doc.project_budget_amount or []:
 				if cint(amount_row.pba_year) == cint(year) and cint(amount_row.pba_month) == cint(
@@ -1032,7 +1041,9 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				month,
 				total_amount,
 				has_expected_col=has_expected_col,
+				replace=replace,
 			)
+			replaced_periods.add(period_id)
 			if old_value is None:
 				_debug_log(f"      Added NEW amount for {year}-{month}: {new_value}")
 			else:

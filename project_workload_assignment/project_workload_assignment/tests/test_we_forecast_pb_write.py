@@ -1,5 +1,5 @@
 # Copyright (c) 2026, Dinext
-"""Unit tests: WE → Project Budget period write keeps ADD; clear reuses row + flag."""
+"""Unit tests: WE → Project Budget period write replaces the month; clear reuses the row."""
 
 from __future__ import annotations
 
@@ -32,10 +32,21 @@ def _doc(name, rows):
 
 
 class TestWeForecastPbWrite(FrappeTestCase):
-	def test_add_accumulates_on_existing_row(self):
-		doc = _doc("PB-1", [_row(2026, 10, 100)])
-		apply_we_period_forecast(doc, 2026, 10, 100)
-		self.assertEqual(doc.project_budget_amount[0].pba_expected, 200)
+	def test_existing_row_is_replaced(self):
+		doc = _doc("PB-1", [_row(2026, 10, 160000)])
+		got = apply_we_period_forecast(doc, 2026, 10, 80000)
+		self.assertEqual(got, 80000)
+		self.assertEqual(doc.project_budget_amount[0].pba_expected, 80000)
+		self.assertEqual(len(doc.project_budget_amount), 1)
+		again = apply_we_period_forecast(doc, 2026, 10, 80000)
+		self.assertEqual(again, 80000)
+		self.assertEqual(len(doc.project_budget_amount), 1)
+
+	def test_same_run_second_write_adds(self):
+		doc = _doc("PB-1", [_row(2026, 10, 160000)])
+		apply_we_period_forecast(doc, 2026, 10, 80000, replace=True)
+		apply_we_period_forecast(doc, 2026, 10, 50000, replace=False)
+		self.assertEqual(doc.project_budget_amount[0].pba_expected, 130000)
 		self.assertEqual(len(doc.project_budget_amount), 1)
 
 	def test_clear_then_rewrite_reuses_row_and_restores_flag(self):

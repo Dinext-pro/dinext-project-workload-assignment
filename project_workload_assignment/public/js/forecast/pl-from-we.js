@@ -490,7 +490,8 @@ function add_forecast_to_budget(frm, selectedTasks, tasksDetails, confirmRecalc 
 
 					var parentResult = window.ProjectBudget.buildParentAdjustments(
 						frm,
-						reserveUpdates
+						reserveUpdates,
+						{ mode: "set" }
 					);
 					if (parentResult.parent_adjustments && parentResult.parent_adjustments.length > 0) {
 						frappe.call({
