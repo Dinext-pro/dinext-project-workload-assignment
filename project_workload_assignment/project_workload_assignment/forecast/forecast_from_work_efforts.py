@@ -4,6 +4,7 @@
 import json
 
 import frappe
+from frappe.utils import cint, flt
 
 ENABLE_DETAILED_LOG = False
 
@@ -29,6 +30,42 @@ def _parse_inputs(fd):
 	forecast_type = fd.get("forecast_type", "cost")
 	income_account = fd.get("income_account") or None
 	return project, selected_tasks, forecast_details, confirm_recalc, forecast_type, income_account
+
+
+def apply_we_period_forecast(
+	doc,
+	year,
+	month,
+	total_amount,
+	has_expected_col: bool = True,
+	replace: bool = True,
+) -> float:
+	"""Write WE forecast into one Project Budget amount period.
+
+	replace=True overwrites the month (repeat Add forecast keeps the same sum).
+	replace=False adds onto the value already written in this run, when several
+	tasks share one Project Budget. After PL clear, reuse the same month row
+	and restore has_expected — do not append a duplicate.
+	"""
+	year_i, month_i = cint(year), cint(month)
+	amount = flt(total_amount)
+	for amount_row in doc.project_budget_amount or []:
+		if cint(amount_row.pba_year) == year_i and cint(amount_row.pba_month) == month_i:
+			current = flt(amount_row.pba_expected)
+			amount_row.pba_expected = amount if replace else current + amount
+			if has_expected_col:
+				amount_row.pba_has_expected = 1
+			return flt(amount_row.pba_expected)
+
+	new_amount = {
+		"pba_year": year_i,
+		"pba_month": month_i,
+		"pba_expected": amount,
+	}
+	if has_expected_col:
+		new_amount["pba_has_expected"] = 1
+	doc.append("project_budget_amount", new_amount)
+	return amount
 
 
 def _process_single_forecast_type(project, selected_tasks, forecast_details, confirm_recalc,
@@ -343,6 +380,9 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	results = []
 	updated_count = 0
 	should_stop = False
+	# First write of a period in this run replaces the stored sum.
+	# A later write of the same period (several tasks, one PB) adds on top.
+	replaced_periods = set()
 
 	for task in selected_tasks:
 		_debug_log(f"STEP 8.1: Processing task: {task}")
@@ -791,23 +831,34 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				doc.insert()
 				_debug_log(f"      Created new Project Budget: {doc.name}")
 
-			# Обновляем прогноз для периода
-			amount_exists = False
-			for amount_row in doc.project_budget_amount:
-				if int(amount_row.pba_year) == int(year) and int(amount_row.pba_month) == int(month):
+			# Replace the month. A second task in this run that hits the same PB adds.
+			has_expected_col = frappe.db.has_column(
+				"Project Budget Amount", "pba_has_expected"
+			)
+			period_id = (doc.name, cint(year), cint(month))
+			replace = period_id not in replaced_periods
+			old_value = None
+			for amount_row in doc.project_budget_amount or []:
+				if cint(amount_row.pba_year) == cint(year) and cint(amount_row.pba_month) == cint(
+					month
+				):
 					old_value = amount_row.pba_expected
-					amount_row.pba_expected = amount_row.pba_expected + total_amount if amount_exists else total_amount
-					amount_exists = True
-					_debug_log(f"      >>> UPDATED amount for {year}-{month}: {old_value} -> {amount_row.pba_expected}")
 					break
-
-			if not amount_exists:
-				doc.append("project_budget_amount", {
-					"pba_year": year,
-					"pba_month": month,
-					"pba_expected": total_amount
-				})
-				_debug_log(f"      Added NEW amount for {year}-{month}: {total_amount}")
+			new_value = apply_we_period_forecast(
+				doc,
+				year,
+				month,
+				total_amount,
+				has_expected_col=has_expected_col,
+				replace=replace,
+			)
+			replaced_periods.add(period_id)
+			if old_value is None:
+				_debug_log(f"      Added NEW amount for {year}-{month}: {new_value}")
+			else:
+				_debug_log(
+					f"      >>> UPDATED amount for {year}-{month}: {old_value} -> {new_value}"
+				)
 
 			doc.save()
 			updated_count += 1
