@@ -280,7 +280,7 @@ function make_pwa_dialog(cbfunc, task, pwas, pwes) {
                 cannot_add_rows: 1,
                 cannot_delete_rows: 1,
                 in_place_edit: true,
-                fields: get_pwe_fields(),
+                fields: get_pwe_fields(pwes),
                 data: pwes
             },
             {fieldtype: 'Section Break', label: __('Workload') },
@@ -526,11 +526,18 @@ function showForecastColumn() {
     return Boolean(frappe.boot && frappe.boot.dinext_timesheet_show_forecast);
 }
 
-function get_pwe_fields() {
-    const showForecast = showForecastColumn();
+/** plan | expected from calculate_timesheet_limits (Project.custom_limits_base). */
+function limitsHoursKey(rows) {
+    return rows && rows[0] && rows[0].hours_key === "expected" ? "expected" : "plan";
+}
+
+function get_pwe_fields(rows) {
+    const hoursKey = limitsHoursKey(rows);
+    const baseLabel = hoursKey === "expected" ? __("Forecast") : __("Plan");
+    const showForecast = showForecastColumn() && hoursKey !== "expected";
     const fields = [
             { label: __('Role'), fieldname: 'role', fieldtype: 'Data', read_only: 1, in_list_view: 1, columns: 3 },
-            { label: __("Plan"), fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
+            { label: baseLabel, fieldname: 'planned_hours', fieldtype: 'Float', precision: 1, read_only: 1, in_list_view: 1, columns: 1 },
         ];
     if (showForecast) {
         fields.push({

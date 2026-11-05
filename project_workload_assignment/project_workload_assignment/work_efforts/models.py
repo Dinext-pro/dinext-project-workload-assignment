@@ -206,6 +206,7 @@ class TimesheetLimitResult(TypedDict, total=False):
 	role: str
 	planned_hours: float
 	forecast_hours: float
+	hours_key: str
 	total_hours: float
 	hours_data: HoursData
 	completion_percentage: int
@@ -234,3 +235,4 @@ class WorkEffortsProgressResponse(TypedDict, total=False):
 	plan_hours: float
 	fact_hours: float
 	percent: float
+	hours_key: str

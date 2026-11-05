@@ -153,6 +153,7 @@ class TimesheetLimitsCalculator:
 					"role": project_role,
 					"planned_hours": planned,
 					"forecast_hours": forecast,
+					"hours_key": hours_key,
 					"total_hours": total_hours.get("total", 0),
 					"hours_data": total_hours,
 					"completion_percentage": pct,

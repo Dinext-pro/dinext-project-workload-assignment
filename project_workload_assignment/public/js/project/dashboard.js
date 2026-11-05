@@ -592,7 +592,7 @@ function get_work_efforts_data(frm) {
     if (Number.isNaN(pct)) pct = 0;
     return {
         percent: Math.round(pct * 100) / 100,
-        details: __("Plan") + ": " + plan + " " + __("h.") + "<br>" + __("Fact") + ": " + fact + __("h.")
+        details: (frm.we_progress?.hours_key === "expected" ? __("Forecast") : __("Plan")) + ": " + plan + " " + __("h.") + "<br>" + __("Fact") + ": " + fact + __("h.")
     };
 }
 

@@ -35,6 +35,7 @@ def _empty() -> WorkEffortsProgressResponse:
 		"plan_hours": 0.0,
 		"fact_hours": 0.0,
 		"percent": 0.0,
+		"hours_key": "plan",
 	}
 
 
@@ -48,17 +49,18 @@ def _calc_percent(plan: float, fact: float) -> float:
 	return round(pct, 2)
 
 
-def _sum_plan_hours(project: str, roles: list[str], periods: list[dict]) -> float:
-	"""Знаменатель progress bar: PlanFact по Project.custom_limits_base (ISS-2026-03483)."""
+def _sum_plan_hours(project: str, roles: list[str], periods: list[dict]) -> tuple[float, str]:
+	"""Знаменатель progress bar и hours_key по Project.custom_limits_base."""
 	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
 		hours_key_from_limits_base,
 	)
 
 	bulk = TimesheetLimitsBulkLoader.load([{"project": project}])
 	hours_key = hours_key_from_limits_base(bulk.limits_base_by_project.get(project))
-	return TimesheetPlanFactAdapter.sum_roots(
+	total = TimesheetPlanFactAdapter.sum_roots(
 		bulk, project, roles, periods, hours_key=hours_key
 	)
+	return total, hours_key
 
 
 def _sum_fact_hours(project: str, roles: list[str], periods: list[dict]) -> float:
@@ -91,10 +93,11 @@ def run_get_work_efforts_progress(project: str | None) -> WorkEffortsProgressRes
 	if not roles or not periods:
 		return _empty()
 
-	plan_hours = _sum_plan_hours(project, roles, periods)
+	plan_hours, hours_key = _sum_plan_hours(project, roles, periods)
 	fact_hours = _sum_fact_hours(project, roles, periods)
 	return {
 		"plan_hours": plan_hours,
 		"fact_hours": fact_hours,
 		"percent": _calc_percent(plan_hours, fact_hours),
+		"hours_key": hours_key,
 	}
