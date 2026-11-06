@@ -4,6 +4,7 @@
 import json
 
 import frappe
+from frappe.utils import cint, flt
 
 ENABLE_DETAILED_LOG = False
 
@@ -31,12 +32,53 @@ def _parse_inputs(fd):
 	return project, selected_tasks, forecast_details, confirm_recalc, forecast_type, income_account
 
 
+def apply_we_period_forecast(
+	doc,
+	year,
+	month,
+	total_amount,
+	has_expected_col: bool = True,
+	replace: bool = True,
+) -> float:
+	"""Write WE forecast into one Project Budget amount period.
+
+	replace=True overwrites the month (repeat Add forecast keeps the same sum).
+	replace=False adds onto the value already written in this run, when several
+	tasks share one Project Budget. After PL clear, reuse the same month row
+	and restore has_expected — do not append a duplicate.
+	"""
+	year_i, month_i = cint(year), cint(month)
+	amount = flt(total_amount)
+	for amount_row in doc.project_budget_amount or []:
+		if cint(amount_row.pba_year) == year_i and cint(amount_row.pba_month) == month_i:
+			current = flt(amount_row.pba_expected)
+			amount_row.pba_expected = amount if replace else current + amount
+			if has_expected_col:
+				amount_row.pba_has_expected = 1
+			return flt(amount_row.pba_expected)
+
+	new_amount = {
+		"pba_year": year_i,
+		"pba_month": month_i,
+		"pba_expected": amount,
+	}
+	if has_expected_col:
+		new_amount["pba_has_expected"] = 1
+	doc.append("project_budget_amount", new_amount)
+	return amount
+
+
 def _process_single_forecast_type(project, selected_tasks, forecast_details, confirm_recalc,
 								   forecast_type, income_account):
 	"""Process one forecast type: 'cost' or 'revenue'."""
 	_debug_log(f"STEP 2: Getting project data (forecast_type={forecast_type})")
 
 	# ========== 1. ПОЛУЧАЕМ ДАННЫЕ ПРОЕКТА ==========
+	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+		WORKLOAD_BASE_FORECAST,
+		project_workload_base,
+	)
+
 	Project = frappe.qb.DocType('Project')
 	project_query = (
 		frappe.qb.from_(Project)
@@ -46,7 +88,8 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	)
 	project_result = project_query.run(as_dict=True)
 	payment_scheme = project_result[0].get('custom_payment_scheme') if project_result else None
-	_debug_log(f"  payment_scheme: {payment_scheme}")
+	_workload_base = project_workload_base(project)
+	_debug_log(f"  payment_scheme: {payment_scheme}, workload_base: {_workload_base}")
 
 	# ========== 2. ПОЛУЧАЕМ СТАТЬИ БЮДЖЕТА (только для cost) ==========
 	account_table = []
@@ -213,12 +256,15 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 			else:
 				parent_values.add(value)
 
-	# Для revenue также добавляем pt_category виртуальных участников
-	if forecast_type == "revenue":
-		for vtd in virtual_team_details:
+	# ISS-2026-03985 п.1: ставки virtual нужны и для cost (не только revenue),
+	# иначе при отсутствии реальных участников rates пустой и запись в бюджет = 0.
+	for vtd in virtual_team_details:
+		if rate_source_field == "pt_category":
 			value = vtd.get("pt_category")
-			if value:
-				parent_values.add(value)
+		else:
+			value = vtd.get("pt_cost_level")
+		if value:
+			parent_values.add(value)
 
 	_debug_log(f"  parent_values: {parent_values}")
 
@@ -334,6 +380,9 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 	results = []
 	updated_count = 0
 	should_stop = False
+	# First write of a period in this run replaces the stored sum.
+	# A later write of the same period (several tasks, one PB) adds on top.
+	replaced_periods = set()
 
 	for task in selected_tasks:
 		_debug_log(f"STEP 8.1: Processing task: {task}")
@@ -358,9 +407,13 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 						# Для revenue не фильтруем по worker type
 						matching_users.append((td_user, td))
 
+			# ISS-2026-03985 п.1: без реальных участников роли не skip —
+			# если есть virtual, underload-путь запишет прогноз целиком на него.
 			if not matching_users:
-				_debug_log(f"    No valid users found for role {role}, skipping")
-				continue
+				_debug_log(
+					f"    No valid real users for role {role}; "
+					f"virtual={'yes' if virtual_team_map.get(role) else 'no'}"
+				)
 
 			for period_key, hours_data in periods.items():
 				forecast_hours = hours_data.get('forecast_hours', 0)
@@ -466,12 +519,22 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if workload_type == 'В % от трудоемкости задачи':
 						original_hours = assigned
-						if not original_hours and plan_hours and percentage:
-							original_hours = plan_hours * percentage / 100
+						# ISS-2026-03985 п.3 / 03483: fallback по Project.custom_workload_base
+						if not original_hours and percentage:
+							base_hours = (
+								forecast_hours
+								if _workload_base == WORKLOAD_BASE_FORECAST
+								else plan_hours
+							)
+							if base_hours:
+								original_hours = base_hours * percentage / 100
 					else:
 						original_hours = assigned
 
-					_debug_log(f"      User: {user}, type={workload_type}, hours={original_hours}, plan={plan_hours}")
+					_debug_log(
+						f"      User: {user}, type={workload_type}, hours={original_hours}, "
+						f"base={_workload_base}, forecast={forecast_hours}, plan={plan_hours}"
+					)
 
 					users_for_period.append({
 						'user': user,
@@ -544,10 +607,15 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if not confirm_recalc:
 						type_label = frappe._("cost") if forecast_type == "cost" else frappe._("revenue")
-						return {
-							'success': False,
-							'needs_confirmation': True,
-							'message': frappe._(
+						# ISS-2026-03985 п.1: отдельный текст, если реальной загрузки нет вовсе
+						if total_pwa_hours <= 0:
+							confirm_message = frappe._(
+								'No assigned workload for task "{0}", role "{1}", period {2}. '
+								'The entire forecast ({3}h) will be calculated from the virtual team member '
+								'when calculating {4}. Continue?'
+							).format(task, role, period_key, forecast_hours, type_label)
+						else:
+							confirm_message = frappe._(
 								'Underload detected: forecast work efforts ({0}h) exceed assigned workload ({1}h) '
 								'for task "{2}", role "{3}", period {4}. '
 								'A virtual team member will cover the remainder ({5}h) when calculating {6}. Continue?'
@@ -559,7 +627,11 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 								period_key,
 								round(forecast_hours - total_pwa_hours, 2),
 								type_label,
-							),
+							)
+						return {
+							'success': False,
+							'needs_confirmation': True,
+							'message': confirm_message,
 							'task': task,
 							'role': role,
 							'period': period_key,
@@ -759,23 +831,34 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 				doc.insert()
 				_debug_log(f"      Created new Project Budget: {doc.name}")
 
-			# Обновляем прогноз для периода
-			amount_exists = False
-			for amount_row in doc.project_budget_amount:
-				if int(amount_row.pba_year) == int(year) and int(amount_row.pba_month) == int(month):
+			# Replace the month. A second task in this run that hits the same PB adds.
+			has_expected_col = frappe.db.has_column(
+				"Project Budget Amount", "pba_has_expected"
+			)
+			period_id = (doc.name, cint(year), cint(month))
+			replace = period_id not in replaced_periods
+			old_value = None
+			for amount_row in doc.project_budget_amount or []:
+				if cint(amount_row.pba_year) == cint(year) and cint(amount_row.pba_month) == cint(
+					month
+				):
 					old_value = amount_row.pba_expected
-					amount_row.pba_expected = amount_row.pba_expected + total_amount if amount_exists else total_amount
-					amount_exists = True
-					_debug_log(f"      >>> UPDATED amount for {year}-{month}: {old_value} -> {amount_row.pba_expected}")
 					break
-
-			if not amount_exists:
-				doc.append("project_budget_amount", {
-					"pba_year": year,
-					"pba_month": month,
-					"pba_expected": total_amount
-				})
-				_debug_log(f"      Added NEW amount for {year}-{month}: {total_amount}")
+			new_value = apply_we_period_forecast(
+				doc,
+				year,
+				month,
+				total_amount,
+				has_expected_col=has_expected_col,
+				replace=replace,
+			)
+			replaced_periods.add(period_id)
+			if old_value is None:
+				_debug_log(f"      Added NEW amount for {year}-{month}: {new_value}")
+			else:
+				_debug_log(
+					f"      >>> UPDATED amount for {year}-{month}: {old_value} -> {new_value}"
+				)
 
 			doc.save()
 			updated_count += 1

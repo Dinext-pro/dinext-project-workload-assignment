@@ -16,6 +16,28 @@ export const WORKER_OPTIONS = [
 	{ value: "Supplier", label: __("Supplier") },
 ];
 
+/** ISS-2026-03483: база % от трудоёмкости. */
+export const WORKLOAD_BASE_PLAN = "От плана";
+export const WORKLOAD_BASE_FORECAST = "От прогноза";
+export const WORKLOAD_BASE_BY_PROJECT = "По проекту";
+
+/** Вкладка Project: только план / прогноз. */
+export function getWorkloadBaseOptions() {
+	return [
+		{ value: WORKLOAD_BASE_PLAN, label: __(WORKLOAD_BASE_PLAN) },
+		{ value: WORKLOAD_BASE_FORECAST, label: __(WORKLOAD_BASE_FORECAST) },
+	];
+}
+
+/** Сводный отчёт: + «По проекту» (default). */
+export function getReportWorkloadBaseOptions() {
+	return [
+		{ value: WORKLOAD_BASE_BY_PROJECT, label: __(WORKLOAD_BASE_BY_PROJECT) },
+		{ value: WORKLOAD_BASE_PLAN, label: __(WORKLOAD_BASE_PLAN) },
+		{ value: WORKLOAD_BASE_FORECAST, label: __(WORKLOAD_BASE_FORECAST) },
+	];
+}
+
 const VIEW_TYPE_VALUES = new Set(["daily", "weekly", "monthly"]);
 const PERIOD_RANGE_VALUES = new Set(["quarter", "half_year", "year"]);
 
@@ -54,6 +76,7 @@ export const projectsDefaults = () => ({
 	worker_wtype: "",
 	project_role_filters: [],
 	load_actual: 0,
+	workload_base: WORKLOAD_BASE_BY_PROJECT,
 	view_type: getDefaultViewType("weekly"),
 	period_range: getDefaultPeriodRange("quarter"),
 	period_anchor_date: _today(),
@@ -68,6 +91,7 @@ export const projectDefaults = () => {
 		load_actual: 0,
 		consider_limit: 1,
 		consider_virtuals: 0,
+		workload_base: WORKLOAD_BASE_PLAN,
 		view_type: getDefaultViewType("weekly"),
 		period_range,
 		date_from,

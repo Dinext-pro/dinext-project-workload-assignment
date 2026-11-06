@@ -277,7 +277,14 @@ function mount(frm, attempt = 0) {
 		});
 		common.mountChartVisibilityToggle(zones.filters, zones.charts, { append: true });
 
-		frm._wrForm = { zones, getArgs: session.getArgs, expand, toolbar, version: MOUNT_VERSION };
+		frm._wrForm = {
+			zones,
+			getArgs: session.getArgs,
+			session,
+			expand,
+			toolbar,
+			version: MOUNT_VERSION,
+		};
 	}
 
 	_applyFormLayout(frm);

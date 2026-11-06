@@ -551,7 +551,7 @@ def ensure_second_test_user() -> str:
 		{
 			"doctype": "User",
 			"email": SECOND_USER_EMAIL,
-			"first_name": "Administrator",
+			"first_name": "Administrator 2",
 			"last_name": "",
 			"enabled": 1,
 			"send_welcome_email": 0,

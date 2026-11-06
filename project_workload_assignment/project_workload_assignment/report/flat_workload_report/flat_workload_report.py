@@ -73,7 +73,13 @@ def get_data(filters: dict | None) -> list[dict]:
 	working_hours_overrides = load_working_hours_overrides(users_data)
 	holiday_lists_cache, holiday_date_sets = load_holiday_data(users_data, projects_data)
 	user_absences = load_user_absences(users_set, min_end_date=from_date)
-	monthly_plan_cache = load_monthly_plan_cache(assignments)
+	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+		hours_source_from_form,
+	)
+	monthly_plan_cache = load_monthly_plan_cache(
+		assignments,
+		hours_source=hours_source_from_form(filters, (filters or {}).get("project")),
+	)
 
 	wl_ctx = WorkloadContext(
 		users_data=users_data,
