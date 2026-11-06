@@ -82,7 +82,15 @@ function parseHoursInput(raw) {
     return { ok: true, value };
 }
 
-function validateForecastChange(frm, change) {
+function applyForecastToRows(rows, taskId, role, periodKey, value) {
+    const flat = flattenTree(rows);
+    const row = flat.find((r) => r.task_id === taskId && (r.role || "") === (role || ""));
+    if (row) {
+        row[`forecast_${periodKey}`] = value;
+    }
+}
+
+function validateForecastChange(rows, change) {
     const field = change.field;
     if (!field?.startsWith("actual_")) return true;
     if (change.row?.we_remaining) return true;
@@ -100,7 +108,6 @@ function validateForecastChange(frm, change) {
     const value = parsed.value;
     const taskId = row?.task_id;
     const role = row?.role || "";
-    const rows = frm.we?.rows || [];
 
     if (!taskId || !periodKey) return true;
 
@@ -118,12 +125,15 @@ function validateForecastChange(frm, change) {
         );
     }
 
+    applyForecastToRows(rows, taskId, role, periodKey, value);
     return true;
 }
 
 export function onValidateCells(frm, { changes }) {
+    // Working copy: later batch cells must see earlier edits (paste / multi-cell).
+    const rows = JSON.parse(JSON.stringify(frm.we?.rows || []));
     for (const change of changes) {
-        const result = validateForecastChange(frm, change);
+        const result = validateForecastChange(rows, change);
         if (result !== true) {
             frappe.msgprint(result);
             return false;

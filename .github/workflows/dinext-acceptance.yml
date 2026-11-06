@@ -1,0 +1,54 @@
+# Browser evidence for develop policy (ISS-2026-03483 UI: workload_base selector).
+name: Dinext acceptance
+on:
+  pull_request: {}
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: dinext-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cypress:
+    name: Cypress acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20"
+      - name: Install Cypress
+        run: npm install --no-save cypress@13.17.0
+      - name: Serve fixture + run Cypress
+        run: |
+          set -e
+          mkdir -p cypress/results
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/static-server.log 2>&1 &
+          echo $! > /tmp/static-server.pid
+          for i in $(seq 1 30); do
+            if curl -sf "http://127.0.0.1:4173/cypress/fixtures/workload_base_selector.html" >/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+          npx cypress run \
+            --config-file cypress.config.js \
+            --spec cypress/e2e/workload_base_selector.cy.js \
+            --browser electron \
+            --reporter junit \
+            --reporter-options "mochaFile=cypress/results/junit.xml,toConsole=true"
+          kill "$(cat /tmp/static-server.pid)" || true
+      - name: Upload Cypress artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cypress-workload-base-${{ github.sha }}
+          path: |
+            cypress/results/
+            cypress/videos/
+            cypress/screenshots/
+            /tmp/static-server.log
+          if-no-files-found: warn

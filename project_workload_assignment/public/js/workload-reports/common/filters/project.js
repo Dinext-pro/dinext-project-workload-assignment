@@ -1,5 +1,7 @@
 import {
 	WORKER_OPTIONS,
+	WORKLOAD_BASE_PLAN,
+	getWorkloadBaseOptions,
 	projectDefaults,
 	resetProjectWindow,
 	shiftMonth,
@@ -11,10 +13,13 @@ import { createFilterSession } from "./session.js";
 /**
  * @param {HTMLElement} el
  * @param {Function} onChange
- * @param {{ getProject?: () => string }} [opts]
+ * @param {{ getProject?: () => string, workload_base?: string, onWorkloadBaseChange?: (v: string) => void }} [opts]
  */
 export function mountProjectFilters(el, onChange, opts = {}) {
 	const args = projectDefaults();
+	if (opts.workload_base) {
+		args.workload_base = opts.workload_base;
+	}
 	const session = createFilterSession(args, {
 		onReload: onChange,
 		onShift: (next, dir) => {
@@ -44,6 +49,18 @@ export function mountProjectFilters(el, onChange, opts = {}) {
 			fetchProjectRoleOptions({ project: getProject(), worker_wtype: args.worker_wtype }, txt),
 		onChange: (values) => {
 			args.project_role_filters = values || [];
+			session.reload();
+		},
+	});
+
+	session._workloadBaseSelect = addSelect(flow, {
+		fieldname: "workload_base",
+		options: getWorkloadBaseOptions(),
+		value: args.workload_base || WORKLOAD_BASE_PLAN,
+		onChange: (v) => {
+			const next = v || WORKLOAD_BASE_PLAN;
+			args.workload_base = next;
+			opts.onWorkloadBaseChange?.(next);
 			session.reload();
 		},
 	});

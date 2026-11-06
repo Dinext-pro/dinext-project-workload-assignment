@@ -12,6 +12,7 @@ from project_workload_assignment.project_workload_assignment.work_efforts.save_c
     _get_child_forecast_sum,
     _get_parent_forecast_limit,
     _validate_change,
+    _validate_changes,
     run_save_forecast_changes,
 )
 from project_workload_assignment.project_workload_assignment.tests.scenarios.we_ss_migration_baseline.data_setup import (
@@ -95,6 +96,36 @@ class TestWeSaveValidation(FrappeTestCase):
         ]
         limit = _get_parent_forecast_limit(rows, "child", "Dev", "2026_8")
         self.assertAlmostEqual(limit, 10)
+
+    def test_batch_children_together_cannot_exceed_parent(self):
+        rows = [
+            _make_row("parent", "Dev", None, 10),
+            _make_row("child1", "Dev", "parent", 0),
+            _make_row("child2", "Dev", "parent", 0),
+        ]
+        error = _validate_changes(
+            rows,
+            [
+                {"task_id": "child1", "role": "Dev", "period_key": "2026_8", "value": 8},
+                {"task_id": "child2", "role": "Dev", "period_key": "2026_8", "value": 8},
+            ],
+        )
+        self.assertIsNotNone(error)
+
+    def test_batch_children_within_parent_limit_is_allowed(self):
+        rows = [
+            _make_row("parent", "Dev", None, 10),
+            _make_row("child1", "Dev", "parent", 0),
+            _make_row("child2", "Dev", "parent", 0),
+        ]
+        error = _validate_changes(
+            rows,
+            [
+                {"task_id": "child1", "role": "Dev", "period_key": "2026_8", "value": 6},
+                {"task_id": "child2", "role": "Dev", "period_key": "2026_8", "value": 4},
+            ],
+        )
+        self.assertIsNone(error)
 
 
 class TestWeSaveForecast(FrappeTestCase):

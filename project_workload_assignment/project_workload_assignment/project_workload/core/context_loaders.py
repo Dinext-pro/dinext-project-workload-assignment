@@ -508,10 +508,26 @@ def load_user_absences(
 
 def load_monthly_plan_cache(
 	assignments: list[AssignmentRow] | list[dict],
+	hours_source: str = "По проекту",
 ) -> dict[str, float]:
+	"""Кэш task_role_year_month → часы базы для % от трудоёмкости.
+
+	hours_source: «От плана» | «От прогноза» | «По проекту».
+	«По проекту» — для каждого PWE брать Project.custom_workload_base.
+	Часы ≤ 0 не кладём в кэш.
+	"""
+	from project_workload_assignment.project_workload_assignment.project_workload.core.workload_base import (
+		WORKLOAD_BASE_BY_PROJECT,
+		WORKLOAD_BASE_FORECAST,
+		WORKLOAD_BASE_PLAN,
+		load_project_workload_bases,
+		normalize_report_workload_base,
+	)
+
 	monthly_plan_cache: dict[str, float] = {}
 	tasks_set: set[str] = set()
 	roles_set: set[str] = set()
+	projects_set: set[str] = set()
 	has_pairs = False
 
 	for assignment in assignments:
@@ -521,9 +537,17 @@ def load_monthly_plan_cache(
 			has_pairs = True
 			tasks_set.add(task)
 			roles_set.add(role)
+		project = assignment.get("project") or assignment.get("project_name")
+		if project:
+			projects_set.add(project)
 
 	if not has_pairs:
 		return monthly_plan_cache
+
+	mode = normalize_report_workload_base(hours_source)
+	project_bases: dict[str, str] = {}
+	if mode == WORKLOAD_BASE_BY_PROJECT:
+		project_bases = load_project_workload_bases(projects_set)
 
 	PWE = frappe.qb.DocType("Project Work Efforts")
 	PWEA = frappe.qb.DocType("Project Work Efforts Amount")
@@ -532,17 +556,32 @@ def load_monthly_plan_cache(
 		.inner_join(PWEA)
 		.on(PWEA.parent == PWE.name)
 		.select(
+			PWE.pwe_project.as_("project"),
 			PWE.pwe_task.as_("task"),
 			PWE.pwe_project_role.as_("role"),
 			PWEA.pwea_year.as_("year"),
 			PWEA.pwea_month.as_("month"),
 			PWEA.pwea_plan.as_("plan_hours"),
+			PWEA.pwea_expected.as_("forecast_hours"),
 		)
 		.where(PWE.pwe_task.isin(list(tasks_set)))
 		.where(PWE.pwe_project_role.isin(list(roles_set)))
-		.where(PWEA.pwea_plan > 0)
 	).run(as_dict=True)
 	for plan in plans:
+		if mode == WORKLOAD_BASE_BY_PROJECT:
+			row_source = project_bases.get(plan.get("project") or "", WORKLOAD_BASE_PLAN)
+		else:
+			row_source = mode
+		hours = float(
+			(
+				plan.get("forecast_hours")
+				if row_source == WORKLOAD_BASE_FORECAST
+				else plan.get("plan_hours")
+			)
+			or 0
+		)
+		if hours <= 0:
+			continue
 		key = f"{plan['task']}_{plan['role']}_{plan['year']}_{plan['month']}"
-		monthly_plan_cache[key] = float(plan["plan_hours"] or 0)
+		monthly_plan_cache[key] = hours
 	return monthly_plan_cache
