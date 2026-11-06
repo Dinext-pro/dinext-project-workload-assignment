@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import json
 
+from math import floor
+
 import frappe
 
 from project_workload_assignment.project_workload_assignment.work_efforts.models import (
@@ -12,6 +14,7 @@ from project_workload_assignment.project_workload_assignment.work_efforts.models
 	TimesheetLimitsFormInput,
 	TimesheetLimitsResponse,
 	TimesheetPositionInput,
+	UserHoursSummary,
 )
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.bulk_loader import (
 	TimesheetLimitsBulkData,
@@ -40,9 +43,7 @@ class TimesheetLimitsCalculator:
 
 	@classmethod
 	def run(cls, form_dict: TimesheetLimitsFormInput) -> TimesheetLimitsResponse:
-		positions: list[TimesheetPositionInput] = LimitsParsing.as_json_list(
-			form_dict.get("positions")
-		)
+		positions: list[TimesheetPositionInput] = LimitsParsing.as_json_list(form_dict.get("positions"))
 		timesheet_name = form_dict.get("timesheet_name")
 		session_limits_override = cls._session_limits_override(form_dict)
 
@@ -102,13 +103,9 @@ class TimesheetLimitsCalculator:
 		rows: TimesheetLimitsResponse = []
 
 		for project_role in project_roles:
-			screen = TimesheetPlanFactAdapter.for_screen(
-				bulk, proj or "", doc, project_role, year, month
-			)
+			screen = TimesheetPlanFactAdapter.for_screen(bulk, proj or "", doc, project_role, year, month)
 			planned = screen.plan_hours if screen else 0.0
-			forecast = cls._forecast_hours(
-				bulk, proj or "", doc, project_role, year, month
-			)
+			forecast = cls._forecast_hours(bulk, proj or "", doc, project_role, year, month)
 			consumers = list(screen.consumers) if screen else [doc]
 
 			if year is not None and month is not None:
@@ -127,7 +124,19 @@ class TimesheetLimitsCalculator:
 					bulk, proj or "", doc, project_role, year, month
 				)
 
-			pct = int((total_hours.get("total", 0) / planned) * 100) if planned > 0 else 0
+			pct = cls._completion_percent(total_hours.get("total", 0), planned)
+			status_percentages = {
+				key: cls._display_percent(value, planned)
+				for key, value in total_hours.items()
+				if isinstance(value, int | float)
+			}
+			user_totals: dict[str, UserHoursSummary] = {}
+			for user, by_status in total_hours.get("user_hours", {}).items():
+				user_hours = sum(value for value in by_status.values() if isinstance(value, int | float))
+				user_totals[user] = {
+					"total_hours": user_hours,
+					"completion_percentage": cls._display_percent(user_hours, planned),
+				}
 			limits = cls._project_limits(proj, session_limits_override, bulk)
 			limit_status, limit = cls._limit_status(plan_required, planned, pct, limits)
 			requirement = state.project_settings.get(proj, "Опционально")
@@ -143,6 +152,11 @@ class TimesheetLimitsCalculator:
 					"total_hours": total_hours.get("total", 0),
 					"hours_data": total_hours,
 					"completion_percentage": pct,
+					"display_completion_percentage": cls._display_percent(
+						total_hours.get("total", 0), planned
+					),
+					"status_percentages": status_percentages,
+					"user_totals": user_totals,
 					"status": limit_status,
 					"limit": limit,
 					"used_parent_for_plan": bool(screen and screen.used_parent),
@@ -162,6 +176,16 @@ class TimesheetLimitsCalculator:
 			)
 		return rows
 
+	@staticmethod
+	def _completion_percent(hours: float, planned: float) -> int:
+		# Strip float noise (322 / 280 => 114.999...) before the existing truncation.
+		return int(round((hours / planned) * 100, 9)) if planned > 0 else 0
+
+	@staticmethod
+	def _display_percent(hours: float, planned: float) -> int:
+		# Match the timesheet table rounding without changing threshold comparisons.
+		return floor(round((hours / planned) * 100, 9) + 0.5) if planned > 0 else 0
+
 	@classmethod
 	def _forecast_hours(
 		cls,
@@ -172,15 +196,11 @@ class TimesheetLimitsCalculator:
 		year: int | None,
 		month: int | None,
 	) -> float:
-		got = TimesheetPlanFactAdapter.result(
-			bulk, project, task, role, year, month, hours_key="expected"
-		)
+		got = TimesheetPlanFactAdapter.result(bulk, project, task, role, year, month, hours_key="expected")
 		return float(got.plan_hours) if got else 0.0
 
 	@classmethod
-	def _project_roles(
-		cls, project: str | None, role: str, state: "_CalculatorState"
-	) -> list[str]:
+	def _project_roles(cls, project: str | None, role: str, state: "_CalculatorState") -> list[str]:
 		if role:
 			return [role]
 		return list(state.get_project_roles(project))
@@ -238,9 +258,7 @@ class _CalculatorState:
 	def has_linked_issue(self, task_name: str) -> bool:
 		return self.bulk.task_meta.get(task_name, {}).get("custom_linked_issue", False)
 
-	def find_root_task_with_linked_issue(
-		self, project: str | None, task: str
-	) -> str | None:
+	def find_root_task_with_linked_issue(self, project: str | None, task: str) -> str | None:
 		ck = (project or "") + task
 		if ck in self.root_task_with_issue_cache:
 			return self.root_task_with_issue_cache[ck]

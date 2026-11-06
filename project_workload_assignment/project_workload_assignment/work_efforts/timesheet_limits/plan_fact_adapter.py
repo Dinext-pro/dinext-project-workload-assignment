@@ -54,11 +54,7 @@ class TimesheetPlanFactAdapter:
 		result = PlanFact.fold((got for _snap, got in pairs), used=used)
 		if result is None:
 			return None
-		sources = tuple(
-			row
-			for snap, got in pairs
-			for row in cls._sources(bulk, snap, got)
-		)
+		sources = tuple(row for snap, got in pairs for row in cls._sources(bulk, snap, got))
 		used_parent = result.assembled_at != result.node
 		if used_parent and sources:
 			subject = sources[0]["subject"]
@@ -162,9 +158,7 @@ class TimesheetPlanFactAdapter:
 
 	@staticmethod
 	def _roles(bulk: TimesheetLimitsBulkData, project: str) -> list[str]:
-		return sorted(
-			{role for (proj, _task, role) in bulk.pwe_by_task_role if proj == project}
-		)
+		return sorted({role for (proj, _task, role) in bulk.pwe_by_task_role if proj == project})
 
 	@classmethod
 	def _compute(cls, bulk: TimesheetLimitsBulkData, snap: Snapshot, node: str, role: str) -> Result | None:
@@ -225,16 +219,20 @@ class TimesheetPlanFactAdapter:
 		year: int | None,
 		month: int | None,
 	) -> dict:
-		"""Факт теми же срезами, что и план. Часы месяца не перетекают в соседний."""
+		"""Факт по срезам плана; без плана — собственные часы задачи, включая месяцы без бюджета."""
 		_parent_of, snaps = cls.slices(bulk, project)
-		keys = [(year, month)] if year is not None and month is not None else sorted(snaps)
+		if year is not None and month is not None:
+			keys = [(year, month)]
+		else:
+			# Actual-only months must remain visible even when no budget was entered.
+			fact_months = {(y, m) for y, m, fact_role in bulk.fact_by_period if fact_role == role}
+			keys = sorted(set(snaps) | fact_months)
 		data: dict = {"total": 0.0, "users": set(), "user_hours": {}}
 		for key in keys:
 			snap = snaps.get(key) or cls._skeleton(bulk, project)
 			got = cls._compute(bulk, snap, task, role)
-			if not got:
-				continue
-			accumulate_fact(data, bulk, key[0], key[1], got.consumers, role)
+			consumers = got.consumers if got else frozenset({task})
+			accumulate_fact(data, bulk, key[0], key[1], consumers, role)
 		return data
 
 	@staticmethod

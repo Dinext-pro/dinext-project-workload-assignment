@@ -484,7 +484,7 @@ def load_user_absences(
 		],
 		filters=[
 			["lauser", "in", users_list],
-			["status", "=", "Согласовано"],
+			["status", "=", "Approved"],
 			["alfrom_date", "is", "set"],
 			["alto_date", "is", "set"],
 			["alto_date", ">=", getdate(min_end_date)],

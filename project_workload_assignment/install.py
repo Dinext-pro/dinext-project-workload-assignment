@@ -70,5 +70,8 @@ def after_install():
 
 
 def after_migrate():
+	from project_workload_assignment.legacy_absences import migrate_legacy_absence_query
+
+	migrate_legacy_absence_query()
 	ensure_report_indexes()
 	frappe.clear_cache(doctype="Project Team Details")

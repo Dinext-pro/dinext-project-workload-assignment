@@ -1,0 +1,18 @@
+module.exports = {
+	includeShadowDom: true,
+	defaultCommandTimeout: 30000,
+	pageLoadTimeout: 120000,
+	requestTimeout: 180000,
+	responseTimeout: 180000,
+	viewportWidth: 1440,
+	viewportHeight: 900,
+	video: false,
+	retries: { runMode: 0, openMode: 0 },
+	env: { adminPassword: "admin" },
+	e2e: {
+		baseUrl: "http://localhost:8000",
+		specPattern: "cypress/integration/**/*.js",
+		supportFile: "cypress/support/e2e.js",
+		testIsolation: true,
+	},
+};

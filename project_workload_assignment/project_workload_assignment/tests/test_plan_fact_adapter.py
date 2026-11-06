@@ -65,9 +65,7 @@ def _bulk() -> TimesheetLimitsBulkData:
 
 
 def _screen(task, year=None, month=None, used=()):
-	return TimesheetPlanFactAdapter.for_screen(
-		_bulk(), PROJECT, task, ROLE, year, month, used=used
-	)
+	return TimesheetPlanFactAdapter.for_screen(_bulk(), PROJECT, task, ROLE, year, month, used=used)
 
 
 class TestAdapterIvanPlan(unittest.TestCase):
@@ -173,29 +171,21 @@ class TestAdapterIvanExpected(unittest.TestCase):
 		self.assertEqual(hours(bulk, PROJECT, "t1.1.1", hours_key="expected"), {ROLE: 16.0})
 
 	def test_month_own_cell_not_children(self):
-		got = TimesheetPlanFactAdapter.result(
-			_bulk(), PROJECT, "t1.1", ROLE, 2026, 1, hours_key="expected"
-		)
+		got = TimesheetPlanFactAdapter.result(_bulk(), PROJECT, "t1.1", ROLE, 2026, 1, hours_key="expected")
 		self.assertEqual(got.plan_hours, 8.0)
 
 	def test_empty_month_sums_children(self):
-		got = TimesheetPlanFactAdapter.result(
-			_bulk(), PROJECT, "t1.1", ROLE, 2026, 2, hours_key="expected"
-		)
+		got = TimesheetPlanFactAdapter.result(_bulk(), PROJECT, "t1.1", ROLE, 2026, 2, hours_key="expected")
 		self.assertEqual(got.plan_hours, 30.0)
 
 
 class TestCalculatorForecastHours(unittest.TestCase):
 	def test_own_month_expected(self):
-		hours = TimesheetLimitsCalculator._forecast_hours(
-			_bulk(), PROJECT, "t1.1", ROLE, 2026, 1
-		)
+		hours = TimesheetLimitsCalculator._forecast_hours(_bulk(), PROJECT, "t1.1", ROLE, 2026, 1)
 		self.assertEqual(hours, 8.0)
 
 	def test_empty_month_is_zero(self):
-		hours = TimesheetLimitsCalculator._forecast_hours(
-			_bulk(), PROJECT, "t1.1", ROLE, 2026, 3
-		)
+		hours = TimesheetLimitsCalculator._forecast_hours(_bulk(), PROJECT, "t1.1", ROLE, 2026, 3)
 		self.assertEqual(hours, 0.0)
 
 
@@ -237,9 +227,7 @@ class TestAdapterRequestCache(unittest.TestCase):
 		bulk = _bulk()
 		leaf = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1.1", ROLE, None, None)
 		branch = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1.3", ROLE, None, None)
-		forecast = TimesheetPlanFactAdapter.result(
-			bulk, PROJECT, "t1.1.3", ROLE, hours_key="expected"
-		)
+		forecast = TimesheetPlanFactAdapter.result(bulk, PROJECT, "t1.1.3", ROLE, hours_key="expected")
 		self.assertEqual(leaf.plan_hours, 20.0)
 		self.assertEqual(leaf.consumers, frozenset({"t1.1.1"}))
 		self.assertEqual(branch.plan_hours, 45.0)
@@ -461,9 +449,7 @@ class TestIssueCeilingOnAdapter(unittest.TestCase):
 		screen = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "v", ROLE, None, None)
 		self.assertEqual(screen.plan_hours, 55.0)
 		self.assertIn("p", screen.consumers)
-		forecast = TimesheetPlanFactAdapter.result(
-			bulk, PROJECT, "v", ROLE, hours_key="expected"
-		)
+		forecast = TimesheetPlanFactAdapter.result(bulk, PROJECT, "v", ROLE, hours_key="expected")
 		self.assertEqual(forecast.plan_hours, 62.0)
 
 	def test_requests_mode_stops_above_virtual_task(self):
@@ -472,9 +458,7 @@ class TestIssueCeilingOnAdapter(unittest.TestCase):
 		self.assertEqual(screen.plan_hours, 15.0)
 		self.assertNotIn("p", screen.consumers)
 		self.assertIn("a", screen.consumers)
-		forecast = TimesheetPlanFactAdapter.result(
-			bulk, PROJECT, "v", ROLE, hours_key="expected"
-		)
+		forecast = TimesheetPlanFactAdapter.result(bulk, PROJECT, "v", ROLE, hours_key="expected")
 		self.assertEqual(forecast.plan_hours, 12.0)
 		self.assertNotIn("p", forecast.consumers)
 
@@ -493,3 +477,32 @@ class TestIssueCeilingOnAdapter(unittest.TestCase):
 		self.assertEqual(screen.plan_hours, 45.0)
 		leaf = TimesheetPlanFactAdapter.for_screen(bulk, PROJECT, "t1.1.3", ROLE, None, None)
 		self.assertEqual(leaf.plan_hours, 45.0)
+
+
+class TestActualHoursWithoutPlan(unittest.TestCase):
+	def test_actual_only_month_is_retained_without_a_plan(self):
+		bulk = TimesheetLimitsBulkData(
+			task_meta={"own": {"subject": "Own", "project": PROJECT}},
+			children_map={(PROJECT, "own"): []},
+			fact_by_period={(2026, 3, ROLE): {("own", "Editing", "Cypress"): 8.0}},
+		)
+		result = TimesheetPlanFactAdapter.hours_data(bulk, PROJECT, "own", ROLE, None, None)
+		self.assertEqual(result["total"], 8.0)
+		self.assertEqual(result["Editing"], 8.0)
+		self.assertEqual(result["user_hours"]["Cypress"]["Editing"], 8.0)
+
+	def test_no_plan_fallback_stays_within_the_task_role_and_month(self):
+		bulk = TimesheetLimitsBulkData(
+			task_meta={
+				"own": {"subject": "Own", "project": PROJECT},
+				"other": {"subject": "Other", "project": PROJECT},
+			},
+			children_map={(PROJECT, "own"): [], (PROJECT, "other"): []},
+			fact_by_period={
+				(2026, 3, ROLE): {("own", "Editing", "Cypress"): 8.0, ("other", "Editing", "Cypress"): 50.0},
+				(2026, 4, ROLE): {("own", "Editing", "Cypress"): 11.0},
+				(2026, 3, "Other role"): {("own", "Editing", "Cypress"): 99.0},
+			},
+		)
+		result = TimesheetPlanFactAdapter.hours_data(bulk, PROJECT, "own", ROLE, 2026, 3)
+		self.assertEqual(result["total"], 8.0)

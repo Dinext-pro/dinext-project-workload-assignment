@@ -197,6 +197,11 @@ class HoursData(TypedDict, total=False):
 LimitStatus = Literal["no-plan", "block", "warning", "message", "normal"]
 
 
+class UserHoursSummary(TypedDict):
+	total_hours: float
+	completion_percentage: int
+
+
 class TimesheetLimitResult(TypedDict, total=False):
 	"""Результат расчёта лимита для одной позиции UTP."""
 
@@ -209,6 +214,9 @@ class TimesheetLimitResult(TypedDict, total=False):
 	total_hours: float
 	hours_data: HoursData
 	completion_percentage: int
+	display_completion_percentage: int
+	status_percentages: dict[str, int]
+	user_totals: dict[str, UserHoursSummary]
 	status: LimitStatus
 	limit: int | float
 	used_parent_for_plan: bool
