@@ -18,6 +18,74 @@ def _parse_confirm_recalc(value):
 	return value in (True, 1, "1", "true", "True")
 
 
+def _forecast_users_with_hours(users_data):
+	"""Users in forecast_details that carry assigned hours or % workload."""
+	result = []
+	for email, info in (users_data or {}).items():
+		info = info or {}
+		if flt(info.get("assigned_hours") or 0) > 0 or flt(info.get("percentage") or 0) > 0:
+			result.append(email)
+	return result
+
+
+def _zero_pwa_underload_confirm_message(
+	task,
+	role,
+	period_key,
+	forecast_hours,
+	type_label,
+	users_data,
+	matching_users,
+	dropped_no_rate_users,
+	team_users_for_role=None,
+):
+	"""Pick confirm text when total_pwa≈0. Same virtual path; message only.
+
+	- role mismatch: hours on role in details, user not on team with that role
+	- grade/rate/type: user is on team for role but dropped (no worker type / grade / rate / account)
+	- else: true empty assigned workload
+
+	matching_users may omit team members without Worker.wtype — use team_users_for_role
+	for membership, not matching_users alone.
+	"""
+	team_emails = set(team_users_for_role or [])
+	if not team_emails:
+		# backward-compatible fallback
+		team_emails = {u for u, _ in (matching_users or [])}
+	matching_emails = {u for u, _ in (matching_users or [])}
+	forecast_users = _forecast_users_with_hours(users_data)
+	role_mismatch_users = [u for u in forecast_users if u not in team_emails]
+	# On team for role but not usable for cost this period
+	grade_drop_users = [
+		u
+		for u in forecast_users
+		if u in team_emails
+		and (u in (dropped_no_rate_users or set()) or u not in matching_emails)
+	]
+
+	if role_mismatch_users:
+		users_label = ", ".join(role_mismatch_users)
+		return frappe._(
+			'Workload is assigned for task "{0}", role "{1}", period {2}, but user role '
+			'does not match the project team for this role ({5}). The entire forecast ({3}h) '
+			'will be calculated from the virtual team member when calculating {4}. Continue?'
+		).format(task, role, period_key, forecast_hours, type_label, users_label)
+
+	if grade_drop_users:
+		users_label = ", ".join(grade_drop_users)
+		return frappe._(
+			'No cost grade or rate found for user(s) ({5}) on task "{0}", role "{1}", period {2}. '
+			'The entire forecast ({3}h) will be calculated from the virtual team member '
+			'when calculating {4}. Continue?'
+		).format(task, role, period_key, forecast_hours, type_label, users_label)
+
+	return frappe._(
+		'No assigned workload for task "{0}", role "{1}", period {2}. '
+		'The entire forecast ({3}h) will be calculated from the virtual team member '
+		'when calculating {4}. Continue?'
+	).format(task, role, period_key, forecast_hours, type_label)
+
+
 def _parse_inputs(fd):
 	project = fd.get("project")
 	selected_tasks = fd.get("tasks") or []
@@ -507,8 +575,10 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 			# Находим пользователя с этой ролью
 			matching_users = []
 			users_without_wtype = []
+			team_users_for_role = []
 			for (td_role, td_user), td in team_details_map.items():
 				if td_role == role:
+					team_users_for_role.append(td_user)
 					if forecast_type == "cost":
 						user_type = user_type_cache.get(td_user)
 						if user_type:
@@ -572,6 +642,8 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 					users_forecast_data[user_email] = user_info
 
 				users_for_period = []
+				# Message-only: who was skipped for missing grade/rate/account (same calc path).
+				dropped_no_rate_users = set()
 
 				for user, team_detail in matching_users:
 					# Определяем parent для ставки
@@ -579,6 +651,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 						parent_value = team_detail.get("pt_category")
 						if not parent_value:
 							_debug_log(f"      No rate source for user {user}")
+							dropped_no_rate_users.add(user)
 							_add_skip(
 								skipped,
 								task=task,
@@ -603,6 +676,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 						if not parent_value:
 							# Нет грейда на 1-е периода (в т.ч. mid-month wl_valid_from)
 							_debug_log(f"      No cost grade for user {user} on {period_date}")
+							dropped_no_rate_users.add(user)
 							_add_skip(
 								skipped,
 								task=task,
@@ -616,6 +690,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 					parent_rates = rates.get(parent_value, [])
 					if not parent_rates:
 						_debug_log(f"      No rates found for parent={parent_value}")
+						dropped_no_rate_users.add(user)
 						_add_skip(
 							skipped,
 							task=task,
@@ -639,6 +714,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if not applicable_rate:
 						_debug_log(f"      No applicable rate for user {user}")
+						dropped_no_rate_users.add(user)
 						_add_skip(
 							skipped,
 							task=task,
@@ -667,6 +743,7 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 						if not applicable_account:
 							_debug_log(f"      No account found for user_type={user_type}")
+							dropped_no_rate_users.add(user)
 							_add_skip(
 								skipped,
 								task=task,
@@ -774,13 +851,19 @@ def _process_single_forecast_type(project, selected_tasks, forecast_details, con
 
 					if not confirm_recalc:
 						type_label = frappe._("cost") if forecast_type == "cost" else frappe._("revenue")
-						# ISS-2026-03985 п.1: отдельный текст, если реальной загрузки нет вовсе
+						# ISS-2026-03985: zero-PWA underload — clarify grade/role vs true empty workload
 						if total_pwa_hours <= 0:
-							confirm_message = frappe._(
-								'No assigned workload for task "{0}", role "{1}", period {2}. '
-								'The entire forecast ({3}h) will be calculated from the virtual team member '
-								'when calculating {4}. Continue?'
-							).format(task, role, period_key, forecast_hours, type_label)
+							confirm_message = _zero_pwa_underload_confirm_message(
+								task,
+								role,
+								period_key,
+								forecast_hours,
+								type_label,
+								users_data,
+								matching_users,
+								dropped_no_rate_users,
+								team_users_for_role=team_users_for_role,
+							)
 						else:
 							confirm_message = frappe._(
 								'Underload detected: forecast work efforts ({0}h) exceed assigned workload ({1}h) '
