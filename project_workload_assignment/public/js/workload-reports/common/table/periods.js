@@ -25,22 +25,17 @@ const _dayNames = () => [
 
 const _fmtDayMonth = (date) => `${date.getDate()}.${date.getMonth() + 1}`;
 
-/** Two-level header parts { top, bottom } — ignore wire period.label (often "a-b"). */
+/** Two-level header parts { top, bottom } — ignore wire period.label (often "a-b").
+ * Project-tab weekly/monthly periods may carry legacy `date` (week/month start) —
+ * do not treat that as daily when view_type / week / month is known.
+ */
 export const periodHeaderParts = (period, viewType) => {
 	if (!period) return { top: "", bottom: "" };
 
 	const vt = viewType || period.view_type;
 
-	if (vt === "daily" || period.date) {
-		const dateString = period.date || period.start_date;
-		if (!dateString) return { top: period.key || "", bottom: "" };
-		const dateObj = frappe.datetime.str_to_obj(dateString);
-		const dayMonth = frappe.datetime.str_to_user(dateString).split("-").slice(0, 2).join(".");
-		const weekday = _dayNames()[dateObj.getDay()] || "";
-		return { top: dayMonth, bottom: weekday };
-	}
-
-	if (vt === "weekly" || period.week != null) {
+	// Weekly / monthly before date heuristic: project tree sets date=start for compat.
+	if (vt === "weekly" || (vt !== "daily" && period.week != null)) {
 		if (!period.start_date || !period.end_date) {
 			return { top: period.key || "", bottom: "" };
 		}
@@ -49,10 +44,19 @@ export const periodHeaderParts = (period, viewType) => {
 		return { top: _fmtDayMonth(startDate), bottom: _fmtDayMonth(endDate) };
 	}
 
-	if (vt === "monthly" || (period.month != null && period.year != null)) {
+	if (vt === "monthly" || (vt !== "daily" && period.month != null && period.year != null)) {
 		const names = _monthNames();
 		const name = names[period.month - 1] || String(period.month);
 		return { top: name, bottom: String(period.year) };
+	}
+
+	if (vt === "daily" || period.date) {
+		const dateString = period.date || period.start_date;
+		if (!dateString) return { top: period.key || "", bottom: "" };
+		const dateObj = frappe.datetime.str_to_obj(dateString);
+		const dayMonth = frappe.datetime.str_to_user(dateString).split("-").slice(0, 2).join(".");
+		const weekday = _dayNames()[dateObj.getDay()] || "";
+		return { top: dayMonth, bottom: weekday };
 	}
 
 	if (period.start_date && period.end_date && period.start_date !== period.end_date) {
