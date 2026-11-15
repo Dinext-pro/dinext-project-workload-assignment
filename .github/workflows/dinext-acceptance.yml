@@ -4,7 +4,6 @@ on:
   push:
     tags: ['v*', 'dinext/**']
   workflow_call: {}
-  pull_request: {}
   workflow_dispatch: {}
 permissions:
   contents: read
