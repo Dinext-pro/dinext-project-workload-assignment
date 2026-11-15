@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
+
+import frappe
 
 from project_workload_assignment.project_workload_assignment.plan_fact import Entry
 from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.bulk_loader import (
@@ -180,6 +183,25 @@ class TestAdapterIvanExpected(unittest.TestCase):
 
 
 class TestCalculatorForecastHours(unittest.TestCase):
+	def test_native_limits_api_calculates_without_form_dict(self):
+		from project_workload_assignment.api import calculate_timesheet_limits_for
+		from project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.bulk_loader import (
+			TimesheetLimitsBulkLoader,
+		)
+
+		positions = [{"name": "UTP-1", "document_name": "t1.1", "project": PROJECT, "project_role": ROLE}]
+		with (
+			patch.object(TimesheetLimitsBulkLoader, "load", return_value=_bulk()),
+			patch("project_workload_assignment.project_workload_assignment.work_efforts.timesheet_limits.fact_period._from_db"),
+			patch.object(frappe.db, "get_value", return_value=None),
+			patch.object(frappe.local, "form_dict", None, create=True),
+		):
+			result = calculate_timesheet_limits_for(positions)
+
+		self.assertEqual(len(result), 1)
+		self.assertEqual(result[0]["planned_hours"], 45.0)
+		self.assertEqual(result[0]["position"], "UTP-1")
+
 	def test_own_month_expected(self):
 		hours = TimesheetLimitsCalculator._forecast_hours(_bulk(), PROJECT, "t1.1", ROLE, 2026, 1)
 		self.assertEqual(hours, 8.0)

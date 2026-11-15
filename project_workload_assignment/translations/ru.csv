@@ -127,6 +127,7 @@
 "Abs.","Отс.",""
 "Absence","Отсутствие",""
 "Absence hours","Часы отсутствия",""
+"Review the Application For Leave query in Server Script {0} before cutover.","Перед переключением проверьте запрос заявок на отсутствие в серверном скрипте {0}.",""
 "Absences","Отсутствия",""
 "Available hours","Доступные часы",""
 "Base working hours","Базовые рабочие часы",""

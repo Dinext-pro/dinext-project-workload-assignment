@@ -3,12 +3,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from datetime import date
+from typing import TYPE_CHECKING
 
 import frappe
 from frappe.utils import getdate
 
+from project_workload_assignment.approval_statuses import APPROVED_STATUSES
 from project_workload_assignment.project_workload_assignment.project_workload.core.types import (
 	AbsenceEntry,
 	HolidayEntry,
@@ -484,7 +485,7 @@ def load_user_absences(
 		],
 		filters=[
 			["lauser", "in", users_list],
-			["status", "=", "Approved"],
+			["status", "in", APPROVED_STATUSES],
 			["alfrom_date", "is", "set"],
 			["alto_date", "is", "set"],
 			["alto_date", ">=", getdate(min_end_date)],
