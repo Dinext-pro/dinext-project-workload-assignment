@@ -340,3 +340,5 @@ doc_events = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+
+workflow_approval_cutover_providers = ["project_workload_assignment.workflow_cutover.configuration"]
