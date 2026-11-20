@@ -19,6 +19,8 @@ from project_workload_assignment.project_workload_assignment.project_workload.co
 )
 from project_workload_assignment.pwa_dates import validation
 from project_workload_assignment.pwa_dates.bulk import bulk_process_pwa
+from project_workload_assignment.pwa_dates.issue_sync import sync_issue_dates_to_pwa
+from project_workload_assignment.pwa_dates.task_sync import sync_task_dates_to_pwa
 
 
 def assignment(**fields):
@@ -117,6 +119,48 @@ class AssignmentValidationTest(unittest.TestCase):
 		with patch.object(validation, "_task", return_value=task):
 			validation.save_parent_dates(doc)
 		doc.set.assert_not_called()
+
+	def test_task_and_issue_can_reschedule_legacy_but_direct_and_bulk_edits_still_validate(self):
+		for doctype, sync, start_field, end_field, team in (
+			("Task", sync_task_dates_to_pwa, "exp_start_date", "exp_end_date", []),
+			(
+				"Issue",
+				sync_issue_dates_to_pwa,
+				"opening_date",
+				"custom_expected_resolution_date",
+				[member(end="2026-04-03")],
+			),
+		):
+			with self.subTest(doctype=doctype):
+				self.members[:] = team
+				before = assignment(task_dates=1)
+				pwa = frappe._dict(before)
+				pwa.get_doc_before_save = lambda: before
+				pwa.set = pwa.__setitem__
+				pwa.save = MagicMock(side_effect=lambda **kwargs: ProjectWorkloadAssignment.validate(pwa))
+				parent = frappe._dict(name="T" if doctype == "Task" else "ISS", flags=frappe._dict())
+				parent[start_field], parent[end_field] = before.date_from, "2026-04-15"
+				parent.get_doc_before_save = lambda: {
+					start_field: before.date_from,
+					end_field: before.date_to,
+				}
+				records = (
+					[[{"name": pwa.name}]] if doctype == "Task" else [[{"name": "T"}], [{"name": pwa.name}]]
+				)
+				db = MagicMock()
+				db.get_value.return_value = None
+				with (
+					patch.object(frappe, "db", db),
+					patch.object(frappe, "get_all", side_effect=records),
+					patch.object(frappe, "get_doc", return_value=pwa),
+				):
+					sync(parent)
+					self.assertEqual(pwa.date_to, "2026-04-15")
+					pwa.save.assert_called_once_with(ignore_permissions=True)
+					with self.assertRaises(frappe.ValidationError):
+						ProjectWorkloadAssignment.validate(pwa)
+					with self.assertRaises(frappe.ValidationError):
+						bulk_process_pwa([dict(before, date_to="2026-04-15")])
 
 	def test_wrong_role_user_virtual_and_date_gap(self):
 		for rows in (

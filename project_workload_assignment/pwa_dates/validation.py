@@ -80,21 +80,25 @@ def _covers(rows, start, end):
 def validate_assignment(doc):
 	row = _values(doc)
 	previous = doc.get_doc_before_save()
-	if previous and row == _values(previous):
-		return
+	if previous:
+		old = _values(previous)
+		changed = {field for field in _FIELDS if row[field] != old[field]}
+		if not changed:
+			return
+		# Task and Issue hooks may reschedule historical assignments after the
+		# project team has changed. Only dates on this exact document are inherited.
+		if _parent_sync.get() is doc and row["task_dates"] and changed <= {"date_from", "date_to"}:
+			return
 	task = _task(row["task"])
 	project = task.get("project")
 	if not project:
 		frappe.throw(_("Select a task with a project before assigning a project role."))
 	row.update(name=doc.get("name"), project=project)
 	if row["task_dates"]:
-		# API-created and edited assignments inherit omitted dates. Parent syncs
-		# must still be able to clear a bound when a Task or Issue becomes unscheduled.
-		if _parent_sync.get() is not doc:
-			for field, parent_field in (("date_from", "exp_start_date"), ("date_to", "exp_end_date")):
-				if not row[field] and task.get(parent_field):
-					row[field] = getdate(task[parent_field])
-					doc.set(field, row[field])
+		for field, parent_field in (("date_from", "exp_start_date"), ("date_to", "exp_end_date")):
+			if not row[field] and task.get(parent_field):
+				row[field] = getdate(task[parent_field])
+				doc.set(field, row[field])
 	elif not (row["date_from"] and row["date_to"]):
 		frappe.throw(_("Enter the start and end dates of the assignment."))
 	start, end = row["date_from"], row["date_to"]
