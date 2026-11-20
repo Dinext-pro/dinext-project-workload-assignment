@@ -1,9 +1,11 @@
 # Copyright (c) 2026, Dinext and contributors
 # For license information, please see license.txt
 
-# import frappe
 from frappe.model.document import Document
+
+from project_workload_assignment.pwa_dates.validation import validate_assignment
 
 
 class ProjectWorkloadAssignment(Document):
-	pass
+	def validate(self):
+		validate_assignment(self)

@@ -68,7 +68,9 @@ def filter_assignments_by_permitted_workers(assignments: list[dict]) -> list[dic
 	return filtered
 
 
-def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkloadInfo]:
+def load_users_with_worker_context(
+	users_list: list[str], *, permitted_workers_only: bool = True,
+) -> dict[str, UserWorkloadInfo]:
 	"""User (qb) + Worker (frappe.get_all с permissions) + Timesheet Template."""
 	users_data: dict[str, UserWorkloadInfo] = {}
 	if not users_list:
@@ -82,7 +84,10 @@ def load_users_with_worker_context(users_list: list[str]) -> dict[str, UserWorkl
 		.where(User.enabled == 1)
 	).run(as_dict=True)
 
-	workers_db = frappe.get_list(
+	# Reports retain their Worker permission filter. When validating an existing
+	# team member, use the actual calendar regardless of the editor's report access.
+	get_workers = frappe.get_list if permitted_workers_only else frappe.get_all
+	workers_db = get_workers(
 		"Worker",
 		filters={"wuser": ["in", users_list]},
 		fields=[

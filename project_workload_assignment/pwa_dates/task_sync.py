@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import frappe
 
+from project_workload_assignment.pwa_dates.validation import save_parent_dates
+
 
 def sync_task_dates_to_pwa(doc, method=None) -> None:
 	"""Скопировать Task.exp_* в PWA с task_dates=1 при смене дат или force-флагах."""
@@ -61,4 +63,4 @@ def sync_task_dates_to_pwa(doc, method=None) -> None:
 			changed = True
 
 		if changed:
-			pwa_doc.save(ignore_permissions=True)
+			save_parent_dates(pwa_doc)
