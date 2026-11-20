@@ -16,7 +16,7 @@ from project_workload_assignment.project_workload_assignment.project_workload.te
 from project_workload_assignment.project_workload_assignment.project_workload.team_report.team_workload_grid import run_get_projects_workload_data_v2
 from project_workload_assignment.project_workload_assignment.work_efforts.consolidated_data import run_get_work_efforts_consolidated_data
 from project_workload_assignment.project_workload_assignment.work_efforts.grid_data import run_get_work_efforts_grid
-from project_workload_assignment.project_workload_assignment.work_efforts.models import ConsolidatedDataFormInput, ConsolidatedDataResponse, SaveForecastAsPlanFormInput, TimesheetLimitsFormInput, TimesheetLimitsResponse, WeGridFormInput, WeGridResponse, WeSaveForecastFormInput, WorkEffortsProgressResponse
+from project_workload_assignment.project_workload_assignment.work_efforts.models import ConsolidatedDataFormInput, ConsolidatedDataResponse, SaveForecastAsPlanFormInput, TimesheetLimitsFormInput, TimesheetLimitsResponse, TimesheetPositionInput, WeGridFormInput, WeGridResponse, WeSaveForecastFormInput, WorkEffortsProgressResponse
 from project_workload_assignment.project_workload_assignment.work_efforts.work_efforts_progress import run_get_work_efforts_progress
 from project_workload_assignment.project_workload_assignment.work_efforts.save_changes import run_save_forecast_changes
 from project_workload_assignment.project_workload_assignment.work_efforts.save_forecast_as_plan import run_save_forecast_as_plan
@@ -221,6 +221,13 @@ def calculate_timesheet_limits() -> TimesheetLimitsResponse:
 	"""
 	form_input: TimesheetLimitsFormInput = frappe.form_dict
 	return TimesheetLimitsCalculator.run(form_input)
+
+
+def calculate_timesheet_limits_for(
+	positions: list[TimesheetPositionInput], timesheet_name: str | None = None
+) -> TimesheetLimitsResponse:
+	"""Calculate limits from native inputs independently of the request form."""
+	return TimesheetLimitsCalculator.run({"positions": positions, "timesheet_name": timesheet_name})
 
 
 @frappe.whitelist()
