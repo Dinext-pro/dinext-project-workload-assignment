@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
+from uuid import uuid4
 
 import frappe
+
+from project_workload_assignment.pwa_dates.validation import collect_warnings
 
 
 def _get_task_subject(task):
@@ -71,26 +75,59 @@ def _sync_assignments(task, items):
 		)
 
 
+@contextmanager
+def _atomic_batch():
+	# ToDo changes schedule notifications. Drop these callbacks together with the
+	# documents if a Python caller catches the error and continues its transaction.
+	key = f"pwa_{uuid4().hex}"
+	managers = (
+		frappe.db.before_commit,
+		frappe.db.after_commit,
+		frappe.db.before_rollback,
+		frappe.db.after_rollback,
+	)
+	callbacks = [(manager, tuple(manager._functions)) for manager in managers]
+	queues = {}
+	for attr in ("_realtime_log", "_webhook_queue"):
+		queue = getattr(frappe.local, attr, None)
+		queues[attr] = (queue, len(queue or ()))
+	frappe.db.savepoint(key)
+	try:
+		yield
+	except Exception:
+		frappe.db.rollback(save_point=key)
+		for manager, previous in callbacks:
+			manager.reset()
+			for callback in previous:
+				manager.add(callback)
+		for attr, (queue, length) in queues.items():
+			if queue is not None:
+				del queue[length:]
+				setattr(frappe.local, attr, queue)
+			elif hasattr(frappe.local, attr):
+				delattr(frappe.local, attr)
+		raise
+	finally:
+		frappe.db.release_savepoint(key)
+
+
 @frappe.whitelist()
 def bulk_process_pwa(rows=None):
-	"""Массовая обработка PWA (create / update / delete) + sync ToDo assignees.
-
-	Совместимо с SS API `bulk_process_pwa`: rows из form_dict или аргумента.
-	"""
+	"""Apply dialog rows and sync ToDos in the caller's transaction."""
 	payload = rows if rows is not None else frappe.form_dict.get("rows")
 	items = json.loads(payload) if isinstance(payload, str) else payload
 	if not items:
 		return
 
-	special_keys = {
-		"__islocal",
-		"__isRemove",
-		"__tempname",
-		"__islocal_doc",
-		"_server_signature",
-		"_comments",
-		"_liked_by",
-	}
+	with _atomic_batch():
+		with collect_warnings() as pending:
+			touched_tasks = _apply_rows(items, pending)
+			for task in touched_tasks:
+				_sync_assignments(task, items)
+
+
+def _apply_rows(items, pending):
+	meta = frappe.get_meta("Project Workload Assignment")
 	touched_tasks = set()
 
 	for raw in items:
@@ -106,7 +143,7 @@ def bulk_process_pwa(rows=None):
 		if is_local:
 			create_fields = {}
 			for k, v in item.items():
-				if k in special_keys or k == "name":
+				if not meta.has_field(k):
 					continue
 				create_fields[k] = v
 			doc = frappe.get_doc({"doctype": "Project Workload Assignment", **create_fields})
@@ -116,12 +153,13 @@ def bulk_process_pwa(rows=None):
 		doc = frappe.get_doc("Project Workload Assignment", name)
 
 		if is_remove:
+			pending.pop(name, None)
 			doc.delete()
 			continue
 
 		changed = False
 		for k, v in item.items():
-			if k in special_keys or k in ("doctype", "name"):
+			if not meta.has_field(k):
 				continue
 			doc.set(k, v)
 			changed = True
@@ -129,5 +167,4 @@ def bulk_process_pwa(rows=None):
 		if changed:
 			doc.save(ignore_permissions=True)
 
-	for task in touched_tasks:
-		_sync_assignments(task, items)
+	return touched_tasks

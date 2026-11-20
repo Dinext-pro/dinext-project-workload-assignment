@@ -339,3 +339,6 @@ doc_events = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+
+# Resolved by the optional demo app when this owner is installed.
+dinext_demo_generators = ["dinext_demo.generators.effort.WORKLOAD_PROVIDER"]

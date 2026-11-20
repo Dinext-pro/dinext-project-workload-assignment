@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import frappe
 
+from project_workload_assignment.pwa_dates.validation import save_parent_dates
+
 
 def sync_issue_dates_to_pwa(doc, method=None) -> None:
 	"""Если нет virtual Task — копировать opening/expected Issue в PWA связанных Task."""
@@ -70,4 +72,4 @@ def sync_issue_dates_to_pwa(doc, method=None) -> None:
 				changed = True
 
 			if changed:
-				pwa_doc.save(ignore_permissions=True)
+				save_parent_dates(pwa_doc)
