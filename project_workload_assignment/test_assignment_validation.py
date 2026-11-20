@@ -58,11 +58,21 @@ class AssignmentValidationTest(unittest.TestCase):
 		)
 		for target, result in (
 			("load_team_capacity_rows", self.members),
-			("_load_neighbours", self.neighbours),
 			("_calendar", self.calendar),
 			("_task", {"project": "P", "exp_start_date": None, "exp_end_date": None}),
 		):
 			self.enterContext(patch.object(validation, target, return_value=result))
+		self.fetch_neighbours = self.enterContext(
+			patch.object(
+				validation,
+				"fetch_flat_report_assignments",
+				side_effect=lambda start, end, *, user, project=None: [
+					row
+					for row in self.neighbours
+					if row.user == user and (not project or row.project == project)
+				],
+			)
+		)
 		self.enterContext(patch.object(validation, "_", side_effect=lambda s: s))
 		self.enterContext(
 			patch.object(
@@ -140,6 +150,27 @@ class AssignmentValidationTest(unittest.TestCase):
 		self.assertEqual(self.alert.call_count, 1)
 		self.assertIn("2026-04-01", self.alert.call_args.args[0])
 		self.assertNotIn("2026-04-02", self.alert.call_args.args[0])
+
+	def test_project_calendars_and_employee_fund_across_projects(self):
+		# Different project holidays leave Friday as the only shared workday.
+		# The employee has four hours available on Friday. 60% + 60% = 4.8 h.
+		self.calendar.projects_data["Q"] = {"holiday_list": "Q holidays"}
+		self.calendar.holiday_date_sets["Q holidays"] = {"2026-04-01": True}
+		self.neighbours.append(assignment(name="elsewhere", project="Q", wl_value=60))
+		self._validate(assignment(wl_value=60))
+		self.alert.assert_called_once()
+		message = self.alert.call_args.args[0]
+		self.assertIn("across projects", message)
+		self.assertIn("2026-04-03", message)
+		self.assertNotIn("Q", message)
+		self.assertNotIn("project", self.fetch_neighbours.call_args.kwargs)
+
+	def test_workload_provider_hook_is_lazy(self):
+		from project_workload_assignment import hooks
+
+		self.assertIn(
+			"dinext_demo.generators.effort.WORKLOAD_PROVIDER", getattr(hooks, "dinext_demo_generators", ())
+		)
 
 	def test_missing_task_plan_is_advisory(self):
 		self._validate(assignment(workload=WORKLOAD_PERCENT_TASK))

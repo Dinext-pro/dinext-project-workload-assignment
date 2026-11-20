@@ -342,3 +342,6 @@ doc_events = {
 
 
 workflow_approval_cutover_providers = ["project_workload_assignment.workflow_cutover.configuration"]
+
+# Resolved by the optional demo app when this owner is installed.
+dinext_demo_generators = ["dinext_demo.generators.effort.WORKLOAD_PROVIDER"]

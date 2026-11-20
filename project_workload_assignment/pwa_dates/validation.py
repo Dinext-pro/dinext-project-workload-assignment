@@ -132,13 +132,9 @@ def collect_warnings():
 		_pending.reset(token)
 
 
-def _load_neighbours(project, user, start, end):
-	return fetch_flat_report_assignments(start, end, project=project, user=user)
-
-
-def _calendar(rows, project, user):
+def _calendar(rows, user):
 	users = context_loaders.load_users_with_worker_context([user], permitted_workers_only=False)
-	projects = context_loaders.load_projects([project])
+	projects = context_loaders.load_projects(sorted({row["project"] for row in rows}))
 	holidays, days = context_loaders.load_holiday_data(users, projects)
 	starts = [row["date_from"] for row in rows if row["date_from"]]
 	return WorkloadContext(
@@ -155,19 +151,19 @@ def _calendar(rows, project, user):
 def _warn_for_assignments(changes):
 	by_person = defaultdict(list)
 	for row, team in changes:
-		by_person[(row["project"], row["user"])].append((row, team))
-	for (project, user), edits in by_person.items():
+		by_person[row["user"]].append((row, team))
+	for user, edits in by_person.items():
 		changed = {row["name"]: row for row, team in edits}
 		dated = [row for row in changed.values() if row["date_from"] and row["date_to"]]
 		neighbours = []
 		if dated:
-			neighbours = _load_neighbours(
-				project, user, min(r["date_from"] for r in dated), max(r["date_to"] for r in dated)
+			neighbours = fetch_flat_report_assignments(
+				min(r["date_from"] for r in dated), max(r["date_to"] for r in dated), user=user
 			)
 		rows = [r for r in neighbours if r["name"] not in changed] + list(changed.values())
-		calendar = _calendar(rows, project, user)
+		calendar = _calendar(rows, user)
 		planned = {key.rsplit("_", 2)[0] for key in calendar.monthly_plan_cache}
-		totals = _daily_hours(rows, calendar)
+		by_role, by_project, changed_days = _daily_hours(rows, calendar, changed)
 		messages = set()
 		for row, team in edits:
 			role = row["role"]
@@ -175,31 +171,50 @@ def _warn_for_assignments(changes):
 				messages.add(_("Work efforts are not defined for role: {0}").format(escape(str(role))))
 			if not (row["date_from"] and row["date_to"]) or user not in calendar.users_data:
 				continue
-			day = _first_overloaded_day(row, team, totals, calendar)
+			day = _first_overloaded_day(row, team, by_role[(row["project"], role)], calendar)
 			if day:
 				messages.add(
 					_("Assignments for {0} in role {1} exceed the available hours on {2}.").format(
 						escape(str(user)), escape(str(role)), day
 					)
 				)
+		if user in calendar.users_data:
+			for day in sorted(changed_days):
+				projects = by_project[day]
+				if sum(hours > 0 for hours in projects.values()) < 2:
+					continue
+				# The team report uses an empty project to obtain the employee's
+				# own calendar once, independently of each assignment's calendar.
+				if sum(projects.values()) > calendar.get_available_hours(day, user, "") + 0.000001:
+					messages.add(
+						_("Assignments across projects exceed the available hours for {0} on {1}.").format(
+							escape(str(user)), day
+						)
+					)
+					break
 		for message in sorted(messages):
 			frappe.msgprint(message, alert=True, indicator="orange")
 
 
-def _daily_hours(rows, calendar):
-	totals = defaultdict(float)
+def _daily_hours(rows, calendar, changed):
+	by_role = defaultdict(lambda: defaultdict(float))
+	by_project = defaultdict(lambda: defaultdict(float))
+	changed_days = set()
 	for row in rows:
 		if not row["date_from"] or not row["date_to"]:
 			continue
 		for day, hours in calendar.compute_assignment_daily_hours(row).items():
-			totals[(row["role"], day)] += hours
-	return totals
+			by_role[(row["project"], row["role"])][day] += hours
+			by_project[day][row["project"]] += hours
+			if row["name"] in changed and hours > 0:
+				changed_days.add(day)
+	return by_role, by_project, changed_days
 
 
 def _first_overloaded_day(row, team, totals, calendar):
 	user, role, project = row["user"], row["role"], row["project"]
-	for (load_role, day), hours in sorted(totals.items()):
-		if load_role != role or not row["date_from"] <= getdate(day) <= row["date_to"]:
+	for day, hours in sorted(totals.items()):
+		if not row["date_from"] <= getdate(day) <= row["date_to"]:
 			continue
 		active = [item for item in team if date_in_team_row(item, day)]
 		limits = [

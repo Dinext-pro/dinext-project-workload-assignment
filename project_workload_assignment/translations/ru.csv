@@ -214,3 +214,4 @@
 "The assignment end date must be on or after its start date.","Дата окончания назначения должна совпадать с датой начала или быть позже.",""
 "The project team must include {0} in role {1} for the full assignment period.","Участник {0} должен входить в команду проекта с ролью {1} в течение всего срока назначения.",""
 "Assignments for {0} in role {1} exceed the available hours on {2}.","Назначения участника {0} с ролью {1} превышают доступные часы на {2}.",""
+"Assignments across projects exceed the available hours for {0} on {1}.","Суммарная загрузка участника {0} по проектам превышает доступные часы на {1}.",""
