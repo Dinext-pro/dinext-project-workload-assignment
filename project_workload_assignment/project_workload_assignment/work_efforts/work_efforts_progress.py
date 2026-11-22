@@ -3,7 +3,7 @@
 
 Scalars only (plan/fact/percent) — no task/role/period tree.
 Plan: ядро PlanFact по корням (ISS-2026-02105, без двойного счёта родитель+дети).
-Fact: UTP «Согласовано» sum, project roles, display periods.
+Fact: approved UTP hours, project roles and display periods.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from frappe.query_builder import Criterion
 from frappe.query_builder.functions import Coalesce, Sum
 from frappe.utils import flt
 
+from project_workload_assignment.approval_statuses import APPROVED_STATUSES
 from project_workload_assignment.project_workload_assignment.work_efforts.models import (
 	WorkEffortsProgressResponse,
 )
@@ -65,7 +66,7 @@ def _sum_fact_hours(project: str, roles: list[str], periods: list[dict]) -> floa
 		frappe.qb.from_(UTP)
 		.select(Coalesce(Sum(UTP.all_hours), 0).as_("total"))
 		.where(UTP.project == project)
-		.where(UTP.status == "Согласовано")
+		.where(UTP.status.isin(APPROVED_STATUSES))
 		.where(UTP.document_type == "Task")
 		.where(UTP.project_role.isin(roles))
 		.where(period_criterion)
