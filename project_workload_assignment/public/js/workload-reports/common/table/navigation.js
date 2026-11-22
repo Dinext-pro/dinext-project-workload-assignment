@@ -139,7 +139,7 @@ export async function openUserAbsence(userEmail, dateStr) {
 			fields: ["name", "alfrom_date", "alto_date"],
 			filters: [
 				["lauser", "=", userEmail],
-				["status", "=", "Согласовано"],
+				["status", "in", ["Approved", "Согласовано"]],
 				["alfrom_date", "<=", dateStr],
 				["alto_date", ">=", dateStr],
 			],

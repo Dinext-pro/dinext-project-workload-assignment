@@ -4,6 +4,7 @@ app_publisher = "Dinext"
 app_description = "Dinext Project Workload"
 app_email = "administrator@dinext.invalid"
 app_license = "GNU General Public License (v3)"
+workflow_approval_canonical_statuses = 1
 
 # Apps
 # ------------------
@@ -339,3 +340,5 @@ doc_events = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+
+workflow_approval_cutover_providers = ["project_workload_assignment.workflow_cutover.configuration"]

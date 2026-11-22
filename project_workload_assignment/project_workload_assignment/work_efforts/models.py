@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal, TypedDict
-
 
 # --- consolidated_data ---
 
@@ -149,8 +149,13 @@ class SaveForecastAsPlanFormInput(TypedDict, total=False):
 # --- calculate_timesheet_limits ---
 
 
+class TimesheetPositionDetailInput(TypedDict, total=False):
+	date: str | date | None
+	hours: float | str | int | None
+
+
 class TimesheetPositionInput(TypedDict, total=False):
-	"""Одна позиция UTP из JSON positions (calculate_timesheet_limits)."""
+	"""Position fields used by the timesheet limit calculator."""
 
 	name: str | None
 	document_name: str | None
@@ -161,6 +166,7 @@ class TimesheetPositionInput(TypedDict, total=False):
 	month: int | None
 	all_hours: float | str | int | None
 	custom_username: str | None
+	details: list[TimesheetPositionDetailInput]
 
 
 class LimitControlRowInput(TypedDict, total=False):
@@ -173,7 +179,7 @@ class LimitControlRowInput(TypedDict, total=False):
 class TimesheetLimitsFormInput(TypedDict, total=False):
 	"""Входные параметры для calculate_timesheet_limits."""
 
-	positions: str
+	positions: str | list[TimesheetPositionInput]
 	timesheet_name: str | None
 	project_limits: str | None
 
@@ -197,6 +203,11 @@ class HoursData(TypedDict, total=False):
 LimitStatus = Literal["no-plan", "block", "warning", "message", "normal"]
 
 
+class UserHoursSummary(TypedDict):
+	total_hours: float
+	completion_percentage: int
+
+
 class TimesheetLimitResult(TypedDict, total=False):
 	"""Результат расчёта лимита для одной позиции UTP."""
 
@@ -209,6 +220,9 @@ class TimesheetLimitResult(TypedDict, total=False):
 	total_hours: float
 	hours_data: HoursData
 	completion_percentage: int
+	display_completion_percentage: int
+	status_percentages: dict[str, int]
+	user_totals: dict[str, UserHoursSummary]
 	status: LimitStatus
 	limit: int | float
 	used_parent_for_plan: bool
